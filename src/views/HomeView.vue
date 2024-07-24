@@ -60,9 +60,17 @@
   const getParent = (name: string) => {
     return parents.value.findIndex(p => p === name) + 1;
   }
+
+  const randid = ref<number>(-1);
   const addProperty = (data: Property) => {
-    if(!("id" in data) && data.name) {
-      data.id = addParent(data.name);
+    if(!("id" in data)) {
+      if(data.name) {
+        data.id = addParent(data.name);
+      }
+      else {
+        data.id = addParent(randid.toString());
+        randid.value = randid.value - 1;
+      }
     }
     if(!("rank" in data)) {
       data.rank = data.id;
@@ -548,20 +556,20 @@
       parentId: parentId
     });
 
-    let s: string[] = [];
+    let s: any[] = [];
 
     makeNote(s, "vulnerable", "Damage Vulnerabilities");
     makeNote(s, "resist", "Damage Resistances");
     makeNote(s, "immune", "Damage Immunities");
     makeNote(s, "conditionImmune", "Condition Immunities");
 
-    s.length && s.push('');
+    s.length && s.push(null);
 
     data.value.trait && s.push(...data.value.trait.map(((e: any) => `<strong><em>${e.name}. </strong></em>${S(e.entries[0])}`)));
 
     addProperty({
       type: "paragraph",
-      value: s.map((e => e.length > 0 ? `<p>${e}</p>` : "<hr>")).join(""),
+      value: s.map((e => e ? `<p>${e}</p>` : "<hr>")).join(""),
       parentId: id
     });
   }
@@ -765,7 +773,7 @@
         else {
           addProperty({
             type: "paragraph",
-            value: `<strong>${e.name}: ${e.entries.join(" ")}</strong>`,
+            value: `<strong>${e.name}</strong>: ${e.entries.join(" ")}`,
             parentId: id
           });
         }
