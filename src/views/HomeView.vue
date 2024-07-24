@@ -97,7 +97,7 @@
     }
   }
 
-  const errorConvert = ref(null);
+  const errorConvert = ref<any>(null);
 
   const btnDisabled = computed(() => {
     if(!jsonTableplop) return true;
