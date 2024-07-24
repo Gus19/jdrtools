@@ -18,7 +18,7 @@ onMounted(() => {
   <Header />
 
   <main class="container d-flex flex-column my-2 g-1">
-    <RouterView />
+    <router-view />
   </main>
 
   <Footer />

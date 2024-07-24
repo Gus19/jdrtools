@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
+import ChangelogView from '../views/ChangelogView.vue'
+import NotFound from '../views/NotFound.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -9,6 +11,16 @@ const router = createRouter({
       name: 'home',
       component: HomeView
     },
+    {
+      path: '/changelog',
+      name: 'changelog',
+      component: ChangelogView
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'error',
+      component: NotFound
+    }
     // {
     //   path: '/about',
     //   name: 'about',

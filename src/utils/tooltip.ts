@@ -2,7 +2,7 @@ import { Tooltip } from 'bootstrap'
 
 export const tooltip = {
 
-  mounted(el) {
+  mounted(el: any) {
     const tooltip = new Tooltip(el)
   }
 

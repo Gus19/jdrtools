@@ -91,9 +91,13 @@
       jsonTableplop.value = JSON.stringify(character.value, null, 2);
     }
     catch (error) {
-      alert("There is an error ... Please check the JSON or open a GitHub issue");
+      show.value = true;
+      errorConvert.value = error;
+      console.error(error);
     }
   }
+
+  const errorConvert = ref(null);
 
   const btnDisabled = computed(() => {
     if(!jsonTableplop) return true;
@@ -932,7 +936,12 @@
           lines.push(S(en))
         }
         else {
-          lines.push(S(`${en.name}: ${en.entries.join(" ")}`));
+          if("type" in en && en.type === "list") {
+            en.items.forEach((it: any) => lines.push('- ' + S(it)));
+          }
+          else if("name" in en && "entries" in en) {
+            lines.push(S(`${en.name}: ${en.entries.join(" ")}`));
+          }
         }
       });
       if(s.entriesHigherLevel) {
@@ -1052,9 +1061,26 @@
   const spells = computed(() => spellsStore.spells);
   // import { useFirestore } from 'vuefire'
   // const db = useFirestore();
+  const show = ref(false);
 </script>
 
 <template>
+  <!-- Modal -->
+  <div class="modal fade modal-lg" :class="show ? 'show': ''" :style="show ? 'display: block' : ''">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-body text-center">
+          <p>There is an error ... Please check the JSON or open a <a href="https://github.com/Gus19/jdrtools/issues" target="_blank">GitHub issue</a></p>
+          <p>
+            <code>{{ errorConvert }}</code>
+          </p>
+          <button type="button" class="btn btn-secondary" @click="show = false">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div v-if="show" class="modal-backdrop fade show"></div>
+
   <div class="row">
     <div class="col-6 d-flex justify-content-between align-items-center">
       <label class="fw-bold">5etools</label>
