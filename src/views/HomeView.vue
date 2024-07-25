@@ -508,14 +508,6 @@
         value: a
       });
     }
-    if(data.value.languages) {
-      addProperty({
-        parentId: id,
-        type: "text",
-        name: "languages",
-        value: data.value.languages.join(", ")
-      });
-    }
   }
 
   const addSenses = (sectionId: number) => {
@@ -564,6 +556,8 @@
     });
 
     let s: any[] = [];
+    makeNote(s, "languages", "Languages");
+    s.length && s.push(' ');
 
     makeNote(s, "vulnerable", "Damage Vulnerabilities");
     makeNote(s, "resist", "Damage Resistances");

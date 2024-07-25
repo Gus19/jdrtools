@@ -9,6 +9,8 @@ import Changelog from "@/components/Changelog.vue";
     <template v-slot:version>1.0.2</template>
     <template v-slot:date>25/04/2024</template>
     <li>Add Mythic, lair and regional actions</li>
+    <li>Add monster summoned by spell</li>
+    <li>Move Languages into Notes</li>
   </Changelog>
 
   <Changelog>
