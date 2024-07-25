@@ -34,10 +34,12 @@
     private: boolean;
     name: string;
     type: string;
-    properties: Property[]
+    properties: Property[],
+    category: string|null
   }
 
-  const json5etools = ref(/*import.meta.env.DEV ? Zariel : */'');
+  const Test = ``
+  const json5etools = ref(import.meta.env.DEV ? Test : '');
   const jsonTableplop = ref('');
   const forSurvival = ref(true);
 
@@ -48,7 +50,8 @@
     appearances: [], // token par défaut
     properties: [],
     private: true,
-    type: "tableplop-character-v2"
+    type: "tableplop-character-v2",
+    category: null
   };
   const character = ref<Character>(defaultCharacter);
 
@@ -238,13 +241,18 @@
     if(!("proficiency" in data.value)) {
       data.value.proficiency = parseInt(data.value.pbNote || prof[data.value.cr]);
     }
+    character.value.category = "CR " + data.value.cr;
 
     character.value.name = data.value.name;
     if(data.value.token) {
       character.value.appearances.push(`https://5e.tools/img/bestiary/tokens/${data.value.token.source}/${data.value.token.name}.webp`.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
     }
     else if(data.value.hasToken) {
-      character.value.appearances.push(`https://5e.tools/img/bestiary/tokens/${data.value.source}/${data.value.name}.webp`.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
+      let name = data.value.name;
+      if("summonedBySpell" in data.value) {
+        name = name.split(' (')[0];
+      }
+      character.value.appearances.push(`https://5e.tools/img/bestiary/tokens/${data.value.source}/${name}.webp`.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
     }
     addSections();
     // Character
@@ -337,66 +345,68 @@
     });
 
     let e = data.value.hp.average;
-    data.value.hp.special && (e = E("Health:\n" + data.value.hp.special, "number", null == e ? void 0 : e.toString()));
+    data.value.hp.special && (e = data.value.hp.special);
 
-    const tableid = addParent("table-roll-hp")
-    addProperty({
-      id: tableid,
-      parentId: id,
-      type: "table",
-      data: {
-        headers: [
-          "hp-average",
-          "hp-random",
-          "hp-max"
-        ]
-      }
-    });
+    if(data.value.hp.formula) {
+      const tableid = addParent("table-roll-hp")
+      addProperty({
+        id: tableid,
+        parentId: id,
+        type: "table",
+        data: {
+          headers: [
+            "hp-average",
+            "hp-random",
+            "hp-max"
+          ]
+        }
+      });
 
-    const col1 = addParent("table-roll-hp-col1");
-    const col2 = addParent("table-roll-hp-col2");
-    const col3 = addParent("table-roll-hp-col3");
-    addProperty({
-      id: col1,
-      parentId: tableid,
-      type: "number",
-      name: "hp-average",
-      value: e,
-      message: "!m hp-average-set"
-    });
-    addMessage({
-      parentId: col1,
-      name: "hp-average-set",
-      message: "Set average HP {hit-points-maximum = hp-average} {hit-points = hit-points-maximum} !hr"
-    });
+      const col1 = addParent("table-roll-hp-col1");
+      const col2 = addParent("table-roll-hp-col2");
+      const col3 = addParent("table-roll-hp-col3");
+      addProperty({
+        id: col1,
+        parentId: tableid,
+        type: "number",
+        name: "hp-average",
+        value: e,
+        message: "!m hp-average-set"
+      });
+      addMessage({
+        parentId: col1,
+        name: "hp-average-set",
+        message: "Set average HP {hit-points-maximum = hp-average} {hit-points = hit-points-maximum} !hr"
+      });
 
-    addProperty({
-      id: col2,
-      parentId: tableid,
-      type: "text",
-      name: "hp-random",
-      value: data.value.hp.formula,
-      message: "!m hp-random-roll"
-    });
-    addMessage({
-      parentId: col2,
-      name: "hp-random-roll",
-      message: `Roll random HP {hit-points-maximum = ${data.value.hp.formula}} {hit-points = hit-points-maximum} !hr`
-    });
+      addProperty({
+        id: col2,
+        parentId: tableid,
+        type: "text",
+        name: "hp-random",
+        value: data.value.hp.formula,
+        message: "!m hp-random-roll"
+      });
+      addMessage({
+        parentId: col2,
+        name: "hp-random-roll",
+        message: `Roll random HP {hit-points-maximum = ${data.value.hp.formula}} {hit-points = hit-points-maximum} !hr`
+      });
 
-    addProperty({
-      id: col3,
-      parentId: tableid,
-      type: "text",
-      name: "hp-max",
-      value: data.value.hp.formula.replace('d','*'),
-      message: "!m hp-max-roll"
-    });
-    addMessage({
-      parentId: col3,
-      name: "hp-max-roll",
-      message: `Roll max HP {hit-points-maximum = ${data.value.hp.formula.replace('d','*')}} {hit-points = hit-points-maximum} !hr`
-    });
+      addProperty({
+        id: col3,
+        parentId: tableid,
+        type: "text",
+        name: "hp-max",
+        value: data.value.hp.formula.replace('d', '*'),
+        message: "!m hp-max-roll"
+      });
+      addMessage({
+        parentId: col3,
+        name: "hp-max-roll",
+        message: `Roll max HP {hit-points-maximum = ${data.value.hp.formula.replace('d', '*')}} {hit-points = hit-points-maximum} !hr`
+      });
+    }
 
     const hpid = addParent("hit-points");
     addProperty({
@@ -576,8 +586,11 @@
       if("string" == typeof e) {
         return e
       }
-      else {
-        return `${e.preNote} ${e[key].join(" and ")} ${e.note}`
+      else if("special" in e) {
+        return e.special;
+      }
+      else if(e[key]) {
+        return `${e.preNote?e.preNote+' ':''}${e[key].join(" and ")}${e.note?' '+e.note:''}`
       }
     }).join(', ')));
   }
@@ -626,17 +639,13 @@
           value: t
         })
       }
-      else {
-        let n;
-        (null == t ? void 0 : t.condition) && t.number && (n = `${a}:\n${t.condition}?`);
-        if(confirm("Stat has condition!\n\n" + n)) {
-          addProperty({
-            parentId: parentId,
-            type: "number",
-            name: a,
-            value: t.number
-          })
-        }
+      else if ("object" == typeof t) {
+        addProperty({
+          parentId: parentId,
+          type: "number",
+          name: `${a} ${t.condition}`,
+          value: t.number
+        })
       }
     }))
   }
@@ -693,7 +702,10 @@
     for (; a.test(t) && (n--, !(n < 1));) {
       const e = a.exec(t);
       if(!e || !e.groups) return t;
-      const n = e[0], [s, i] = e.groups.script.split(" ");
+      const n = e[0], g = e.groups.script.split(" ");
+      const s = g[0];
+      const i = g.splice(1).join(" ");
+
       switch (s) {
         case"recharge":
           t = t.replace(n, `(Recharge ${i ? i+'-6' : '6'} : {1d6})`);
@@ -745,7 +757,10 @@
   }
 
   const C = (e: any) => {
-    const t = e.entries[0];
+    let t = ""
+    if("string" == typeof e) return false;
+    else if("entries" in e) t = e.entries[0]
+    else if("entry" in e) t = e.entry
     return t.includes("{@");
   }
 
@@ -818,6 +833,13 @@
         parentId: parentId
       })
     }
+    else if("string" == typeof e) {
+      addProperty({
+        type: "paragraph",
+        value: e,
+        parentId: parentId
+      });
+    }
     else {
       addProperty({
         type: "paragraph",
@@ -867,8 +889,8 @@
         });
       }
 
-      const times = ["rest", "daily", "weekly", "monthly", "yearly", "will"];
-      const timetxt = ["Rest", "Day", "Week", "Month", "Year", "At Will"];
+      const times = ["will","rest", "daily", "weekly", "monthly", "yearly"];
+      const timetxt = ["At Will", "Rest", "Day", "Week", "Month", "Year"];
       times.forEach((t,i) => {
         if(t in s) {
           if(t === "will") {
@@ -1130,8 +1152,6 @@
   import type {EntriesHigherLevel,Duration,Time} from "@/stores/spells";
   const spellsStore = useSpellsStore();
   const spells = computed(() => spellsStore.spells);
-  // import { useFirestore } from 'vuefire'
-  // const db = useFirestore();
   const show = ref(false);
 </script>
 
@@ -1195,7 +1215,6 @@
           :dark-theme="true"
           :status-bar="false"
           :main-menu-bar="false"
-          :read-only="true"
           class="my-editor"
       />
     </div>
