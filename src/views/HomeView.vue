@@ -248,8 +248,12 @@
     if(!("proficiency" in data.value)) {
       data.value.proficiency = parseInt(data.value.pbNote || prof[extractCR()]);
     }
-    character.value.category = "CR " + extractCR();
-
+    if("summonedBySpell" in data.value) {
+      character.value.category = "Summoned";
+    }
+    else {
+      character.value.category = "CR " + extractCR();
+    }
     character.value.name = data.value.name;
     if(data.value.token) {
       character.value.appearances.push(`https://5e.tools/img/bestiary/tokens/${data.value.token.source}/${data.value.token.name}.webp`.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
