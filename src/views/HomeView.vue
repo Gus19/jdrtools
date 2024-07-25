@@ -234,14 +234,21 @@
     }
   ;
 
+  const extractCR = () => {
+    if("object" == typeof data.value.cr) {
+      return data.value.cr.cr;
+    }
+    return data.value.cr
+  }
+
   const build = () => {
     if(!("cr" in data.value)) {
       data.value.cr = "0";
     }
     if(!("proficiency" in data.value)) {
-      data.value.proficiency = parseInt(data.value.pbNote || prof[data.value.cr]);
+      data.value.proficiency = parseInt(data.value.pbNote || prof[extractCR()]);
     }
-    character.value.category = "CR " + data.value.cr;
+    character.value.category = "CR " + extractCR();
 
     character.value.name = data.value.name;
     if(data.value.token) {
@@ -262,7 +269,7 @@
     addInfo(sectionId);
     addSenses(section2Id);
     if(forSurvival.value) {
-      addSurvival(section2Id);
+      addChallenge(section2Id);
     }
     addNotes(parentId);
     addAppearance(parentId);
@@ -522,7 +529,7 @@
     makeSenses(id);
   }
   
-  const addSurvival = (sectionId: number) => {
+  const addChallenge = (sectionId: number) => {
     const name = "Challenge"
     const id = addParent(name);
     addProperty({
@@ -535,14 +542,32 @@
       parentId: id,
       type: "text",
       name: "cr",
-      value: data.value.cr
+      value: extractCR()
     });
     addProperty({
       parentId: id,
       type: "number",
       name: "experience",
-      value: cr[data.value.cr]
+      value: "object" == typeof data.value.cr && "xp" in data.value.cr ? data.value.cr.xp : cr[extractCR()]
     });
+    if("object" == typeof data.value.cr) {
+      Object.keys(data.value.cr).forEach(k => {
+        if(k === 'lair' || k === 'coven') {
+          addProperty({
+            parentId: id,
+            type: "text",
+            name: "cr-"+k,
+            value: data.value.cr[k]
+          });
+          addProperty({
+            parentId: id,
+            type: "number",
+            name: "experience-"+k,
+            value: cr[data.value.cr[k]]
+          });
+        }
+      })
+    }
   }
 
   const addNotes = (parentId: number) => {
@@ -820,14 +845,7 @@
   }
 
   const actionAddMessageOrP = (parentId:number, e:any) => {
-    if(C(e)) {
-      addMessage({
-        name: formatNameMessage(e.name),
-        message: `${S(e.name)}: ${S(e.entries[0])}`,
-        parentId: parentId
-      })
-    }
-    else if("string" == typeof e) {
+    if("string" == typeof e) {
       addProperty({
         type: "paragraph",
         value: e,
@@ -835,11 +853,26 @@
       });
     }
     else {
-      addProperty({
-        type: "paragraph",
-        value: `<strong>${e.name}</strong>: ${e.entries.join(" ")}`,
-        parentId: parentId
-      });
+      let entry = '';
+      if ("entries" in e) {
+        entry = e.entries.join(" ");
+      }
+      else if ("entry" in e) {
+        entry = e.entry;
+      }
+      if (C(e)) {
+        addMessage({
+          name: formatNameMessage(e.name),
+          message: `${S(e.name)}: ${S(entry)}`,
+          parentId: parentId
+        })
+      } else {
+        addProperty({
+          type: "paragraph",
+          value: `<strong>${e.name}</strong>: ${entry}`,
+          parentId: parentId
+        });
+      }
     }
   }
 
