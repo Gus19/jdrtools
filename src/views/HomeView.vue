@@ -37,7 +37,7 @@
     properties: Property[]
   }
 
-  const json5etools = ref('');
+  const json5etools = ref(/*import.meta.env.DEV ? Zariel : */'');
   const jsonTableplop = ref('');
   const forSurvival = ref(true);
 
@@ -64,13 +64,8 @@
   const randid = ref<number>(-1);
   const addProperty = (data: Property) => {
     if(!("id" in data)) {
-      if(data.name) {
-        data.id = addParent(data.name);
-      }
-      else {
-        data.id = addParent(randid.toString());
-        randid.value = randid.value - 1;
-      }
+      data.id = addParent(randid.value.toString());
+      randid.value = randid.value - 1;
     }
     if(!("rank" in data)) {
       data.rank = data.id;
@@ -264,15 +259,17 @@
     addNotes(parentId);
     addAppearance(parentId);
 
-    // Spells
-    // -> Les Spells avant pour ne pas rajouter les actions si déjà existant
-    addSpells();
-
     // Actions
     addActions("Actions", "action");
     addActions("Actions Bonus", "bonus");
     addActions("Reactions", "reaction");
     addActions("Legendary", "legendary");
+    addActions("Mythic", "mythic");
+    addActions("Lair", "lair");
+    addActions("Regional Effects", "regional");
+
+    // Spells
+    addSpells();
 
     // Throws
     addSavingThrows();
@@ -753,6 +750,21 @@
   }
 
   const addActions = (name: string, key: string) => {
+    if((key == "lair" || key == "regional") && "fluff" in data.value) {
+      data.value.fluff.entries.forEach((en: any) => {
+        if(en.type == "entries") {
+          if(en.entries) {
+            if(en.entries[0].name == "Lair Actions" && key == "lair") {
+              data.value.lair = en.entries[0].entries;
+            }
+            if(en.entries[0].name == "Regional Effects" && key == "regional") {
+              data.value.regional = en.entries[0].entries;
+            }
+          }
+        }
+      });
+    }
+
     if(data.value[key]) {
       const parentId = getParent(Actions);
       const id = addParent(name+"-section");
@@ -762,21 +774,55 @@
         value: name,
         parentId: parentId
       });
+
+      if(key == "legendary" && "legendaryHeader" in data.value) {
+        addProperty({
+          type: "paragraph",
+          value: `${data.value.legendaryHeader.join(" ")}`,
+          parentId: id
+        });
+      }
+      else if(key == "mythic" && "mythicHeader" in data.value) {
+        addProperty({
+          type: "paragraph",
+          value: `${data.value.mythicHeader.join(" ")}`,
+          parentId: id
+        });
+      }
+
       data.value[key].forEach((e: any) => {
-        if(C(e)) {
-          addMessage({
-            name: formatNameMessage(e.name),
-            message: `${S(e.name)}: ${S(e.entries[0])}`,
-            parentId: id
-          })
-        }
-        else {
+        if("string" == typeof e) {
           addProperty({
             type: "paragraph",
-            value: `<strong>${e.name}</strong>: ${e.entries.join(" ")}`,
+            value: e,
             parentId: id
           });
         }
+        else if("type" in e && e.type == "list") {
+          e.items.forEach((i:any) => {
+            actionAddMessageOrP(id, i);
+          })
+        }
+        else {
+          actionAddMessageOrP(id, e);
+        }
+      });
+    }
+  }
+
+  const actionAddMessageOrP = (parentId:number, e:any) => {
+    if(C(e)) {
+      addMessage({
+        name: formatNameMessage(e.name),
+        message: `${S(e.name)}: ${S(e.entries[0])}`,
+        parentId: parentId
+      })
+    }
+    else {
+      addProperty({
+        type: "paragraph",
+        value: `<strong>${e.name}</strong>: ${e.entries.join(" ")}`,
+        parentId: parentId
       });
     }
   }
@@ -821,26 +867,41 @@
         });
       }
 
-      const times = ["rest", "daily", "weekly", "monthly", "yearly"];
-      const timetxt = ["Rest", "Day", "Week", "Month", "Year"];
+      const times = ["rest", "daily", "weekly", "monthly", "yearly", "will"];
+      const timetxt = ["Rest", "Day", "Week", "Month", "Year", "At Will"];
       times.forEach((t,i) => {
         if(t in s) {
-          Object.keys(s[t]).forEach(key => {
-            const split = key.split('');
-            const each = split.length == 2 && split[1] == "e";
-            const nb = parseInt(split[0]);
-            // si "e" en [1] alors checkbox pour chaque spell, sinon une seule checkbox
-            if(!each) {
-              addCheckboxes(id, `${s.name}-${t}`, `${s.name} /${timetxt[i]}`, nb);
-            }
-            s[t][key].forEach((tag: string) => {
-              const ex = extractSpell(tag);
-              if(each) {
-                addCheckboxes(id, `${ex.name}-${t}`, `${ex.name} /${timetxt[i]}`, nb);
-              }
-              addMessageSpell(id, ex);
+          if(t === "will") {
+            const willid = addParent(`spell-${s.name}-section-will`);
+            addProperty({
+              id: willid,
+              type: "title-section",
+              value: `${timetxt[i]}`,
+              parentId: id
             });
-          });
+            s[t].forEach((tag: string) => {
+              const ex = extractSpell(tag);
+              addMessageSpell(willid, ex);
+            });
+          }
+          else {
+            Object.keys(s[t]).forEach(key => {
+              const split = key.split('');
+              const each = split.length == 2 && split[1] == "e";
+              const nb = parseInt(split[0]);
+              // si "e" en [1] alors checkbox pour chaque spell, sinon une seule checkbox
+              if (!each) {
+                addCheckboxes(id, `${s.name}-${t}`, `${s.name} /${timetxt[i]}`, nb);
+              }
+              s[t][key].forEach((tag: string) => {
+                const ex = extractSpell(tag);
+                if (each) {
+                  addCheckboxes(id, `${ex.name}-${t}`, `${ex.name} /${timetxt[i]}`, nb);
+                }
+                addMessageSpell(id, ex);
+              });
+            });
+          }
         }
       });
 
@@ -961,7 +1022,9 @@
       }
       message = lines.join('\n');
     }
+    const id = getParent(ex.name + '-spell');
     addMessage({
+      // id: id,
       name: formatNameMessage(ex.spell?.name || ex.name),
       message: S(message),
       parentId: parentId

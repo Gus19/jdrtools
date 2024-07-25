@@ -6,8 +6,14 @@ import Changelog from "@/components/Changelog.vue";
   <h2>Changelog</h2>
 
   <Changelog>
+    <template v-slot:version>1.0.2</template>
+    <template v-slot:date>25/04/2024</template>
+    <li>Add Mythic, lair and regional actions</li>
+  </Changelog>
+
+  <Changelog>
     <template v-slot:version>1.0.1</template>
-    <template v-slot:date>27/04/2024</template>
+    <template v-slot:date>24/04/2024</template>
     <li>Error spell with list</li>
     <li>Add more info on error and link to open an issue</li>
     <li>Force id to every property</li>
@@ -15,7 +21,7 @@ import Changelog from "@/components/Changelog.vue";
 
   <Changelog>
     <template v-slot:version>1.0.0</template>
-    <template v-slot:date>27/04/2024</template>
+    <template v-slot:date>24/04/2024</template>
     <li>First version</li>
   </Changelog>
 
