@@ -92,6 +92,7 @@
       jsonTableplop.value = '';
       character.value.appearances = [];
       character.value.properties = [];
+      parents.value = [];
       data.value = JSON.parse(json5etools.value);
       build();
       jsonTableplop.value = JSON.stringify(character.value, null, 2);

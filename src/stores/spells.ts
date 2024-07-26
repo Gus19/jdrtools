@@ -130,16 +130,21 @@ export const useSpellsStore = defineStore({
         return;
       }
       const localSpells = [];
-      let total = 0;
-      for (const u of urlSpells) {
-        const response = await fetch(u);
-        const data = await response.json();
-        if(data.spell) {
-          total += data.spell.length;
-          localSpells.push(...data.spell);
+      try {
+        let total = 0;
+        for (const u of urlSpells) {
+          const response = await fetch(u);
+          const data = await response.json();
+          if (data.spell) {
+            total += data.spell.length;
+            localSpells.push(...data.spell);
+          }
         }
+        this.spells = localSpells;
       }
-      this.spells = localSpells;
+      catch (e) {
+        this.spells = initSpells;
+      }
     }
   },
 });

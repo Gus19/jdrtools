@@ -4,6 +4,12 @@ import Changelog from "@/components/Changelog.vue";
 
 <template>
   <h2>Changelog</h2>
+  <Changelog>
+    <template v-slot:version>1.0.3</template>
+    <template v-slot:date>26/04/2024</template>
+    <li>Reset categories on convert</li>
+    <li>Load spells with local file if error</li>
+  </Changelog>
 
   <Changelog>
     <template v-slot:version>1.0.2</template>
