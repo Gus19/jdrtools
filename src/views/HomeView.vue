@@ -1,7 +1,11 @@
 <script setup lang="ts">
-  import {computed, ref} from 'vue'
+  import {computed, ref, onMounted} from 'vue'
   import download from 'downloadjs'
   import JsonEditor from 'vue3-ts-jsoneditor';
+
+  onMounted(() => {
+    spellsStore.initSpells();
+  });
 
   interface Property {
     id?: number
@@ -495,7 +499,7 @@
     makeAC(id);
     makeSpeed(id);
     if(data.value.type) {
-      let t = "string" == typeof data.value.type ? data.value.type : data.value.type.type + " (" + data.value.type.tags.join(", ") + ")";
+      let t = "string" == typeof data.value.type ? data.value.type : data.value.type.type + (data.value.type.tags ? ` (${data.value.type.tags.join(`, `)})` : '');
       addProperty({
         parentId: id,
         type: "text",
