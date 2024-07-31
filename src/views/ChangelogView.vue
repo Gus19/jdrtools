@@ -8,6 +8,7 @@ import Changelog from "@/components/Changelog.vue";
     <template v-slot:version>1.0.4</template>
     <template v-slot:date>31/07/2024</template>
     <li>Error with swarm monster</li>
+    <li>Formula passive stealth/perception</li>
   </Changelog>
 
   <Changelog>
