@@ -695,13 +695,15 @@
       parentId: parentId,
       type: "number",
       name: "passive-perception",
-      value: data.value.passive
+      //value: data.value.passive
+      formula: "10 + perception + prof"
     });
     addProperty({
       parentId: parentId,
       type: "number",
       name: "passive-stealth",
-      value: data.value.passive
+      // value: data.value.passive
+      formula: "10 + stealth + prof"
     });
   }
 
