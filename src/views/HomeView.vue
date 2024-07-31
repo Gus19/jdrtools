@@ -910,13 +910,16 @@
     const parentId = getParent(Spells);
 
     data.value.spellcasting.forEach((s: any) => {
-      const id = addParent(`spell-${s.name}-section`);
-      addProperty({
-        id: id,
-        type: "title-section",
-        value: s.name,
-        parentId: parentId
-      });
+      let id = parentId;
+      if(data.value.spellcasting.length > 1) {
+        id = addParent(`spell-${s.name}-section`);
+        addProperty({
+          id: id,
+          type: "title-section",
+          value: s.name,
+          parentId: parentId
+        });
+      }
       if(s.headerEntries) {
         addProperty({
           type: "paragraph",
