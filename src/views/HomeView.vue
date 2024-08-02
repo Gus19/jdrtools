@@ -499,7 +499,24 @@
     makeAC(id);
     makeSpeed(id);
     if(data.value.type) {
-      let t = "string" == typeof data.value.type ? data.value.type : data.value.type.type + (data.value.type.tags ? ` (${data.value.type.tags.join(`, `)})` : '');
+      let t = "";
+      if("string" == typeof data.value.type) {
+        t = data.value.type
+      }
+      else {
+        t = data.value.type.type; // + (data.value.type.tags ? ` (${data.value.type.tags.join(`, `)})` : '');
+        if(data.value.type.tags) {
+          t += ' ' + data.value.type.tags.map((tag: any) => {
+            if("string" == typeof tag) {
+              return tag;
+            }
+            else {
+              return `${tag.prefix?tag.prefix + ' ':''}${tag.tag}`;
+            }
+          }).join(' , ');
+        }
+      }
+
       addProperty({
         parentId: id,
         type: "text",
@@ -707,9 +724,10 @@
     });
   }
 
-  const extractSpellName = (e: string) => {
-    // if(!("string" == typeof e)) return;
-    let t = e.slice();
+  const extractSpellName = (e: any) => {
+    let t;
+    if("object" == typeof e && "entry" in e) t = e.entry.slice();
+    else t = e.slice();
     const a = /{@(?<script>.*?)}/;
     if (!a.test(t)) return t;
     let n = 16;

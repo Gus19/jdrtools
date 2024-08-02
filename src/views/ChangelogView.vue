@@ -5,6 +5,13 @@ import Changelog from "@/components/Changelog.vue";
 <template>
   <h2>Changelog</h2>
   <Changelog>
+    <template v-slot:version>1.0.5</template>
+    <template v-slot:date>02/08/2024</template>
+    <li>Error on type if not text</li>
+    <li>Error on spell if not text</li>
+  </Changelog>
+
+  <Changelog>
     <template v-slot:version>1.0.4</template>
     <template v-slot:date>31/07/2024</template>
     <li>Error with swarm monster</li>
