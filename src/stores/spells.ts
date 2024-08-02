@@ -42,12 +42,10 @@ export const useSpellsStore = defineStore({
       }
       const localSpells = [];
       try {
-        let total = 0;
         for (const u of urlSpells) {
           const response = await fetch(u);
           const data = await response.json();
           if (data.spell) {
-            total += data.spell.length;
             localSpells.push(...data.spell);
           }
         }

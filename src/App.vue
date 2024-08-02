@@ -7,7 +7,7 @@
 <template>
   <Header />
 
-  <main class="container d-flex flex-column my-2">
+  <main class="container-fluid d-flex flex-column my-2">
     <router-view />
   </main>
 

@@ -1,14 +1,15 @@
 import { initializeApp } from 'firebase/app'
 import { getFirestore, collection } from 'firebase/firestore'
 
-export const firebaseApp = initializeApp({
-  apiKey: (import.meta.env.VITE_FIREBASE_APIKEY),
-  authDomain: "jdrtools-d4524.firebaseapp.com",
-  projectId: "jdrtools-d4524",
-  storageBucket: "jdrtools-d4524.appspot.com",
-  messagingSenderId: "560216665151",
-  appId: "1:560216665151:web:978236ab15dc049cce5c8a"
-})
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_APIKEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTHDOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECTID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGEBUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGINGSENDERID,
+  appId: import.meta.env.VITE_FIREBASE_APPID
+};
+export const firebaseApp = initializeApp(firebaseConfig);
 
 // used for the firestore refs
 const db = getFirestore(firebaseApp)
