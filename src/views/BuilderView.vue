@@ -26,51 +26,96 @@
       ...defaultCharacter,
       ...getStorage()
     };
+    calcDatasRace();
+    calcDatasClass();
   });
 
   const step = ref<string>('');
-  const defaultSteps = ['race'];
-  const steps = ref<string[]>(defaultSteps);
+  const steps = ref<any[]>([]);
 
   const changeStep = (name: string) => {
     if(step.value != name) {
       step.value = name;
     }
     else {
-      calculStep();
+      lastStep();
     }
   }
 
   const calculStep = () => {
-    const ss = [...defaultSteps];
-    if(character.value.race.name !== null && versions.value.length > 1) {
-      ss.push('version');
-    }
-    if(character.value.race.name !== null && character.value.race.source !== null && character.value.subrace !== null) {
-      ss.push('subrace');
-    }
-    const a = character.value.race.name !== null;
-    const b = character.value.race.source !== null;
-    const c = character.value.subrace === null || character.value.subrace.name !== null;
-    // todo check here if cantrip/spell/feat for race/subrace
-    if(a && b && c) {
-      ss.push('class');
-    }
-    const d = character.value.class[0].name !== null;
-    if(d) {
-      ss.push('background');
-    }
-    const e = character.value.background !== null
-    if(e) {
-      ss.push('todo');
-    }
-    // todo check here if cantrip/spell/feat for background
+    const ss = [];
+    try {
+      const a = character.value.race.name !== null;
+      const b = character.value.race.source !== null;
+      const c = character.value.subrace === null || character.value.subrace.name !== null;
+      const d = character.value.class[0].name !== null;
+      const e = character.value.background !== null;
+      const f = false;
 
-    step.value = ss[ss.length - 1];
-    steps.value = ss;
+      ss.push({
+        name: 'race',
+        valid: a
+      });
+
+      if (a && versions.value.length > 1) {
+        ss.push({
+          name: 'version',
+          valid: b
+        });
+      }
+      if (a && b && character.value.subrace !== null) {
+        ss.push({
+          name: 'subrace',
+          valid: c
+        });
+      }
+      // todo check here if cantrip/spell/feat for race/subrace
+
+      if ((a && b && c) || d) {
+        ss.push({
+          name: 'class',
+          valid: d
+        });
+      }
+      if (d || e) {
+        ss.push({
+          name: 'background',
+          valid: e
+        });
+      }
+      if (e) {
+        ss.push({
+          name: 'abilities',
+          valid: f
+        });
+      }
+      // todo check here if cantrip/spell/feat for background
+    }
+    catch (e) {
+    }
+    finally {
+      steps.value = ss;
+      if(!step.value) lastStep();
+    }
   }
 
-  const allLoad = computed(() => spellsStore.isLoad && racesStore.isLoad && bgStore.isLoad && character.value !== null);
+  const hasNext = computed(() => steps.value.findIndex(s => s.name === step.value) < steps.value.length - 1);
+  const hasPrev = computed(() => steps.value.findIndex(s => s.name === step.value) > 0);
+
+  const nextStep = () => {
+    let i = steps.value.findIndex(s => s.name === step.value);
+    step.value = steps.value[i+1].name;
+  }
+  const prevStep = () => {
+    let i = steps.value.findIndex(s => s.name === step.value);
+    step.value = steps.value[i-1].name;
+  }
+
+  const lastStep = () => {
+    step.value = steps.value.find(s => !s.valid).name;
+  }
+
+  const allLoad = computed(() => spellsStore.isLoad && racesStore.isLoad && bgStore.isLoad && classesStore.isLoad && character.value !== null);
 
   const faState = (b: boolean) => {
     return b ? 'fa-check' : 'fa-times';
@@ -87,20 +132,71 @@
     },
     subrace: null,
     class: [
-      {name: null, level: 1}
+      {
+        name: null,
+        level: 1,
+        subclass: null
+      }
     ],
     background: null,
-    subclass: null
+    abilities: {
+      str: {
+        base: 10,
+        bonus: 0
+      },
+      dex: {
+        base: 10,
+        bonus: 0
+      },
+      con: {
+        base: 10,
+        bonus: 0
+      },
+      int: {
+        base: 10,
+        bonus: 0
+      },
+      wis: {
+        base: 10,
+        bonus: 0
+      },
+      cha: {
+        base: 10,
+        bonus: 0
+      },
+      option: 'spend'
+    },
+    save: [],
+    skillProf: [],
+    skillExp: [],
+    languages: [],
+    vulnerable: [],
+    resist: [],
+    immune: [],
+    conditionImmune: [],
+    speed: {
+      walk: null
+    },
+    darkvision: null,
+    size: null,
+    spells: [
+      // {name: null, level: 0 à 9, from: race, subrace, class, subclass, origin: le name, }
+    ],
+    spellSlots: [
+      // {1:0}
+    ]
   }
 
   const character = ref<any>(null);
   const reset = () => {
-    if(confirm("Discard all changes ?")) {
+    if(confirm("Discard this character ?")) {
       character.value = {
         ...defaultCharacter
       };
+      step.value = 'race';
     }
   }
+  const chooses = ref<any>({});
 
   const logJson = () => {
     json.value = JSON.parse(JSON.stringify(character.value));
@@ -124,13 +220,15 @@
     }
   });
 
-
   const json = ref<any>(racesStore.builder);
   const show = ref<any>({
     json: true,
     character: false
   });
   const changeRace = (r: RaceBuilder) => {
+    if(character.value.race.name === r.name) {
+      return;
+    }
     character.value.race.name = r.name;
     character.value.race.source = r.source;
     character.value.race.version = null;
@@ -138,10 +236,11 @@
       name: null,
       source: null
     }
-    json.value = r
+    calcDatasRace();
   };
   const versions = computed(() => racesStore.getRaceByName(character.value.race.name));
   const subraces = computed(() => racesStore.getSubraceByName(character.value.race.name, character.value.race.source));
+  const isLineage = computed(() => versions.value !== null && character.value.race.source && versions.value.find(v => v.source === character.value.race.source)?.lineage);
   const displayVersion = (v: any) => {
     let s = ''
     if(v.lineage) s = 'Lineage'
@@ -164,24 +263,175 @@
     return s.join(', ');
   }
   const changeRaceSource = (v: any) => {
+    if(character.value.race.source === v.source) {
+      return;
+    }
     character.value.race.source = v.source;
     character.value.race.version = displayVersion(v);
     character.value.subrace = subraces.value.length == 0 ? null : {
       name: null,
       source: null
     }
-    json.value = v
+    calcDatasRace();
   }
   const changeSubrace = (s: any) => {
+    if(character.value.subrace.name === (s.name||'None')) return;
     character.value.subrace = {
       name: s.name||'None',
       source: s.source
     };
-    json.value = s
+    calcDatasRace();
+  }
+
+  const loadDatas = () => {
+    const v = versions.value.find(v => v.source === character.value.race.source);
+    const s = character.value.subrace === null ? null : subraces.value.find(s => (s.name||'None') === character.value.subrace.name && s.source === character.value.subrace.source);
+    json.value = {
+      v, s
+    }
+  }
+  const calcDatasRace = () => {
+    const v = versions.value.find(v => v.source === character.value.race.source);
+    const s = character.value.subrace === null ? null : subraces.value.find(s => (s.name||'None') === character.value.subrace.name && s.source === character.value.subrace.source);
+    character.value.abilities.str.bonus = 0;
+    character.value.abilities.dex.bonus = 0;
+    character.value.abilities.con.bonus = 0;
+    character.value.abilities.int.bonus = 0;
+    character.value.abilities.wis.bonus = 0;
+    character.value.abilities.cha.bonus = 0;
+    character.value.speed = {
+      walk: null
+    }
+    character.value.darkvision = null;
+    character.value.size = null;
+    chooses.value.size = null;
+    chooses.value.ability = null;
+    importDatasRace(v);
+    importDatasRace(s);
+  }
+  const importDatasRace = (d: any) => {
+    if(!d) return;
+    if(d.size) {
+      if(d.size.length == 1)
+        character.value.size = d.size[0];
+      else
+        chooses.value.size = d.size;
+    }
+    if(d.darkvision) character.value.darkvision = d.darkvision;
+    if(d.speed) {
+      if("number" == typeof d.speed) character.value.speed.walk = d.speed;
+      else character.value.speed = {...character.value.speed, ...d.speed};
+    }
+    if(d.ability) {
+      d.ability.forEach((a: any) => {
+        if(a.str) character.value.abilities.str.bonus = a.str;
+        if(a.dex) character.value.abilities.dex.bonus = a.dex;
+        if(a.con) character.value.abilities.con.bonus = a.con;
+        if(a.int) character.value.abilities.int.bonus = a.int;
+        if(a.wis) character.value.abilities.wis.bonus = a.wis;
+        if(a.cha) character.value.abilities.cha.bonus = a.cha;
+        if(a.choose) {
+          chooses.value.ability = {amount: 1, ...a.choose};
+          a.choose.from.forEach((f:string) => character.value.abilities[f].bonus = 0);
+        }
+      });
+    }
+  }
+
+  const calcDatasClass = () => {
   }
 
   const classes = computed(() => classesStore.classes);
   const backgrounds = computed(() => bgStore.getDefaults);
+
+  const isSpendMode = computed(() => character.value.abilities.option === 'spend');
+  const costPoint: any = {
+    8  : 0,
+    9  : 1,
+    10 : 2,
+    11 : 3,
+    12 : 4,
+    13 : 5,
+    14 : 7,
+    15 : 9
+  }
+  const abilities: any[] = [
+    {
+      name: "Strength",
+      key: "str"
+    },
+    {
+      name: "Dexterity",
+      key: "dex"
+    },
+    {
+      name: "Constitution",
+      key: "con"
+    },
+    {
+      name: "Intelligence",
+      key: "int"
+    },
+    {
+      name: "Wisdom",
+      key: "wis"
+    },
+    {
+      name: "Charisma",
+      key: "cha"
+    }
+  ]
+  const abPoints = computed(() => {
+    if(!isSpendMode) return null;
+    let total = 0;
+    abilities.forEach(a => total += costPoint[character.value.abilities[a.key].base]);
+    return total;
+  });
+  const setBonusLineage = (key:string, bonus: number) => {
+    let cb = character.value.abilities[key].bonus;
+    if(cb === bonus) {
+      character.value.abilities[key].bonus = 0;
+    }
+    else {
+      character.value.abilities[key].bonus = bonus;
+    }
+  }
+  const disabledBonusLineage = computed(() => (key:string, bonus: number) => {
+    let t = 0;
+    for (const i in abilities) {
+      const a = abilities[i].key;
+      t += character.value.abilities[a].bonus;
+    }
+
+    if(bonus === 2) {
+      for (const i in abilities) {
+        const a = abilities[i].key;
+        if(a !== key && character.value.abilities[a].bonus === 2) { // || t >= 2
+          return true;
+        }
+      }
+      if(t === 1) return false
+      if(t === 2 && character.value.abilities[key].bonus === 1) return false
+      if(t > 1 && character.value.abilities[key].bonus !== 2) return true;
+    }
+    else if(bonus === 1) {
+      if(t <= 3 && character.value.abilities[key].bonus === 2) return false
+      if (t >= 3 && character.value.abilities[key].bonus !== 1) return true
+    }
+
+    return false;
+  })
+  const disabledBonusChoose = computed(() => (key:string) => {
+    let t = 0;
+    for (const i in abilities) {
+      const a = abilities[i].key;
+      if(chooses.value.ability.from.includes(a)) {
+        t += character.value.abilities[a].bonus;
+      }
+    }
+    if (t >= chooses.value.ability.count && character.value.abilities[key].bonus === 0) return true
+    return false;
+  });
 </script>
 
 <template>
@@ -190,14 +440,18 @@
     <p class="m-0"><i class="fa" :class="faState(racesStore.isLoad)" /> Races</p>
     <p class="m-0"><i class="fa" :class="faState(spellsStore.isLoad)" /> Spells</p>
     <p class="m-0"><i class="fa" :class="faState(bgStore.isLoad)" /> Backgrounds</p>
+    <p class="m-0"><i class="fa" :class="faState(classes.isLoad)" /> Classes</p>
   </div>
   <div v-else>
     <template v-if="dev">
       <div class="btn-group">
         <button class="btn btn-secondary" @click="logJson">logJson</button>
+        <button class="btn btn-secondary" @click="json = steps">logSteps</button>
         <button class="btn btn-secondary" @click="json = versions">logVersions</button>
         <button class="btn btn-secondary" @click="json = subraces">logSubraces</button>
-        <button class="btn btn-secondary" @click="changeStep('test')">changeStep {{step}}</button>
+        <button class="btn btn-secondary" @click="loadDatas">loadDatas</button>
+        <button class="btn btn-secondary" @click="calcDatasRace">calcDatas</button>
+        <button class="btn btn-secondary" @click="json = chooses">logChooses</button>
       </div>
       <hr />
     </template>
@@ -209,12 +463,15 @@
           <input type="text" v-model="character.name" class="form-control h36" />
           <label for="name" class="col-form-label ms-2 me-2 fst-italic">Level</label>
           <input type="number" min="1" max="20" v-model="character.level" class="form-control h36 w-25" />
-          <button @click="reset" class="btn h36 ms-2 btn-danger">Reset</button>
+          <button type="button" @click="reset" class="btn h36 ms-2 btn-danger">Reset</button>
+          <button type="button" class="btn h36 ms-2 btn-info" disabled>Save</button>
+          <button type="button" class="btn h36 ms-2 btn-secondary" disabled>Import</button>
+          <button type="button" class="btn h36 ms-2 btn-success" disabled>Convert</button>
         </div>
       </div>
       <div class="col-6">
         <div class="accordion">
-          <AccordionItem name="race" :steps="steps" :step="step" @click="changeStep">
+          <AccordionItem name="race" :steps="steps" :step="step" @click="changeStep"><!--@next-step="nextStep" @prev-step="prevStep"-->
             <template v-slot:header-label>Race</template>
             <template v-slot:header-value>{{ character.race.name || CHOOSE }}</template>
             <template v-slot:body>
@@ -223,7 +480,7 @@
                 <div class="mb-1">
                   <template v-for="(r,i) in b.races" :key="i">
                     <button type="button" class="btn me-1 mb-1" @click="changeRace(r)" :class="[
-                      r.name === character.race.name ? 'active' : 'btn-outline-secondary',
+                      r.name === character.race.name ? 'btn-primary' : 'btn-outline-secondary',
                       r.version === 0 && r.subrace === 0 ? 'btn-outline-danger' : ''
                     ]" :disabled="r.version === 0 && r.subrace === 0">
                       {{r.name}}<template v-if="r.version > 1 || r.subrace > 0">*</template>
@@ -240,7 +497,7 @@
             <template v-slot:body>
               <template v-for="(v,i) in versions" :key="i">
                 <button type="button" class="btn me-1 mb-1" @click="changeRaceSource(v)" :class="[
-                  v.source === character.race.source ? 'active' : 'btn-outline-secondary',
+                  v.source === character.race.source ? 'btn-primary' : 'btn-outline-secondary',
                 ]">
                   {{displayVersion(v)}}
                 </button>
@@ -253,7 +510,7 @@
             <template v-slot:body>
               <template v-for="(s,i) in subraces" :key="i">
                 <button type="button" class="btn me-1 mb-1" @click="changeSubrace(s)" :class="[
-                    s.name === character.subrace.name ? 'active' : 'btn-outline-secondary',
+                    s.name === character.subrace.name ? 'btn-primary' : 'btn-outline-secondary',
                   ]">
                   {{ s.name||'None' }}
                 </button>
@@ -267,7 +524,7 @@
               <div>
                 <template v-for="(c,i) in classes" :key="i">
                   <button type="button" class="btn me-1 mb-1" @click="character.class[0].name = c.name" :class="[
-                      c.name === character.class[0].name ? 'active' : 'btn-outline-secondary',
+                      c.name === character.class[0].name ? 'btn-primary' : 'btn-outline-secondary',
                     ]">
                     {{ c.name }}
                   </button>
@@ -283,7 +540,7 @@
               <div>
                 <template v-for="(b,i) in backgrounds" :key="i">
                   <button type="button" class="btn me-1 mb-1" @click="character.background = b.name" :class="[
-                      b.name === character.background ? 'active' : classBackground[character.class[0].name] === b.name ? 'btn-outline-primary' : 'btn-outline-secondary',
+                      b.name === character.background ? 'btn-primary' : classBackground[character.class[0].name] === b.name ? 'btn-outline-primary' : 'btn-outline-secondary',
                     ]">
                     {{ b.name }}<template v-if="classBackground[character.class[0].name] === b.name">*</template>
                   </button>
@@ -292,10 +549,55 @@
               <small class="fst-italic"><span class="text-primary">*</span> Quick background for {{ character.class[0].name }}</small>
             </template>
           </AccordionItem>
-          <AccordionItem name="todo" :steps="steps" :step="step" @click="changeStep">
+          <AccordionItem name="abilities" :steps="steps" :step="step" @click="changeStep">
             <template v-slot:header-label>Abilities</template>
             <template v-slot:body>
+              <div class="d-flex w-100 justify-content-evenly">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" id="inlineRadio1" value="spend" v-model="character.abilities.option">
+                  <label class="form-check-label" for="inlineRadio1">Spend 27 points</label>
+                </div>
+<!--                <div class="form-check flex-grow-1">-->
+<!--                  <input class="form-check-input" type="radio" id="inlineRadio2" value="roll" v-model="character.abilities.option">-->
+<!--                  <label class="form-check-label" for="inlineRadio2">Roll dices</label>-->
+<!--                </div>-->
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" id="inlineRadio3" value="free" v-model="character.abilities.option">
+                  <label class="form-check-label" for="inlineRadio3">Free</label>
+                </div>
+              </div>
+              <p class="lh-1 fst-italic m-0 py-1 small" v-if="isSpendMode">
+                Spend 27 points according to the Ability Score Point Cost (max 15 for every Ability Score).
+                The number of assigned points is indicated at the bottom.
+                A typical character would be: 15 - 14 - 13 - 12 - 10 - 8
+              </p>
+<!--              <p v-if="chooses.ability">-->
+<!--                {{inlineAbility([chooses.ability])}}-->
+<!--              </p>-->
 
+              <div v-for="a in abilities" :key="a.key" class="d-flex justify-content-center align-items-center my-2 text-center">
+                <label for="name" class="fw-bolder w-25">{{ a.name }}</label>
+                <input type="number" :min="isSpendMode ? 8 : 0" :max="isSpendMode ? 15 : undefined" v-model="character.abilities[a.key].base" class="form-control w-25" />
+
+                <div class="bonus w-25">
+                  <span v-if="!isLineage">
+                    <template v-if="chooses.ability && chooses.ability.from.includes(a.key)">
+                      <button class="btn" @click="setBonusLineage(a.key, chooses.ability.amount)" :disabled="disabledBonusChoose(a.key)" :class="character.abilities[a.key].bonus === chooses.ability.amount ? 'btn-primary' : 'btn-outline-secondary'">+{{ chooses.ability.amount }}</button>
+                    </template>
+                    <template v-else-if="character.abilities[a.key].bonus">
+                      {{ character.abilities[a.key].bonus > 0 ? `+${character.abilities[a.key].bonus}` : character.abilities[a.key].bonus }}
+                    </template>
+                  </span>
+                  <div v-if="isLineage" class="btn-group">
+                    <button class="btn" @click="setBonusLineage(a.key, 2)" :disabled="disabledBonusLineage(a.key, 2)" :class="character.abilities[a.key].bonus === 2 ? 'btn-primary' : 'btn-outline-secondary'">+2</button>
+                    <button class="btn" @click="setBonusLineage(a.key, 1)" :disabled="disabledBonusLineage(a.key, 1)" :class="character.abilities[a.key].bonus === 1 ? 'btn-primary' : 'btn-outline-secondary'">+1</button>
+                  </div>
+                </div>
+
+                <span class="total w-25 fw-bold">{{ character.abilities[a.key].base + character.abilities[a.key].bonus }}</span>
+              </div>
+
+              <p class="text-center m-0 py-1" v-if="isSpendMode">Points cost: <span class="fw-bold" :class="!abPoints || abPoints > 27 ? 'text-danger' : 'text-success'">{{ abPoints||'Error' }}</span>/27</p>
             </template>
           </AccordionItem>
         </div>
@@ -327,5 +629,9 @@
 <style scoped>
   .h36 {
     height: 36px;
+  }
+  p.small {
+    text-align: justify;
+    font-size: .875em;
   }
 </style>

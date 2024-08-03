@@ -59,9 +59,7 @@ export const useRacesStore = defineStore({
             name: n,
             version: rf.length,
             subrace: srf.length,
-            source: rf.length == 1 ? rf[0].source : null /*,
-            races: rf,
-            subraces: srf*/
+            source: rf.length == 1 ? rf[0].source : null
           });
         })
         this.builder.push({
@@ -169,10 +167,6 @@ const organisation: any = {
   ]
 }
 
-/*export interface RootState {
-  races5etools: Root | null,
-  builder: Builder[]
-}*/
 export type RootState = {
   races5etools: Root | null,
   builder: Builder[]

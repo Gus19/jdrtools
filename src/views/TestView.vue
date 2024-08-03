@@ -21,7 +21,7 @@ onMounted(() => {
   //   text: "First todo"
   // });
   // json.value = initMonsters();
-  classesStore.initClasses();
+  // classesStore.initClasses();
 })
 
 const json = ref({});

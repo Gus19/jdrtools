@@ -5,6 +5,8 @@ import NotFound from '@/views/NotFound.vue'
 import TestView from '@/views/TestView.vue'
 import BuilderView from "@/views/BuilderView.vue";
 
+const dev: boolean = import.meta.env.DEV;
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -26,7 +28,7 @@ const router = createRouter({
     {
       path: '/test',
       name: 'test',
-      component: TestView
+      component: dev ? TestView : NotFound
     },
     {
       path: '/:pathMatch(.*)*',

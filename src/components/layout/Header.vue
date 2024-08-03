@@ -1,10 +1,11 @@
 <script setup lang="ts">
+const dev: boolean = import.meta.env.DEV;
 </script>
 
 <template>
   <header>
     <nav class="navbar navbar-expand-lg bg-body-secondary p-1 shadow-sm fixed-top">
-      <div class="container-fluid g-1 flex-nowrap justify-content-start">
+      <div class="container g-1 flex-nowrap justify-content-start">
         <a class="btn btn-light-transparent me-2 d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar">
           <i class="fas fa-bars"></i>
         </a>
@@ -17,7 +18,7 @@
           </div>
           <div class="offcanvas-body">
             <ul class="navbar-nav flex-grow-1">
-              <li class="nav-item">
+              <li class="nav-item" v-if="dev">
                 <router-link to="/builder" class="nav-link" activeClass="active">
                   Character Builder
                 </router-link>
