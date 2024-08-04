@@ -42,7 +42,11 @@ const emits = defineEmits([
 
 // const hasNext = computed(() => props.steps.findIndex(s => s.name === props.step) < props.steps.length - 1);
 // const hasPrev = computed(() => props.steps.findIndex(s => s.name === props.step) > 0);
-const valid = computed(() => props.steps.find(s => s.name === props.name).valid)
+const valid = computed((): boolean => {
+  const a: any = props.steps.find((s: any) => s.name === props.name);
+  if(a) return a.valid
+  return false;
+})
 
 </script>
 

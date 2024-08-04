@@ -308,6 +308,14 @@
             ...c[k],
             ...s[k]
           ]
+          if(k === "entries") {
+            let overwrite = c[k].filter((e:any) => e.data && e.data.overwrite).map((e:any) => e.data.overwrite);
+            if(overwrite) {
+              c[k] = [
+                ...c[k].filter((e: any) => !overwrite.includes(e.name))
+              ]
+            }
+          }
         }
         else if("object" == typeof s[k]) {
           c[k] = {
@@ -328,7 +336,7 @@
   const computedRaceEntries = computed(() => {
     // if(!) return;
     return computedRace.value.entries.filter((e:any) =>
-      !["Age","Size","Languages","Language","Superior Darkvision","Darkvision","Alignment","Speed"].includes(e.name) &&
+      !["Age","Size","Languages","Language","Superior Darkvision","Darkvision","Alignment","Speed","Appearance"].includes(e.name) &&
       e.name.indexOf('Resistance') < 0
     )
     // if(!computedRace.value.traitTags) return;
@@ -430,7 +438,7 @@
       });
     }
     if(d.languageProficiencies) {
-      d.languageProficiencies.forEach(l => {
+      d.languageProficiencies.forEach((l:any) => {
         Object.keys(l).forEach(k => {
           if(LanguagesKey.includes(k)) {
             if(reset) character.value.languages.push(k)
@@ -803,7 +811,7 @@
             {{ S(e.entries[0], false) }}
           </CharacterInfo>
           <CharacterInfo v-else>
-            <template v-slot:label>{{ computedRaceEntries.map(e => e.name).join(', ') }}</template>
+            <template v-slot:label>{{ computedRaceEntries.map((e:any) => e.name).join(', ') }}</template>
           </CharacterInfo>
 
           <template v-if="character.background">
