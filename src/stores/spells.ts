@@ -17,11 +17,10 @@ const urlSpells = [
 
 export const useSpellsStore = defineStore({
   id: "SpellsStore",
-  state: () =>
-    ({
-      sources: [],
-      spells: []
-    } as RootState),
+  state: (): RootState => ({
+    sources: [],
+    spells: []
+  }),
 
   actions: {
     async initSources() {

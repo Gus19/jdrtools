@@ -3,8 +3,13 @@
     <h2 class="accordion-header">
       <button class="accordion-button" type="button" :class="step !== name && 'collapsed'" @click="emits('click', name)"><!--@click="step = name"-->
         <div class="d-flex w-100">
-          <em><slot name="header-label"></slot></em>
-          <span class="flex-grow-1 text-center fw-bold"><slot name="header-value"></slot></span>
+          <em>
+            <i class="fa-regular me-1" :class="valid ? 'fa-circle-check' : 'fa-circle-xmark'" />
+            <slot name="header-label"></slot>
+          </em>
+          <span class="flex-grow-1 text-center fw-bold">
+            <slot name="header-value"></slot>
+          </span>
         </div>
       </button>
     </h2>
@@ -23,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-// import {} from "vue";
+import {computed} from "vue";
 const props = defineProps({
   name: { type: String, required: true },
   step: { type: String, required: true },
@@ -37,12 +42,13 @@ const emits = defineEmits([
 
 // const hasNext = computed(() => props.steps.findIndex(s => s.name === props.step) < props.steps.length - 1);
 // const hasPrev = computed(() => props.steps.findIndex(s => s.name === props.step) > 0);
+const valid = computed(() => props.steps.find(s => s.name === props.name).valid)
 
 </script>
 
 <style scoped>
   em {
-    width: 75px;
+    width: 115px;
   }
   .accordion-button, .accordion-body {
     padding: .5rem !important;

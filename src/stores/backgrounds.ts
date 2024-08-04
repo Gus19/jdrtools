@@ -3,10 +3,9 @@ import {initBackgrounds} from "@/assets/backgrounds";
 
 export const useBackgroundsStore = defineStore({
   id: "BackgroundsStore",
-  state: () => ({
-      backgrounds: [],
-    } as RootState
-  ),
+  state: (): RootState => ({
+    backgrounds: [],
+  }),
   actions: {
     async initBackgrounds() {
       if (this.backgrounds.length > 0) {

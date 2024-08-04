@@ -3,11 +3,10 @@ import {initRaces} from "@/assets/races";
 
 export const useRacesStore = defineStore({
   id: "RacesStore",
-  state: () =>
-    ({
+  state: (): RootState => ({
       races5etools: null,
       builder: []
-    } as RootState),
+  }),
 
   actions: {
     async initStore() {
@@ -85,6 +84,7 @@ export const useRacesStore = defineStore({
       return (n: string, s:string|null = null) => state.races5etools ? state.races5etools.subrace.filter(r =>
         r.raceName == n
         && (s == null || r.raceSource == s)
+        // && r.traitTags
       ) : []
     }
   }

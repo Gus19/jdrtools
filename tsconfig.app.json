@@ -4,7 +4,7 @@
     "env.d.ts",
     "src/**/*",
     "src/**/*.vue",
-    "node_modules/@vue/runtime-core/dist/runtime-core.d.ts"
+    "../../../PhpStorm-222.4554.13/plugins/JavaScriptLanguage/jsLanguageServicesImpl/external/lib.es5.d.ts"
   ],
   "exclude": ["src/**/__tests__/*"],
   "compilerOptions": {

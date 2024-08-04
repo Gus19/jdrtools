@@ -6,7 +6,9 @@
   import {useRacesStore} from "@/stores/races";
   import {useBackgroundsStore,classBackground} from "@/stores/backgrounds";
   import type {RaceBuilder} from "@/stores/races";
+  import {LanguagesStandard,LanguagesExotic,LanguagesKey,Sizes,S} from "@/utils/refs";
   import AccordionItem from "@/components/AccordionItem.vue";
+  import CharacterInfo from "@/components/CharacterInfo.vue";
   import {useClassesStore} from "@/stores/classes";
   const spellsStore = useSpellsStore();
   const racesStore = useRacesStore();
@@ -26,7 +28,10 @@
       ...defaultCharacter,
       ...getStorage()
     };
-    calcDatasRace();
+    chooses.value = {
+      ...defaultChoose
+    };
+    calcDatasRace(false);
     calcDatasClass();
   });
 
@@ -50,7 +55,10 @@
       const c = character.value.subrace === null || character.value.subrace.name !== null;
       const d = character.value.class[0].name !== null;
       const e = character.value.background !== null;
-      const f = false;
+      const f = abPoints.value === 27 || character.value.abilities.option === 'free';
+      const g = f;
+      const h = f;
+      const i = f;
 
       ss.push({
         name: 'race',
@@ -87,6 +95,30 @@
         ss.push({
           name: 'abilities',
           valid: f
+        });
+      }
+      if(f) {
+        ss.push({
+          name: 'features',
+          valid: false
+        });
+      }
+      if(g) {
+        ss.push({
+          name: 'proficiencies',
+          valid: false
+        });
+      }
+      if(h) {
+        ss.push({
+          name: 'spells',
+          valid: false
+        });
+      }
+      if(i) {
+        ss.push({
+          name: 'equipment',
+          valid: false
         });
       }
       // todo check here if cantrip/spell/feat for background
@@ -178,7 +210,7 @@
       walk: null
     },
     darkvision: null,
-    size: null,
+    size: '',
     spells: [
       // {name: null, level: 0 à 9, from: race, subrace, class, subclass, origin: le name, }
     ],
@@ -194,9 +226,15 @@
         ...defaultCharacter
       };
       step.value = 'race';
+      calcDatasRace(true);
     }
   }
-  const chooses = ref<any>({});
+  const defaultChoose = {
+    ability: null,
+    size: null,
+    languages: []
+  }
+  const chooses = ref<any>(null);
 
   const logJson = () => {
     json.value = JSON.parse(JSON.stringify(character.value));
@@ -222,8 +260,8 @@
 
   const json = ref<any>(racesStore.builder);
   const show = ref<any>({
-    json: true,
-    character: false
+    json: dev,
+    character: true
   });
   const changeRace = (r: RaceBuilder) => {
     if(character.value.race.name === r.name) {
@@ -241,6 +279,66 @@
   const versions = computed(() => racesStore.getRaceByName(character.value.race.name));
   const subraces = computed(() => racesStore.getSubraceByName(character.value.race.name, character.value.race.source));
   const isLineage = computed(() => versions.value !== null && character.value.race.source && versions.value.find(v => v.source === character.value.race.source)?.lineage);
+  const computedRace = computed(() => {
+    const v:any = versions.value.find(v => v.source === character.value.race.source);
+    if(!v) return null;
+    const s:any = character.value.subrace === null ? null : subraces.value.find(s => (s.name||'None') === character.value.subrace.name && s.source === character.value.subrace.source);
+    if(isLineage && !v.languageProficiencies) {
+      v.languageProficiencies = [{
+        "common": true,
+        "anyStandard": 1
+      }];
+    }
+    if(!s) return v;
+    let c: any = {
+      ...v
+    };
+    Object.keys(s).forEach((k:string) => {
+      if(k in c) {
+        if(s.overwrite && s.overwrite[k]) {
+          c[k] = s[k];
+        }
+        else if("string" == typeof c[k]) {
+          if(c[k] !== s[k]) {
+            c[k] += " " + s[k];
+          }
+        }
+        else if(Array.isArray(s[k])) {
+          c[k] = [
+            ...c[k],
+            ...s[k]
+          ]
+        }
+        else if("object" == typeof s[k]) {
+          c[k] = {
+            ...c[k],
+            ...s[k]
+          }
+        }
+        else {
+          c[k] = s[k];
+        }
+      }
+      else {
+        c[k] = s[k];
+      }
+    });
+    return c;
+  });
+  const computedRaceEntries = computed(() => {
+    // if(!) return;
+    return computedRace.value.entries.filter((e:any) =>
+      !["Age","Size","Languages","Language","Superior Darkvision","Darkvision","Alignment","Speed"].includes(e.name) &&
+      e.name.indexOf('Resistance') < 0
+    )
+    // if(!computedRace.value.traitTags) return;
+    // return computedRace.value.entries.filter((e:any) => computedRace.value.traitTags.includes(e.name));
+  })
+  const computedSpeed = computed(() => {
+    const keys = Object.keys(character.value.speed);
+    if(keys.length == 1) return `${character.value.speed.walk} ft.`
+    return keys.map((s:string) => `${s} ${character.value.speed[s] === true ? character.value.speed.walk : character.value.speed[s]} ft.`).join(', ');
+  })
   const displayVersion = (v: any) => {
     let s = ''
     if(v.lineage) s = 'Lineage'
@@ -250,16 +348,17 @@
   }
   const inlineAbility = (ability: any[]) => {
     const s: string[] = [];
-    const a: any = ability[0];
-    Object.keys(a).forEach((k:string) => {
-      if(k == "choose") {
-        let am = a[k].amount ? a[k].amount : 1;
-        s.push(`other +${am}`);
-      }
-      else {
-        s.push(`${k} ${a[k] > 0 ? `+${a[k]}` : a[k]}`);
-      }
-    })
+    // const a: any = ability[0];
+    ability.forEach((a:any) => {
+      Object.keys(a).forEach((k: string) => {
+        if (k == "choose") {
+          let am = a[k].amount ? a[k].amount : 1;
+          s.push(`other +${am}`);
+        } else {
+          s.push(`${k} ${a[k] > 0 ? `+${a[k]}` : a[k]}`);
+        }
+      })
+    });
     return s.join(', ');
   }
   const changeRaceSource = (v: any) => {
@@ -283,33 +382,27 @@
     calcDatasRace();
   }
 
-  const loadDatas = () => {
-    const v = versions.value.find(v => v.source === character.value.race.source);
-    const s = character.value.subrace === null ? null : subraces.value.find(s => (s.name||'None') === character.value.subrace.name && s.source === character.value.subrace.source);
-    json.value = {
-      v, s
+  const calcDatasRace = (reset: boolean = true) => {
+    if(reset) {
+      chooses.value = {
+        ...defaultChoose
+      };
+      // chooses.value.languages = []; //don't use push or defaultChoose it's change ...
+      character.value.abilities.str.bonus = 0;
+      character.value.abilities.dex.bonus = 0;
+      character.value.abilities.con.bonus = 0;
+      character.value.abilities.int.bonus = 0;
+      character.value.abilities.wis.bonus = 0;
+      character.value.abilities.cha.bonus = 0;
+      character.value.speed = {
+        walk: null
+      }
+      character.value.darkvision = null;
+      character.value.size = '';
+      character.value.languages = [];
+      character.value.resist = [];
     }
-  }
-  const calcDatasRace = () => {
-    const v = versions.value.find(v => v.source === character.value.race.source);
-    const s = character.value.subrace === null ? null : subraces.value.find(s => (s.name||'None') === character.value.subrace.name && s.source === character.value.subrace.source);
-    character.value.abilities.str.bonus = 0;
-    character.value.abilities.dex.bonus = 0;
-    character.value.abilities.con.bonus = 0;
-    character.value.abilities.int.bonus = 0;
-    character.value.abilities.wis.bonus = 0;
-    character.value.abilities.cha.bonus = 0;
-    character.value.speed = {
-      walk: null
-    }
-    character.value.darkvision = null;
-    character.value.size = null;
-    chooses.value.size = null;
-    chooses.value.ability = null;
-    importDatasRace(v);
-    importDatasRace(s);
-  }
-  const importDatasRace = (d: any) => {
+    const d = computedRace.value;
     if(!d) return;
     if(d.size) {
       if(d.size.length == 1)
@@ -336,6 +429,24 @@
         }
       });
     }
+    if(d.languageProficiencies) {
+      d.languageProficiencies.forEach(l => {
+        Object.keys(l).forEach(k => {
+          if(LanguagesKey.includes(k)) {
+            if(reset) character.value.languages.push(k)
+            chooses.value.languages = [...chooses.value.languages, k];
+          }
+          else if(k === "anyStandard") {
+            for (let i = 1; i <= l.anyStandard; i++) {
+              if(reset) character.value.languages.push("")
+              chooses.value.languages = [...chooses.value.languages, k];
+            }
+          }
+        });
+      });
+    }
+    if(d.resist) character.value.resist = d.resist;
+    // if(d.entries.find((e:any) => e.name === 'Fey Ancestry') && !character.value.resist.includes('charmed')) character.value.resist = [...character.value.resist, 'charmed'];
   }
 
   const calcDatasClass = () => {
@@ -343,6 +454,7 @@
 
   const classes = computed(() => classesStore.classes);
   const backgrounds = computed(() => bgStore.getDefaults);
+  const bg = computed(() => backgrounds.value.find(b => b.name === character.value.background));
 
   const isSpendMode = computed(() => character.value.abilities.option === 'spend');
   const costPoint: any = {
@@ -440,28 +552,28 @@
     <p class="m-0"><i class="fa" :class="faState(racesStore.isLoad)" /> Races</p>
     <p class="m-0"><i class="fa" :class="faState(spellsStore.isLoad)" /> Spells</p>
     <p class="m-0"><i class="fa" :class="faState(bgStore.isLoad)" /> Backgrounds</p>
-    <p class="m-0"><i class="fa" :class="faState(classes.isLoad)" /> Classes</p>
+    <p class="m-0"><i class="fa" :class="faState(classesStore.isLoad)" /> Classes</p>
   </div>
   <div v-else>
     <template v-if="dev">
-      <div class="btn-group">
+      <div class="btn-group border-bottom fixed-bottom">
         <button class="btn btn-secondary" @click="logJson">logJson</button>
         <button class="btn btn-secondary" @click="json = steps">logSteps</button>
         <button class="btn btn-secondary" @click="json = versions">logVersions</button>
         <button class="btn btn-secondary" @click="json = subraces">logSubraces</button>
-        <button class="btn btn-secondary" @click="loadDatas">loadDatas</button>
-        <button class="btn btn-secondary" @click="calcDatasRace">calcDatas</button>
+        <button class="btn btn-secondary" @click="json = computedRace">loadComputedRace</button>
+        <button class="btn btn-secondary" @click="calcDatasRace(true)">calcDatas</button>
         <button class="btn btn-secondary" @click="json = chooses">logChooses</button>
+        <button class="btn btn-secondary" @click="json = bg">logBg</button>
       </div>
-      <hr />
     </template>
 
     <div class="row">
       <div class="col-12">
         <div class="d-flex align-items-center mb-2">
-          <label for="name" class="col-form-label me-2 fst-italic">Name</label>
+          <label for="name" class="me-2 fst-italic">Name</label>
           <input type="text" v-model="character.name" class="form-control h36" />
-          <label for="name" class="col-form-label ms-2 me-2 fst-italic">Level</label>
+          <label for="name" class="ms-2 me-2 fst-italic">Level</label>
           <input type="number" min="1" max="20" v-model="character.level" class="form-control h36 w-25" />
           <button type="button" @click="reset" class="btn h36 ms-2 btn-danger">Reset</button>
           <button type="button" class="btn h36 ms-2 btn-info" disabled>Save</button>
@@ -510,7 +622,7 @@
             <template v-slot:body>
               <template v-for="(s,i) in subraces" :key="i">
                 <button type="button" class="btn me-1 mb-1" @click="changeSubrace(s)" :class="[
-                    s.name === character.subrace.name ? 'btn-primary' : 'btn-outline-secondary',
+                    (s.name||'None') === character.subrace.name ? 'btn-primary' : 'btn-outline-secondary',
                   ]">
                   {{ s.name||'None' }}
                 </button>
@@ -571,14 +683,12 @@
                 The number of assigned points is indicated at the bottom.
                 A typical character would be: 15 - 14 - 13 - 12 - 10 - 8
               </p>
-<!--              <p v-if="chooses.ability">-->
-<!--                {{inlineAbility([chooses.ability])}}-->
-<!--              </p>-->
 
               <div v-for="a in abilities" :key="a.key" class="d-flex justify-content-center align-items-center my-2 text-center">
                 <label for="name" class="fw-bolder w-25">{{ a.name }}</label>
-                <input type="number" :min="isSpendMode ? 8 : 0" :max="isSpendMode ? 15 : undefined" v-model="character.abilities[a.key].base" class="form-control w-25" />
-
+                <div class="w-25 d-flex justify-content-center">
+                  <input type="number" :min="isSpendMode ? 8 : 0" :max="isSpendMode ? 15 : undefined" v-model="character.abilities[a.key].base" class="form-control ability" />
+                </div>
                 <div class="bonus w-25">
                   <span v-if="!isLineage">
                     <template v-if="chooses.ability && chooses.ability.from.includes(a.key)">
@@ -598,20 +708,107 @@
               </div>
 
               <p class="text-center m-0 py-1" v-if="isSpendMode">Points cost: <span class="fw-bold" :class="!abPoints || abPoints > 27 ? 'text-danger' : 'text-success'">{{ abPoints||'Error' }}</span>/27</p>
+
+<!--              <div class="btn-group w-100 mt-1">-->
+<!--                <button type="button" class="btn btn-sm btn-success"  @click="" :disabled="abPoints !== 27 || !isSpendMode">Next</button>-->
+<!--              </div>-->
+
             </template>
           </AccordionItem>
+
+          <AccordionItem name="features" :steps="steps" :step="step" @click="changeStep">
+            <template v-slot:header-label>Features</template>
+            <template v-slot:body>
+
+            </template>
+          </AccordionItem>
+
+          <AccordionItem name="proficiencies" :steps="steps" :step="step" @click="changeStep">
+            <template v-slot:header-label>Proficiencies</template>
+            <template v-slot:body>
+              <div v-if="character.languages.length">
+                <label class="me-1 w-100">Race languages:</label><!--Accordion "Proficiencies" because multiples origins (race, bg)-->
+                <div class="d-flex align-items-center">
+                  <template v-for="(c,i) in chooses.languages">
+                    <select class="form-select form-select-sm" v-model="character.languages[i]" :disabled="c !== 'anyStandard'">
+                      <option value="">{{CHOOSE}}</option>
+                      <optgroup label="Standard">
+                        <option v-for="l in LanguagesStandard" :key="l" :value="l.toLowerCase()" :disabled="character.languages.includes(l.toLowerCase())">{{ l }}</option>
+                      </optgroup>
+                      <optgroup label="Exotic">
+                        <option v-for="l in LanguagesExotic" :key="l" :value="l.toLowerCase()" :disabled="character.languages.includes(l.toLowerCase())">{{ l }}</option>
+                      </optgroup>
+                    </select>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </AccordionItem>
+
+          <AccordionItem name="spells" :steps="steps" :step="step" @click="changeStep">
+            <template v-slot:header-label>Spells</template>
+            <template v-slot:body>
+
+            </template>
+          </AccordionItem>
+
+          <AccordionItem name="equipment" :steps="steps" :step="step" @click="changeStep">
+            <template v-slot:header-label>Equipment</template>
+            <template v-slot:body>
+
+            </template>
+          </AccordionItem>
+
         </div>
       </div>
-      <div class="col-6">
-        <template v-if="show.character">
-          <p>Race : {{ character.race.name }}</p>
-          <p v-if="character.subrace">Subrace : {{ character.subrace.name }}</p>
-          <p>Ability Score Increase: Strength +1, Dexterity +1, Constitution +1, Intelligence +1, Wisdom +1, Charisma +1</p>
-          <p>Size: Medium</p>
-          <p>Speed: 30 ft./round</p>
-          <p>Vision:</p>
-          <p>Languages: Common, one language of your choice</p>
-          <p>Traits:</p>
+      <div class="col-6 character-info">
+        <template v-if="show.character && computedRace">
+          <p v-if="character.race.name" class="fw-bold border-bottom text-center mb-2">
+            {{ character.race.name }} {{ character.subrace?.name }}
+            <a :href="`https://5e.tools/races.html#${character.race.name}${character.subrace ? ' ('+character.subrace.name+')': ''}_${character.subrace?.source||character.race.source}`" target="_blank">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </a>
+          </p>
+          <CharacterInfo v-if="computedRace.ability || isLineage">
+            <template v-slot:label>Ability Scores:</template>
+            <template v-if="isLineage">Any +2 and other +1 OR three different +1</template>
+            <template v-else>{{ inlineAbility(computedRace.ability) }}</template>
+          </CharacterInfo>
+          <CharacterInfo v-if="chooses.size || character.size">
+            <template v-slot:label>Size:</template>
+            <div class="d-inline-flex align-items-center">
+              <select v-if="chooses.size" class="form-select form-select-sm p-0 ps-2" v-model="character.size">
+                <option value="">{{CHOOSE}}</option>
+                <option v-for="s in chooses.size" :key="s" :value="s">{{Sizes[s]}}</option>
+              </select>
+              <template v-else>
+                {{ Sizes[character.size] }}
+              </template>
+            </div>
+          </CharacterInfo>
+          <CharacterInfo v-if="character.speed.walk">
+            <template v-slot:label>Speed:</template>
+            {{computedSpeed}}
+          </CharacterInfo>
+          <CharacterInfo v-if="character.darkvision">
+            <template v-slot:label>Darkvision:</template>
+            {{ character.darkvision }} ft.
+          </CharacterInfo>
+          <CharacterInfo v-if="character.resist.length">
+            <template v-slot:label>Resistances:</template>
+            {{ character.resist.join(', ') }}
+          </CharacterInfo>
+          <CharacterInfo v-if="['race','version','subrace'].includes(step)" v-for="e in computedRaceEntries">
+            <template v-slot:label>{{ e.name }}:</template>
+            {{ S(e.entries[0], false) }}
+          </CharacterInfo>
+          <CharacterInfo v-else>
+            <template v-slot:label>{{ computedRaceEntries.map(e => e.name).join(', ') }}</template>
+          </CharacterInfo>
+
+          <template v-if="character.background">
+            <p class="fw-bold border-bottom text-center mb-2">{{ character.background }}</p>
+          </template>
         </template>
         <json-editor v-if="show.json"
             mode="text"
@@ -630,8 +827,20 @@
   .h36 {
     height: 36px;
   }
+  .ability {
+    width: 75px;
+  }
   p.small {
     text-align: justify;
     font-size: .875em;
+  }
+  .character-info p {
+    margin: 0;
+  }
+  .character-info .form-select-sm {
+    min-width: 100px;
+    padding-top: 0;
+    padding-bottom: 0;
+    padding-left: .5rem;
   }
 </style>

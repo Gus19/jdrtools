@@ -19,13 +19,12 @@ const urls = [
 
 export const useClassesStore = defineStore({
   id: "ClassesStore",
-  state: () => ({
-      classes: [],
-      subclasses: [],
-      classFeatures: [],
-      subclassFeatures: []
-    } as RootState
-  ),
+  state: (): RootState => ({
+    classes: [],
+    subclasses: [],
+    classFeatures: [],
+    subclassFeatures: []
+  }),
   actions: {
     initState(data: any) {
       this.classes = data.class;
