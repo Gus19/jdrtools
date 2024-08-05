@@ -1,6 +1,6 @@
 <template>
   <div class="">
-    <label class="me-1 fst-italic">
+    <label class="me-1 fw-bold fst-italic">
       <slot name="label"></slot>
     </label>
     <slot></slot>

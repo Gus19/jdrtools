@@ -21,7 +21,7 @@
   }
 
   const Test = ``
-  const json5etools = ref(import.meta.env.DEV ? Test : '');
+  const jsonsource = ref(import.meta.env.DEV ? Test : '');
   const jsonTableplop = ref('');
   const forSurvival = ref(true);
 
@@ -66,7 +66,7 @@
   }
 
   const handleFormat = () => {
-    json5etools.value = JSON.stringify(JSON.parse(json5etools.value),null, 2);
+    jsonsource.value = JSON.stringify(JSON.parse(jsonsource.value),null, 2);
   }
 
   const handleTableplop = () => {
@@ -75,7 +75,7 @@
       character.value.appearances = [];
       character.value.properties = [];
       parents.value = [];
-      data.value = JSON.parse(json5etools.value);
+      data.value = JSON.parse(jsonsource.value);
       build();
       jsonTableplop.value = JSON.stringify(character.value, null, 2);
     }
@@ -198,14 +198,14 @@
     }
     character.value.name = data.value.name;
     if(data.value.token) {
-      character.value.appearances.push(`https://5e.tools/img/bestiary/tokens/${data.value.token.source}/${data.value.token.name}.webp`.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
+      character.value.appearances.push(`${import.meta.env.VITE_BASEURL}/img/bestiary/tokens/${data.value.token.source}/${data.value.token.name}.webp`.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
     }
     else if(data.value.hasToken) {
       let name = data.value.name;
       if("summonedBySpell" in data.value) {
         name = name.split(' (')[0];
       }
-      character.value.appearances.push(`https://5e.tools/img/bestiary/tokens/${data.value.source}/${name}.webp`.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
+      character.value.appearances.push(`${import.meta.env.VITE_BASEURL}/img/bestiary/tokens/${data.value.source}/${name}.webp`.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
     }
     addSections();
     // Character
@@ -1105,14 +1105,14 @@
 
   <div class="row">
     <div class="col-6 d-flex justify-content-between align-items-center">
-      <label class="fw-bold">5etools</label>
+      <label class="fw-bold">Source</label>
       <button class="btn btn-sm btn-secondary" @click="handleFormat">
         Format
       </button>
     </div>
     <div class="col-6 d-flex justify-content-between align-items-center">
       <div class="btn-group">
-        <button class="btn btn-sm btn-success" @click="handleTableplop" :disabled="spells.length === 0 || !json5etools">
+        <button class="btn btn-sm btn-success" @click="handleTableplop" :disabled="spells.length === 0 || !jsonsource">
           Convert
         </button>
         <button class="btn btn-sm btn-secondary" @click="handleCopy" :disabled="btnDisabled">
@@ -1130,7 +1130,7 @@
     <div class="col-6">
       <json-editor ref="editor"
         mode="text"
-        v-model:text="json5etools"
+        v-model:text="jsonsource"
         :dark-theme="true"
         :status-bar="false"
         :main-menu-bar="false"

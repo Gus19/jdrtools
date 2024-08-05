@@ -1,10 +1,10 @@
 import {defineStore} from 'pinia'
-import {initBackgrounds} from "@/assets/backgrounds";
 
 export const useBackgroundsStore = defineStore({
   id: "BackgroundsStore",
   state: (): RootState => ({
     backgrounds: [],
+    error: false
   }),
   actions: {
     async initBackgrounds() {
@@ -12,19 +12,14 @@ export const useBackgroundsStore = defineStore({
         // console.log("Backgrounds already loaded !")
         return;
       }
-      if (import.meta.env.DEV) {
-        console.log("Backgrounds loaded (on dev) !!")
-        this.backgrounds = initBackgrounds;
-        return;
-      }
       try {
-        const response = await fetch('https://5e.tools/data/backgrounds.json');
+        const response = await fetch(`${import.meta.env.VITE_BASEURL}/data/backgrounds.json`);
         const data = await response.json();
         this.backgrounds = data.background;
       }
       catch (e) {
         console.error(e);
-        this.backgrounds = initBackgrounds;
+        this.error = true;
       }
       finally {
         // console.log("Backgrounds loaded !!");
@@ -106,6 +101,7 @@ export const classBackground: any = {
 
 export type RootState = {
   backgrounds: Root;
+  error: boolean
 };
 
 export type Root = Root2[]

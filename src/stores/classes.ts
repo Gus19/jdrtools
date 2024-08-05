@@ -1,5 +1,4 @@
 import {defineStore} from 'pinia'
-import {initClasses} from "@/assets/classes";
 
 const urls = [
   "class-artificer.json",
@@ -23,7 +22,8 @@ export const useClassesStore = defineStore({
     classes: [],
     subclasses: [],
     classFeatures: [],
-    subclassFeatures: []
+    subclassFeatures: [],
+    error: false
   }),
   actions: {
     initState(data: any) {
@@ -37,18 +37,13 @@ export const useClassesStore = defineStore({
         // console.log("Classes already loaded !")
         return;
       }
-      if(import.meta.env.DEV) {
-        console.log("Classes loaded (on dev) !!")
-        this.initState(initClasses);
-        return;
-      }
       const local1 = [];
       const local2 = [];
       const local3 = [];
       const local4 = [];
       try {
         for (const u of urls) {
-          const response = await fetch('https://5e.tools/data/class/' + u);
+          const response = await fetch(`${import.meta.env.VITE_BASEURL}/data/class/${u}`);
           const data = await response.json();
           if (data.class) {
             local1.push(...data.class);
@@ -70,7 +65,7 @@ export const useClassesStore = defineStore({
       }
       catch (e) {
         console.error(e);
-        this.initState(initClasses);
+        this.error = true;
       }
       finally {
         // console.log("Classes loaded !!");
@@ -87,6 +82,7 @@ export type RootState = {
   subclasses: Subclass[];
   classFeatures: ClassFeature[];
   subclassFeatures: SubclassFeature[];
+  error: boolean;
 };
 
 export interface Root {

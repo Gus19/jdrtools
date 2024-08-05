@@ -1,31 +1,31 @@
 import {defineStore} from 'pinia'
-import {initSpells} from "@/assets/spells";
 
 const urlSpells = [
-  "https://5e.tools/data/spells/spells-aag.json",
-  "https://5e.tools/data/spells/spells-ai.json",
-  "https://5e.tools/data/spells/spells-bmt.json",
-  "https://5e.tools/data/spells/spells-ftd.json",
-  "https://5e.tools/data/spells/spells-ggr.json",
-  "https://5e.tools/data/spells/spells-idrotf.json",
-  "https://5e.tools/data/spells/spells-phb.json",
-  "https://5e.tools/data/spells/spells-sato.json",
-  "https://5e.tools/data/spells/spells-scc.json",
-  "https://5e.tools/data/spells/spells-tce.json",
-  "https://5e.tools/data/spells/spells-xge.json"
+  "/data/spells/spells-aag.json",
+  "/data/spells/spells-ai.json",
+  "/data/spells/spells-bmt.json",
+  "/data/spells/spells-ftd.json",
+  "/data/spells/spells-ggr.json",
+  "/data/spells/spells-idrotf.json",
+  "/data/spells/spells-phb.json",
+  "/data/spells/spells-sato.json",
+  "/data/spells/spells-scc.json",
+  "/data/spells/spells-tce.json",
+  "/data/spells/spells-xge.json"
 ]
 
 export const useSpellsStore = defineStore({
   id: "SpellsStore",
   state: (): RootState => ({
     sources: [],
-    spells: []
+    spells: [],
+    error: false
   }),
 
   actions: {
     async initSources() {
       this.sources = [];
-      const response = await fetch('https://5e.tools/data/generated/gendata-spell-source-lookup.json');
+      const response = await fetch(`${import.meta.env.VITE_BASEURL}/data/generated/gendata-spell-source-lookup.json`);
       const data = await response.json();
       this.sources = data;
     },
@@ -34,15 +34,10 @@ export const useSpellsStore = defineStore({
         // console.log("Spells already loaded !")
         return;
       }
-      if(import.meta.env.DEV) {
-        console.log("Spells loaded (on dev) !!")
-        this.spells = initSpells;
-        return;
-      }
       const localSpells = [];
       try {
         for (const u of urlSpells) {
-          const response = await fetch(u);
+          const response = await fetch(`${import.meta.env.VITE_BASEURL}${u}`);
           const data = await response.json();
           if (data.spell) {
             localSpells.push(...data.spell);
@@ -52,7 +47,7 @@ export const useSpellsStore = defineStore({
       }
       catch (e) {
         console.error(e);
-        this.spells = initSpells;
+        this.error = true;
       }
       finally {
         // console.log("Spells loaded !!");
@@ -157,5 +152,6 @@ export interface AdditionalSource {
 
 export type RootState = {
   sources: [];
-  spells: SpellInfo[]
+  spells: SpellInfo[];
+  error: boolean
 };

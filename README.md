@@ -1,7 +1,7 @@
 # jdrtools
 
 ### Currently running
-> Transformation 5etools to Tableplop 
+> Transformation Source to Tableplop 
 
 ### On development
 > Character builder

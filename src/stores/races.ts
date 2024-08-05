@@ -1,47 +1,40 @@
 import {defineStore} from 'pinia'
-import {initRaces} from "@/assets/races";
+import {displaySubrace} from "@/utils/refs";
 
 export const useRacesStore = defineStore({
   id: "RacesStore",
   state: (): RootState => ({
-      races5etools: null,
-      builder: []
+    racessource: null,
+    builder: [],
+    error: false
   }),
 
   actions: {
     async initStore() {
-      if (this.races5etools != null) {
+      if (this.racessource != null) {
         // console.log("Races already loaded !");
         return;
       }
-      if (import.meta.env.DEV) {
-        console.log("Races loaded (on dev) !!")
-        // this.races5etools = initRaces;
-        this.init5etools(initRaces);
-        this.initBuilder();
-        return;
-      }
       try {
-        const response = await fetch('https://5e.tools/data/races.json');
+        const response = await fetch(`${import.meta.env.VITE_BASEURL}/data/races.json`);
         const data = await response.json();
-        // this.races5etools = data;
-        this.init5etools(data);
+        // this.racessource = data;
+        this.initsource(data);
       }
       catch (e) {
         console.error(e);
-        // this.races5etools = initRaces;
-        this.init5etools(initRaces);
+        this.error = true
       }
       finally {
         // console.log("Races loaded !!");
         this.initBuilder();
       }
     },
-    init5etools(data: Root) {
+    initsource(data: Root) {
       let npctag = "NPC Race"
-      this.races5etools = {
+      this.racessource = {
         race: data.race.filter(s => !((s.traitTags||[]).includes(npctag))),
-        subrace: data.subrace.filter(s => !((s.traitTags||[]).includes(npctag)))
+        subrace: data.subrace.filter(s => !((s.traitTags||[]).includes(npctag)) && s.name !== "Eladrin")
       }
     },
     initBuilder() {
@@ -70,22 +63,22 @@ export const useRacesStore = defineStore({
   },
 
   getters: {
-    isLoad: (state) => state.races5etools !== null,
-    countRaces: (state) => state.races5etools && state.races5etools.race.length,
-    countSubraces: (state) => state.races5etools && state.races5etools.subrace.length,
+    isLoad: (state) => state.racessource !== null,
+    countRaces: (state) => state.racessource && state.racessource.race.length,
+    countSubraces: (state) => state.racessource && state.racessource.subrace.length,
     getRaceByName: (state) => {
-      return (n: string) => state.races5etools ? state.races5etools.race.filter(r =>
+      return (n: string) => state.racessource ? state.racessource.race.filter(r =>
         r.name == n
         && !('_copy' in r)
         // && !('reprintedAs' in r)
-      ) : []
+      ).sort((a:any,b:any) => a.name > b.name ? 1 : 0) : null
     },
     getSubraceByName: (state) => {
-      return (n: string, s:string|null = null) => state.races5etools ? state.races5etools.subrace.filter(r =>
+      return (n: string, s:string|null = null) => state.racessource ? state.racessource.subrace.filter(r =>
         r.raceName == n
         && (s == null || r.raceSource == s)
         // && r.traitTags
-      ) : []
+      ).sort((a:any,b:any) => a.name && displaySubrace(a) > displaySubrace(b)) : null
     }
   }
 });
@@ -168,8 +161,9 @@ const organisation: any = {
 }
 
 export type RootState = {
-  races5etools: Root | null,
-  builder: Builder[]
+  racessource: Root | null,
+  builder: Builder[],
+  error: boolean
 };
 
 export interface Builder {

@@ -107,66 +107,81 @@ export const LanguagesAll = [
 ].sort();
 
 export const S = (e: string, d: boolean = true) => {
-  // if(!("string" == typeof e)) return;
-  let t = e.slice();
-  const a = /{@(?<script>.*?)}/;
-  if (!a.test(t)) return t;
-  let n = 16;
-  for (; a.test(t) && (n--, !(n < 1));) {
-    const e = a.exec(t);
-    if(!e || !e.groups) return t;
-    const n = e[0], g = e.groups.script.split(" ");
-    const s = g[0];
-    const i = g.splice(1).join(" ");
+  let t = '';
+  try {
+    // if(!("string" == typeof e)) return;
+    t = e.slice();
+    const a = /{@(?<script>.*?)}/;
+    if (!a.test(t)) return t;
+    let n = 16;
+    for (; a.test(t) && (n--, !(n < 1));) {
+      const e = a.exec(t);
+      if (!e || !e.groups) return t;
+      const n = e[0], g = e.groups.script.split(" ");
+      const s = g[0];
+      const i = g.splice(1).join(" ");
 
-    switch (s) {
-      case"recharge":
-        t = t.replace(n, `(Recharge ${i ? i+'-6' : '6'}${d?` : {1d6}`:``})`);
-        break;
-      case"atk":
-        t = t.replace(n, AttackRanges[i] + ":");
-        break;
-      case"h":
-        t = t.replace(n, "Hit: ");
-        break;
-      case"hit":
-        t = t.replace(n, `{1d20 + ${i}}`);
-        break;
-      case"condition":
-        t = t.replace(n, i);
-        break;
-      case"dc":
-        t = t.replace(n, `DC {${i}}`);
-        break;
-      case"damage":
-      case"dice":
-        t = t.replace(n, `{${i}}`);
-        break;
-      case"skill":
-        t = t.replace(n, `${i}${d?` {1d20 + ${i.toLowerCase()}}`:``}`);
-        break;
-      case"hitYourSpellAttack":
-        t = t.replace(n, "{summoner-spell-attack}");
-        break;
-      case"spell":
-        t = t.replace(n, e[1].split(" ").slice(1).join(" "));
-        break;
-      case "book":
-      case "item":
-      case "quickref":
-        t = t.replace(n, e.groups.script.split(" ").slice(1).join(" ").split('|')[0]);
-        break;
-      case "chance":
-        t = t.replace(n, i.split('|')[0] + ' percent');
-        break;
-      case "scaledamage":
-        let sp = i.split('|');
-        t = t.replace(n, `{${sp[sp.length-1]}}`);
-        break;
-      default:
-        // t = t.replace(n, n.replace("{", "[UNRESOLVED|").replace("}", "|]"))
-        t = t.replace("@", "");
+      switch (s) {
+        case"recharge":
+          t = t.replace(n, `(Recharge ${i ? i + '-6' : '6'}${d ? ` : {1d6}` : ``})`);
+          break;
+        case"atk":
+          t = t.replace(n, AttackRanges[i] + ":");
+          break;
+        case"h":
+          t = t.replace(n, "Hit: ");
+          break;
+        case"hit":
+          t = t.replace(n, `{1d20 + ${i}}`);
+          break;
+        case"condition":
+          t = t.replace(n, i);
+          break;
+        case"dc":
+          t = t.replace(n, `DC {${i}}`);
+          break;
+        case"damage":
+        case"dice":
+          t = t.replace(n, `{${i}}`);
+          break;
+        case"skill":
+          t = t.replace(n, `${i}${d ? ` {1d20 + ${i.toLowerCase()}}` : ``}`);
+          break;
+        case"hitYourSpellAttack":
+          t = t.replace(n, "{summoner-spell-attack}");
+          break;
+        case"spell":
+          t = t.replace(n, e[1].split(" ").slice(1).join(" "));
+          break;
+        case "book":
+        case "item":
+        case "quickref":
+        case "5etools":
+          t = t.replace(n, e.groups.script.split(" ").slice(1).join(" ").split('|')[0]);
+          break;
+        case "chance":
+          t = t.replace(n, i.split('|')[0] + ' percent');
+          break;
+        case "scaledamage":
+          let sp = i.split('|');
+          t = t.replace(n, `{${sp[sp.length - 1]}}`);
+          break;
+        default:
+          // t = t.replace(n, n.replace("{", "[UNRESOLVED|").replace("}", "|]"))
+          t = t.replace("@", "");
+      }
     }
+    return t
   }
-  return t
+  catch (ex) {
+    console.log(e, d, ex);
+  }
+  return t;
+}
+
+export const displaySubrace = (s: any) => {
+  if(!s.name) return 'None';
+  if(s.raceName === 'Human' && s.name === 'Variant') return 'Feat';
+  if(s.name.startsWith("Variant; ")) return s.name.substring(9);
+  return s.name
 }
