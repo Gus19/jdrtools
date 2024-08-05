@@ -53,7 +53,7 @@
       const c = character.value.subrace === null || character.value.subrace.name !== null;
       const d = character.value.class[0].name !== null;
       const e = character.value.background !== null;
-      const f = (abPoints.value === 27 || character.value.abilities.option === 'free') && checkBonus;
+      const f = (abPoints.value === 27 || character.value.abilities.option === 'free') && checkBonus();
       const g = f;
       const h = f;
       const i = f;
@@ -131,6 +131,11 @@
       steps.value = ss;
       if(!step.value) lastStep();
     }
+  }
+  const validAbilities = computed(() => steps.value.find(s => s.name === "abilities" && s.valid));
+  const calcAbility = (key: string) => {
+    const t = character.value.abilities[key].base+character.value.abilities[key].bonus;
+    return `${t} (${Math.floor((t - 10) / 2)})`;
   }
 
   const hasNext = computed(() => steps.value.findIndex(s => s.name === step.value) < steps.value.length - 1);
@@ -525,17 +530,20 @@
     abilities.forEach(a => total += costPoint[character.value.abilities[a.key].base]);
     return total;
   });
-  const checkBonus =  computed(() => {
+  const checkBonus = () => {
     let t = 0;
+    let t2 = 0;
     for (const i in abilities) {
       const a = abilities[i].key;
       t += character.value.abilities[a].bonus;
+      if(chooses.value.ability && chooses.value.ability.from.includes(a) && character.value.abilities[a].bonus !== 0) {
+        t2 += 1;
+      }
     }
-    if(isLineage) return t === 3;
-    else {
-      
-    }
-  });
+    if(isLineage.value) return t === 3;
+    if(!chooses.value.ability) return true;
+    return t2 == chooses.value.ability.count;
+  };
   const setBonusLineage = (key:string, bonus: number) => {
     let cb = character.value.abilities[key].bonus;
     if(cb === bonus) {
@@ -545,7 +553,7 @@
       character.value.abilities[key].bonus = bonus;
     }
   }
-  const disabledBonusLineage = computed(() => (key:string, bonus: number) => {
+  const disabledBonusLineage = (key:string, bonus: number) => {
     let t = 0;
     for (const i in abilities) {
       const a = abilities[i].key;
@@ -568,18 +576,18 @@
       if (t >= 3 && character.value.abilities[key].bonus !== 1) return true
     }
     return false;
-  })
-  const disabledBonusChoose = computed(() => (key:string) => {
+  }
+  const disabledBonusChoose = (key:string) => {
     let t = 0;
     for (const i in abilities) {
       const a = abilities[i].key;
-      if(chooses.value.ability.from.includes(a)) {
-        t += character.value.abilities[a].bonus;
+      if(chooses.value.ability.from.includes(a) && character.value.abilities[a].bonus > 0) {
+        t += 1;
       }
     }
     if (t >= chooses.value.ability.count && character.value.abilities[key].bonus === 0) return true
     return false;
-  });
+  };
 </script>
 
 <template>
@@ -600,7 +608,7 @@
         <button class="btn btn-secondary" @click="json = subraces">logSubraces</button>
         <button class="btn btn-secondary" @click="json = computedRace">loadComputedRace</button>
         <button class="btn btn-secondary" @click="calcDatasRace(false)">calcDatas</button>
-        <button class="btn btn-secondary" @click="calcDatasRace(false)">calcDatas with reset</button>
+        <button class="btn btn-secondary" @click="calcDatasRace(true)">calcDatas with reset</button>
         <button class="btn btn-secondary" @click="json = chooses">logChooses</button>
         <button class="btn btn-secondary" @click="json = bg">logBg</button>
       </div>
@@ -812,6 +820,16 @@
             <template v-if="isLineage">Any +2 and other +1 OR three different +1</template>
             <template v-else>{{ inlineAbility(computedRace.ability) }}</template>
           </CharacterInfo>
+
+          <template v-if="validAbilities">
+            <div class="d-flex w-100">
+              <div v-for="a in abilities" class="d-flex flex-column align-items-center flex-grow-1">
+                <span>{{a.key.toUpperCase()}}</span>
+                <span>{{calcAbility(a.key)}}</span>
+              </div>
+            </div>
+          </template>
+
           <CharacterInfo v-if="chooses.size || character.size">
             <template v-slot:label>Size:</template>
             <div class="d-inline-flex align-items-center">
