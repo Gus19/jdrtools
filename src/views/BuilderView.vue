@@ -294,7 +294,7 @@
     if(!versions.value) return;
     const v:any = versions.value.find(v => v.source === character.value.race.source);
     if(!v) return null;
-    const s:any = character.value.subrace === null ? null : subraces.value.find(s => displaySubrace(s) === character.value.subrace.name && s.source === character.value.subrace.source);
+    const s:any = character.value.subrace === null || subraces.value === null ? null : subraces.value.find(s => displaySubrace(s) === character.value.subrace.name && s.source === character.value.subrace.source);
     if(isLineage && !v.languageProficiencies) {
       v.languageProficiencies = [{
         "common": true,
@@ -391,7 +391,7 @@
     }
     character.value.race.source = v.source;
     character.value.race.version = displayVersion(v);
-    character.value.subrace = subraces.value.length == 0 ? null : {
+    character.value.subrace = !subraces.value || subraces.value.length == 0 ? null : {
       name: null,
       source: null
     }

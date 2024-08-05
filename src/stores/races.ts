@@ -41,11 +41,11 @@ export const useRacesStore = defineStore({
       Object.keys(organisation).forEach((k: string) => {
         let races: RaceBuilder[] = [];
         organisation[k].forEach((n: string) => {
-          const rf =  this.getRaceByName(n);
+          const rf =  this.getRaceByName(n)||[];
           // if(rf.length <= 1) return;
           const srf = [];
           rf.forEach(r => {
-            srf.push(...this.getSubraceByName(r.name, r.source));
+            srf.push(...this.getSubraceByName(r.name, r.source)||[]);
           });
           races.push({
             name: n,
