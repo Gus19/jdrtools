@@ -294,7 +294,7 @@
   const versions = computed(() => racesStore.getRaceByName(character.value.race.name));
   const subraces = computed(() => racesStore.getSubraceByName(character.value.race.name, character.value.race.source));
   const isLineage = computed(() => versions.value !== null && character.value.race.source && versions.value.find(v => v.source === character.value.race.source)?.lineage);
-  const computedUrlRace = computed(() => `${import.meta.env.VITE_BASEURL}/races.html#${character.value.race.name}${character.value.subrace ? ' ('+character.value.subrace.name+')': ''}_${character.value.subrace?.source||character.value.race.source}`)
+  const computedUrlRace = computed(() => `${import.meta.env.VITE_BASEURL}/races.html#${character.value.race.name}${character.value.subrace&&character.value.subrace.name!==null ? ' ('+character.value.subrace.name+')': ''}_${character.value.subrace?.source||character.value.race.source}`)
   const computedRace = computed(() => {
     if(!versions.value) return;
     const v:any = versions.value.find(v => v.source === character.value.race.source);
@@ -382,7 +382,7 @@
       Object.keys(a).forEach((k: string) => {
         if (k == "choose") {
           let am = a[k].amount ? a[k].amount : 1;
-          s.push(`other +${am}`);
+          s.push(`${a[k].count&&a[k].count>1?a[k].count+' ':''}other +${am}`);
         } else {
           s.push(`${k} ${a[k] > 0 ? `+${a[k]}` : a[k]}`);
         }
@@ -865,6 +865,15 @@
           <template v-if="character.background">
             <p class="fw-bold border-bottom text-center mb-2 mt-1 fs-1-1">{{ character.background }}</p>
           </template>
+          <CharacterInfo>
+            <template v-slot:label>Skill Proficiencies:</template>
+          </CharacterInfo>
+          <CharacterInfo>
+            <template v-slot:label>Skill Proficiencies:</template>
+          </CharacterInfo>
+          <CharacterInfo>
+            <template v-slot:label>Tool Proficiencies:</template>
+          </CharacterInfo>
         </template>
         <template v-else>
           <p class="text-center fst-italic">
