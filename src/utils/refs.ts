@@ -1,6 +1,8 @@
 export interface Skill {
   name: string,
-  attribute: string
+  attribute: string,
+  prof: string,
+  display: string
 }
 
 export interface Property {
@@ -26,24 +28,24 @@ export interface Data {
 
 export const
   Skills: Skill[] = [
-    {name: "acrobatics", attribute: "dexterity"},
-    {name: "animal-handling", attribute: "wisdom"},
-    {name: "arcana", attribute: "intelligence"},
-    {name: "athletics", attribute: "strength"},
-    {name: "deception", attribute: "charisma"},
-    {name: "history", attribute: "intelligence"},
-    {name: "insight", attribute: "wisdom"},
-    {name: "intimidation", attribute: "charisma"},
-    {name: "investigation", attribute: "intelligence"},
-    {name: "medicine", attribute: "wisdom"},
-    {name: "nature", attribute: "intelligence"},
-    {name: "perception", attribute: "wisdom"},
-    {name: "performance", attribute: "charisma"},
-    {name: "persuasion", attribute: "charisma"},
-    {name: "religion", attribute: "intelligence"},
-    {name: "sleight-of-hand", attribute: "dexterity"},
-    {name: "stealth", attribute: "dexterity"},
-    {name: "survival", attribute: "wisdom"},
+    {name: "acrobatics", attribute: "dexterity", prof: "acrobatics", display: "Acrobatics"},
+    {name: "animal-handling", attribute: "wisdom", prof: "animal handling", display: "Animal Handling"},
+    {name: "arcana", attribute: "intelligence", prof: "arcana", display: "Arcana"},
+    {name: "athletics", attribute: "strength", prof: "athletics", display: "Athletics"},
+    {name: "deception", attribute: "charisma", prof: "deception", display: "Deception"},
+    {name: "history", attribute: "intelligence", prof: "history", display: "History"},
+    {name: "insight", attribute: "wisdom", prof: "insight", display: "Insight"},
+    {name: "intimidation", attribute: "charisma", prof: "intimidation", display: "Intimidation"},
+    {name: "investigation", attribute: "intelligence", prof: "investigation", display: "Investigation"},
+    {name: "medicine", attribute: "wisdom", prof: "medicine", display: "Medicine"},
+    {name: "nature", attribute: "intelligence", prof: "nature", display: "Nature"},
+    {name: "perception", attribute: "wisdom", prof: "perception", display: "Perception"},
+    {name: "performance", attribute: "charisma", prof: "performance", display: "Performance"},
+    {name: "persuasion", attribute: "charisma", prof: "persuasion", display: "Persuasion"},
+    {name: "religion", attribute: "intelligence", prof: "religion", display: "Religion"},
+    {name: "sleight-of-hand", attribute: "dexterity", prof: "sleight of hand", display: "Sleight of Hand"},
+    {name: "stealth", attribute: "dexterity", prof: "stealth", display: "Stealth"},
+    {name: "survival", attribute: "wisdom", prof: "survival", display: "Survival"},
   ],
   Sizes: any = {T: "Tiny", S: "Small", M: "Medium", L: "Large", H: "Huge", G: "Gargantuan"},
   Alignments: any = {L: "lawful", N: "neutral", C: "chaotic", G: "good", E: "evil"},

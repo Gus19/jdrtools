@@ -28,7 +28,11 @@ export const useBackgroundsStore = defineStore({
   },
   getters: {
     isLoad: (state) => state.backgrounds.length > 0,
-    getDefaults: (state) => state.backgrounds.filter((b: any) => defaultBackgrounds.includes(b.name))
+    getDefaults: (state) => state.backgrounds.filter((b: any) =>
+      defaultBackgrounds.includes(b.name)
+      // && b.feats
+      // && b.skillProficiencies[0].any
+    )
   }
 });
 

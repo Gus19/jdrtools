@@ -1,5 +1,5 @@
 <template>
-  <div class="">
+  <div class="flex-grow-1">
     <label class="me-1 fw-bold fst-italic">
       <slot name="label"></slot>
     </label>
