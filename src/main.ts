@@ -4,7 +4,7 @@ import '@/assets/main.scss'
 import '@fortawesome/fontawesome-free/css/all.css'
 
 import { createApp } from 'vue'
-import { VueFire, VueFireAuth } from 'vuefire'
+// import { VueFire, VueFireAuth } from 'vuefire'
 import { createPinia } from 'pinia'
 
 import App from './App.vue'

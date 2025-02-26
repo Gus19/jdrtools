@@ -5,6 +5,18 @@ import Changelog from "@/components/Changelog.vue";
 <template>
   <h2>Changelog</h2>
   <Changelog>
+    <template v-slot:version>1.0.7</template>
+    <template v-slot:date>19/02/2024</template>
+    <li>Error with the appearance on Tableplop</li>
+  </Changelog>
+
+  <Changelog>
+    <template v-slot:version>1.0.6</template>
+    <template v-slot:date>10/02/2024</template>
+    <li>Error on loading spells</li>
+  </Changelog>
+
+  <Changelog>
     <template v-slot:version>1.0.5</template>
     <template v-slot:date>02/08/2024</template>
     <li>Error on type if not text</li>

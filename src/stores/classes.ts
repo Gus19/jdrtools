@@ -1,4 +1,5 @@
 import {defineStore} from 'pinia'
+import {defaultBackgrounds} from "@/stores/backgrounds";
 
 const urls = [
   "class-artificer.json",
@@ -16,22 +17,22 @@ const urls = [
   "class-wizard.json"
 ]
 
-export const useClassesStore = defineStore({
-  id: "ClassesStore",
+export const useClassesStore = defineStore("ClassesStore", {
   state: (): RootState => ({
     classes: [],
     subclasses: [],
     classFeatures: [],
     subclassFeatures: [],
+    optionalFeatures: [],
     error: false
   }),
   actions: {
-    initState(data: any) {
-      this.classes = data.class;
-      this.subclasses = data.subclass;
-      this.classFeatures = data.classFeature;
-      this.subclassFeatures = data.subclassFeature;
-    },
+    // initState(data: any) {
+    //   this.classes = data.class;
+    //   this.subclasses = data.subclass;
+    //   this.classFeatures = data.classFeature;
+    //   this.subclassFeatures = data.subclassFeature;
+    // },
     async initClasses() {
       if(this.classes.length > 0) {
         // console.log("Classes already loaded !")
@@ -62,6 +63,13 @@ export const useClassesStore = defineStore({
         this.subclasses = local2;
         this.classFeatures = local3;
         this.subclassFeatures = local4;
+
+        const response = await fetch(`${import.meta.env.VITE_BASEURL}/data/optionalfeatures.json`);
+        const data = await response.json();
+        if (data.optionalfeature) {
+          this.optionalFeatures = data.optionalfeature;
+        }
+
       }
       catch (e) {
         console.error(e);
@@ -73,15 +81,195 @@ export const useClassesStore = defineStore({
     }
   },
   getters: {
-    isLoad: (state) => state.classes.length > 0
+    isLoad: (state) => state.classes.length > 0,
+    getDefaults: (state) => state.classes.filter((b: any) =>
+      b.source != "XPHB"
+    ),
+    getRequirements: (state) => {
+      return (name: string): any => {
+        let cl = state.classes.find((c:Class) => c.name === name);
+        if(!cl || !cl.multiclassing.requirements) return null;
+        let r = cl.multiclassing.requirements;
+        if(r.or) {
+          let or = r.or[0];
+          return {
+            "or": true,
+            "abilities": or
+          }
+        }
+        return {
+          "or": false,
+          "abilities": r
+        }
+      }
+    },
+    getClass() {
+      return (name: string): Class|null => {
+        if(!name) return null;
+        let cl = this.classes.find((c:Class) => c.name === name);
+        if(!cl) return null;
+        return cl;
+      }
+    },
+    getLevelSubclass() {
+      return (name: string): number|null => {
+        const cl = this.getClass(name);
+        if(!cl) return null;
+
+        let lvlSubclass: any = null;
+        cl.classFeatures.every((cf:any) => {
+          if("object" == typeof cf) {
+            let split = cf.classFeature.split('|');
+            if(!lvlSubclass) lvlSubclass = split[3];
+            return false;
+          }
+          return true;
+        });
+        return parseInt(lvlSubclass);
+      }
+    },
+    getProgression() {
+      return (name: string, subclass: string|null = null): any => {
+        const cl = this.getClass(name);
+        if(!cl) return null;
+        // TODO mettre ça dans le choose ?
+        return cl.optionalfeatureProgression;
+      }
+    },
+    getFeatures() {
+      return (name: string, subclass: string, level: number): any[]|null => {
+        const cl = this.getClass(name);
+        if(!cl) return null;
+        // Choose into optionalfeatureProgression
+        let f: any[] = [];
+
+        cl.classFeatures.forEach((cf:any) => {
+          let d;
+          let subclassfeature: boolean = false;
+          let tochoose: boolean = false;
+          let featureType: string|null = null;
+          if("string" == typeof cf) {
+            d = cf;
+          }
+          else {
+            d = cf.classFeature
+            subclassfeature = true;
+          }
+          let chooseSubclass = subclassfeature && level == this.getLevelSubclass(name);
+          let split = d.split("|");
+          let l = split[3]; //level
+          let fn = split[0];
+          if(!level || level == l) {
+            let options: any = null; // TODO : Si progression lvl (constructor == Array), il faut que ce soit toujours dispo, choix qu'au premier lvl là
+            cl.optionalfeatureProgression && cl.optionalfeatureProgression.forEach((o:any) => {
+              if(o.name == fn && ((o.progression.constructor == Array && o.progression[l-1] != 0) || l in o.progression)) { // Array = level progression, always true
+                tochoose = true;
+                featureType = o.featureType[0];
+                if(featureType) {
+                  options = {
+                    count: o.progression.constructor == Array ? o.progression[l - 1] : o.progression[l],
+                    from: this.getChoicesByFeatureType(featureType, name, subclass, level)
+                  }
+                }
+              }
+            });
+
+            let det = this.classFeatures.find((d:ClassFeature) => d.className == name && d.level == l && d.name == fn);
+            let entries: any = null;
+
+            if(det) {
+              entries = det.entries.map((de: any) => {
+                if("string" == typeof de) return de;
+                return null;
+              }).filter((de:any) => de !== null).join('\n');
+            }
+
+            f.push({
+              name: split[0],
+              level: l,
+              entries: entries,
+              choose: tochoose,
+              options: options,
+              chooseSubclass: chooseSubclass,
+              subclasses: chooseSubclass && this.getSubclassesInfo(name)
+            });
+          }
+          if(subclassfeature) {
+            // same push but from state.subclassFeatures
+          }
+        });
+        return f;
+      }
+    },
+    // test() {
+    //   return (a: number): number | undefined => this.classFeatures.length * a; // call store.test(x)
+    //   // return this.classFeatures.length * 2; // call store.test
+    // },
+    getSubclassesInfo() {
+      return (a: string): any[] => this.subclasses.filter((c:any) => c.className == a).map((c:any) => {
+        return {
+          shortName: c.shortName,
+          info: this.subclassFeatures.find((d:any) => c.className == a && d.subclassShortName == c.shortName)?.entries[0],
+        }
+      })
+    },
+    getOptionalInfo() {
+      return (n: string): string => formatOptionalEntries(this.optionalFeatures.find((d:any) => d.name == n).entries);
+    },
+    getChoicesByFeatureType() {
+      return (featureType: string, name: string, subclass: string, level: number): any => {
+        const choices: any[] = [];
+        this.optionalFeatures.filter((c:any) => c.featureType.includes(featureType)).forEach((c:any) => {
+          let valid = false;
+          let prerequisite = "";
+          if(c.prerequisite) {
+            const p = c.prerequisite[0];
+            if(p.level) {
+              if(p.level.level && p.level.level >= level) valid = true;
+              if(p.level.class && p.level.class.name == name) valid = true;
+              if(p.level.subclass && p.level.subclass.name == subclass) valid = true;
+            }
+            if(p.pact) {
+              valid = true
+              prerequisite = "Pact of the " + p.pact;
+            }
+            if(p.item) {
+              valid = true
+              prerequisite = p.item.join(', ');
+            }
+            if(p.spell) {
+              valid = true
+              prerequisite = p.spell.join(', ');
+            }
+          }
+          else valid = true;
+          if(valid) {
+            choices.push({
+              name: c.name,
+              info: formatOptionalEntries(c.entries),
+              prerequisite: prerequisite
+            });
+          }
+        })
+        return choices;
+      }
+    }
   }
 });
+
+const formatOptionalEntries = (entries: any[]) => {
+  return entries.map((e:any) => {
+    if("string" == typeof e) return e;
+    if(e.type == "list") return e.items.join('\n');
+  }).join('\n')
+}
 
 export type RootState = {
   classes: Class[];
   subclasses: Subclass[];
   classFeatures: ClassFeature[];
   subclassFeatures: SubclassFeature[];
+  optionalFeatures: any[];
   error: boolean;
 };
 

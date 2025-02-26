@@ -14,8 +14,7 @@ const urlSpells = [
   "/data/spells/spells-xge.json"
 ]
 
-export const useSpellsStore = defineStore({
-  id: "SpellsStore",
+export const useSpellsStore = defineStore("SpellsStore", {
   state: (): RootState => ({
     sources: [],
     spells: [],

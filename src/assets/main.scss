@@ -78,3 +78,14 @@ h2 {
     background: none !important;
   }
 }
+span[data-bs-original-title], label[data-bs-original-title] {
+  text-decoration: underline !important;
+  text-decoration-style: dotted !important;
+}
+.tooltip {
+  white-space: pre-line;
+}
+.tooltip-inner {
+  max-width: 60vw !important;
+  text-align: justify !important;
+}

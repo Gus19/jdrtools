@@ -1,8 +1,7 @@
 import {defineStore} from 'pinia'
 import {displaySubrace} from "@/utils/refs";
 
-export const useRacesStore = defineStore({
-  id: "RacesStore",
+export const useRacesStore = defineStore("RacesStore", {
   state: (): RootState => ({
     racessource: null,
     builder: [],
@@ -70,6 +69,7 @@ export const useRacesStore = defineStore({
       return (n: string) => state.racessource ? state.racessource.race.filter(r =>
         r.name == n
         && !('_copy' in r)
+        && r.source != "XPHB"
         // && !('reprintedAs' in r)
       ).sort((a:any,b:any) => a.name > b.name ? 1 : 0) : null
     },

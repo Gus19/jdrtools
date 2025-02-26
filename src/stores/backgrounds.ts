@@ -1,7 +1,6 @@
 import {defineStore} from 'pinia'
 
-export const useBackgroundsStore = defineStore({
-  id: "BackgroundsStore",
+export const useBackgroundsStore = defineStore("BackgroundsStore", {
   state: (): RootState => ({
     backgrounds: [],
     error: false
@@ -29,7 +28,7 @@ export const useBackgroundsStore = defineStore({
   getters: {
     isLoad: (state) => state.backgrounds.length > 0,
     getDefaults: (state) => state.backgrounds.filter((b: any) =>
-      defaultBackgrounds.includes(b.name)
+      defaultBackgrounds.includes(b.name) && (b.source != "XPHB")
       // && b.feats
       // && b.skillProficiencies[0].any
     )
@@ -116,6 +115,7 @@ export interface Root2 {
   page: number
   srd?: boolean
   basicRules?: boolean
+  freeRules2024?: boolean
   skillProficiencies?: SkillProficiency[]
   languageProficiencies?: LanguageProficiency[]
   startingEquipment?: StartingEquipment[]

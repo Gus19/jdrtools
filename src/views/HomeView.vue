@@ -198,14 +198,14 @@
     }
     character.value.name = data.value.name;
     if(data.value.token) {
-      character.value.appearances.push(`${import.meta.env.VITE_BASEURL}/img/bestiary/tokens/${data.value.token.source}/${data.value.token.name}.webp`.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
+      character.value.appearances.push(`${import.meta.env.VITE_TOKENURL}/bestiary/tokens/${data.value.token.source}/${data.value.token.name}.webp`.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
     }
     else if(data.value.hasToken) {
       let name = data.value.name;
       if("summonedBySpell" in data.value) {
         name = name.split(' (')[0];
       }
-      character.value.appearances.push(`${import.meta.env.VITE_BASEURL}/img/bestiary/tokens/${data.value.source}/${name}.webp`.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
+      character.value.appearances.push(`${import.meta.env.VITE_TOKENURL}/bestiary/tokens/${data.value.source}/${name}.webp`.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
     }
     addSections();
     // Character
@@ -580,13 +580,21 @@
   const addAppearance = (parentId: number) => {
     const name = "appearance"
     const id = addParent(name);
+    const appearances: any[] = [];
+    if(character.value.appearances.length > 0) {
+      appearances.push({
+        url: character.value.appearances[0],
+        location: character.value.appearances[0],
+        iconSrc: character.value.appearances[0]
+      })
+    }
+
     addProperty({
       id: id,
       type: "appearance",
       parentId: parentId,
       data: {
-        appearances: [
-        ]
+        appearances: appearances
       }
     });
   }
