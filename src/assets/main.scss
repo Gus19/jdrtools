@@ -8,8 +8,8 @@
   min-height: 100vh;
 }
 main {
-  padding-top: var(--header-height);
-  min-height: calc(100vh - var(--footer-height) - 1rem);
+  //padding-top: var(--header-height);
+  min-height: calc(100vh - calc(var(--footer-height) + var(--header-height)) - 1rem);
 }
 
 footer {
@@ -88,4 +88,38 @@ span[data-bs-original-title], label[data-bs-original-title] {
 .tooltip-inner {
   max-width: 60vw !important;
   text-align: justify !important;
+}
+
+.form-check p {
+  /*.small*/
+  text-align: justify;
+  font-size: .875em;
+  /*.lh-1*/
+  line-height: 1 !important;
+  /*.py-1*/
+  padding-bottom: .25rem !important;
+  margin: 0 !important;
+}
+
+.h36 {
+  height: 36px;
+}
+.ability {
+  width: 75px;
+}
+p.small {
+  text-align: justify;
+  font-size: .875em;
+}
+.character-info p {
+  margin: 0;
+}
+.character-info .form-select-sm {
+  min-width: 100px;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: .5rem;
+}
+.fs-1-1 {
+  font-size: 1.1rem;
 }

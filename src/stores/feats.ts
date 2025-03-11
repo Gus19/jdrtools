@@ -1,4 +1,5 @@
 import {defineStore} from 'pinia'
+import {formatOptionalEntries} from "@/utils/refs";
 
 export const useFeatsStore = defineStore("FeatsStore", {
   state: (): RootState => ({
@@ -27,13 +28,73 @@ export const useFeatsStore = defineStore("FeatsStore", {
   },
   getters: {
     isLoad: (state) => state.feats.length > 0,
-    getDefaults: (state) => state.feats.filter((b: any) =>
-      true
+    // getDefaults: (state) => state.feats.filter((b: any) =>
+    //   true
     //     defaultFeats.includes(b.name) && (b.source != "XPHB")
     //   // && b.feats
     //   // && b.skillProficiencies[0].any
-    )
+    // )
     //prerequisite => only if prerequisite match
+    getDefaults() {
+      return (character: any): any[] => {
+        const level = character.level ?? 1;
+        const raceName = character.race?.name.toLowerCase() ?? "";
+        const classNames = character.leveling;
+        const bgName = character.background?.toLowerCase() ?? "";
+
+        return this.feats.map(f => {
+          let valid = false;
+          let prerequisite: string[] = [];
+          if(f.prerequisite) {
+            // at least one
+            f.prerequisite.forEach(p => {
+              let v = true
+              if(p.level && !isNaN(p.level) && level < p.level) v = false;
+              if(p.level && isNaN(p.level) && p.level.class && classNames.includes(p.level.class.name)) v = false;
+
+              if(p.race && !p.race.map(r => r.name.toLowerCase()).includes(raceName)) v = false;
+              if((p.spellcasting || p.spellcasting2020 || p.spellcastingFeature || p.spellcastingPrepared) && character.spellcasting.length == 0) v = false;
+              if(p.feat) {
+                const tests = p.feat.map(ft => ft.substring(0, ft.indexOf('|')).toLowerCase());
+                if(!character.feats.find((ft:any) => ft.name != null && tests.includes(ft.name.toLowerCase()))) v = false;
+              }
+              if(p.ability) {
+                if(p.ability[0].str && character.abilities.str.total < p.ability[0].str) v = false;
+                if(p.ability[0].dex && character.abilities.dex.total < p.ability[0].dex) v = false;
+                if(p.ability[0].con && character.abilities.con.total < p.ability[0].con) v = false;
+                if(p.ability[0].wis && character.abilities.wis.total < p.ability[0].wis) v = false;
+                if(p.ability[0].int && character.abilities.int.total < p.ability[0].int) v = false;
+                if(p.ability[0].cha && character.abilities.cha.total < p.ability[0].cha) v = false;
+              }
+              if(p.background && !p.background.map(b => b.name.toLowerCase()).includes(bgName)) v = false;
+              if(p.other) prerequisite.push(p.other);
+              if(p.otherSummary) prerequisite.push(p.otherSummary.entrySummary);
+              if(p.campaign && !prerequisite.includes(`Campaign ${p.campaign[0]}`)) prerequisite.push(`Campaign ${p.campaign[0]}`)
+              if(v) valid = true;
+            });
+          }
+          else valid = true;
+          if(valid) {
+            return {
+              name: f.name,
+              // info: formatOptionalEntries(f.entries),
+              prerequisite: prerequisite,
+              prerequisites: f.prerequisite,
+              hasAbility: f.ability !== undefined,
+              ability: f.ability,
+              hasSpells: f.additionalSpells !== undefined,
+              entries: f.entries
+            }
+          }
+          return null
+        }).filter(e => e !== null);
+      }
+    },
+    findByName() {
+      return (name: string): Feat|undefined => {
+        return this.feats.find(f => f.name == name);
+      }
+    }
   }
 });
 
@@ -95,6 +156,7 @@ export interface Ability {
   cha?: number
   str?: number
   wis?: number
+  con?: number
 }
 
 export interface Proficiency {

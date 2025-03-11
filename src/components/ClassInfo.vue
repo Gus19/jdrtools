@@ -32,8 +32,9 @@
       </CharacterInfo>
       <CharacterInfo>
         <template v-slot:label>Skill Proficiencies:</template>
-        {{ inlineSkill(cl.startingProficiencies.skills, true) }}
+        <slot name="skills">{{ inlineSkill(cl.startingProficiencies.skills, true) }}</slot>
       </CharacterInfo>
+      <slot name="expertises"></slot>
       <CharacterInfo v-if="cl.startingProficiencies.armor">
         <template v-slot:label>Armor Training:</template>
         {{ cl.startingProficiencies.armor.map((t:any) => t.proficiency ? t.proficiency : S(t)).join(', ') }}

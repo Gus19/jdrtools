@@ -4,7 +4,7 @@ const dev: boolean = import.meta.env.DEV;
 
 <template>
   <header>
-    <nav class="navbar navbar-expand-lg bg-body-secondary p-1 shadow-sm fixed-top">
+    <nav class="navbar navbar-expand-lg bg-body-secondary p-1 shadow-sm">
       <div class="container g-1 flex-nowrap justify-content-start">
         <a class="btn btn-light-transparent me-2 d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar">
           <i class="fas fa-bars"></i>

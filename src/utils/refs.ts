@@ -168,10 +168,10 @@ export const DS = (e: any, d: boolean = true) => {
   return "";
 }
 
-export const S = (e: string, d: boolean = true) => {
+export const S = (e: any, d: boolean = true) => {
   let t = '';
   try {
-    // if(!("string" == typeof e)) return;
+    if(!("string" == typeof e)) return '';
     t = e.slice();
     const a = /{@(?<script>.*?)}/;
     if (!a.test(t)) return t;
@@ -200,15 +200,15 @@ export const S = (e: string, d: boolean = true) => {
           t = t.replace(n, i);
           break;
         case"dc":
-          t = t.replace(n, `DC {${i}}`);
+          t = t.replace(n, `DC ${i}`);
           break;
         case"damage":
         case"dice":
           t = t.replace(n, `{${i}}`);
           break;
-        case"skill":
-          t = t.replace(n, `${i}${d ? ` {1d20 + ${i.toLowerCase()}}` : ``}`);
-          break;
+        // case"skill":
+        //   t = t.replace(n, `${i}${d ? ` {1d20 + ${i.toLowerCase()}}` : ``}`);
+        //   break;
         case"hitYourSpellAttack":
           t = t.replace(n, "{summoner-spell-attack}");
           break;
@@ -222,6 +222,13 @@ export const S = (e: string, d: boolean = true) => {
         case "filter":
         case "feat":
         case "sense":
+        case "language":
+        case "skill":
+        case "action":
+        case "creature":
+        case "status":
+        case "table":
+        case "deity":
           t = t.replace(n, e.groups.script.split(" ").slice(1).join(" ").split('|')[0]);
           break;
         case "chance":
@@ -299,3 +306,35 @@ export const textSkill = (k: string, a:any = null, choose: boolean = false) => {
   }
 }
 
+export const formatOptionalEntries = (entries: any[]) => {
+  return entries.map((e:any) => {
+    if("string" == typeof e) return e;
+    else if(e.type == "list") return e.items.map((j:any) => {
+      if("string" == typeof j) return j;
+      else return null
+    }).filter((j:any) => j != null).join('\n');
+    else return null;
+    // TODO list object possible
+  }).filter((e:any) => e != null).join('\n')
+}
+
+export const inlineAbility = (ability: any[]) => {
+  const s: string[] = [];
+  // const a: any = ability[0];
+  ability.forEach((a:any) => {
+    Object.keys(a).forEach((k: string) => {
+      if (k == "choose") {
+        let am = a[k].amount ? a[k].amount : 1;
+        s.push(`${a[k].count&&a[k].count>1?a[k].count+' from ':''}${a[k].from.length<6?a[k].from.join('/').toUpperCase():'Any'} +${am}`);
+      } else {
+        s.push(`${k.toUpperCase()} ${fn(a[k])}`);
+      }
+    })
+  });
+  return s.join(', ');
+}
+
+// formatNumber
+export const fn = (n: number) => {
+  return `${n > 0 ? `+${n}` : n}`;
+}

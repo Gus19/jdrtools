@@ -30,3 +30,4 @@ coverage
 *.tsbuildinfo
 /.vscode/
 /download.js
+/public/data/

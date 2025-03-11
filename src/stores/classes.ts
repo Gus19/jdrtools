@@ -1,5 +1,5 @@
 import {defineStore} from 'pinia'
-import {defaultBackgrounds} from "@/stores/backgrounds";
+import {formatOptionalEntries} from "@/utils/refs";
 
 const urls = [
   "class-artificer.json",
@@ -179,7 +179,14 @@ export const useClassesStore = defineStore("ClassesStore", {
 
             if(det) {
               entries = det.entries.map((de: any) => {
-                if("string" == typeof de) return de;
+                if("string" == typeof de) {
+                  if(de.indexOf("{@i") == 0) return null;
+                  if(de.indexOf(". See {@book chapter") > 0) de = de.substring(0, de.indexOf(". See {@book chapter")+1);
+                  return de;
+                }
+                else if(fn == "Spellcasting" && de.type == "entries" && de.name == "Spellcasting Ability") {
+                  return de.entries[0];
+                }
                 return null;
               }).filter((de:any) => de !== null).join('\n');
             }
@@ -207,9 +214,13 @@ export const useClassesStore = defineStore("ClassesStore", {
     // },
     getSubclassesInfo() {
       return (a: string): any[] => this.subclasses.filter((c:any) => c.className == a).map((c:any) => {
+        let info = this.subclassFeatures.find((d:any) => c.className == a && d.subclassShortName == c.shortName)?.entries[0];
+        if('string' != typeof info) {
+          info = info.entries[0];
+        }
         return {
           shortName: c.shortName,
-          info: this.subclassFeatures.find((d:any) => c.className == a && d.subclassShortName == c.shortName)?.entries[0],
+          info: info,
         }
       })
     },
@@ -221,7 +232,7 @@ export const useClassesStore = defineStore("ClassesStore", {
         const choices: any[] = [];
         this.optionalFeatures.filter((c:any) => c.featureType.includes(featureType)).forEach((c:any) => {
           let valid = false;
-          let prerequisite = "";
+          let prerequisite = [];
           if(c.prerequisite) {
             const p = c.prerequisite[0];
             if(p.level) {
@@ -231,15 +242,15 @@ export const useClassesStore = defineStore("ClassesStore", {
             }
             if(p.pact) {
               valid = true
-              prerequisite = "Pact of the " + p.pact;
+              prerequisite.push("Pact of the " + p.pact);
             }
             if(p.item) {
               valid = true
-              prerequisite = p.item.join(', ');
+              prerequisite.push(p.item.join(', '));
             }
             if(p.spell) {
               valid = true
-              prerequisite = p.spell.join(', ');
+              prerequisite.push(p.spell.join(', '));
             }
           }
           else valid = true;
@@ -256,13 +267,6 @@ export const useClassesStore = defineStore("ClassesStore", {
     }
   }
 });
-
-const formatOptionalEntries = (entries: any[]) => {
-  return entries.map((e:any) => {
-    if("string" == typeof e) return e;
-    if(e.type == "list") return e.items.join('\n');
-  }).join('\n')
-}
 
 export type RootState = {
   classes: Class[];

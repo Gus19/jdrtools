@@ -16,14 +16,15 @@
     Skills,
     displaySubrace,
     DS, S,
-    roll, abilityRoll, textSkill, inlineSkill
+    roll, abilityRoll, textSkill, inlineSkill, fn, inlineAbility
   } from "@/utils/refs";
   import AccordionItem from "@/components/AccordionItem.vue";
   import CharacterInfo from "@/components/CharacterInfo.vue";
-  import {useClassesStore} from "@/stores/classes";
+  import {type Class, useClassesStore} from "@/stores/classes";
   import download from "downloadjs";
   import DamageType from "@/components/DamageType.vue";
   import ClassInfo from "@/components/ClassInfo.vue";
+  import FeatInfo from "@/components/FeatInfo.vue";
   const spellsStore = useSpellsStore();
   const racesStore = useRacesStore();
   const bgStore = useBackgroundsStore();
@@ -31,7 +32,6 @@
   const featsStore = useFeatsStore();
   const storagekey: string = 'character-builder';
   const dev: boolean = import.meta.env.DEV;
-  const VITE_BASEURL = import.meta.env.VITE_BASEURL;
   const CHOOSE = "Choose";
 
   onMounted(async () => {
@@ -50,8 +50,44 @@
     };
   });
 
+  const search = ref<any>({});
+  const changeSearch = (e: any, name: string) => {
+    search.value[name] = e.target.value;
+  }
+
   const step = ref<string>('');
   const steps = ref<any[]>([]);
+  const addManualStep = (s: string) => {
+    if(!character.value) return
+    if(!character.value.manualSteps.find((ms:any) => ms.step == s)) {
+      character.value.manualSteps.push({
+        step: s,
+        valid: false
+      });
+    }
+  }
+  const removeManualStep = (s: string) => {
+    if(!character.value) return
+    if(getManualStep(s)) {
+      const ms = [
+        ...character.value.manualSteps.filter((ms:any) => ms.step != s)
+      ];
+      character.value.manualSteps = ms;
+    }
+  }
+  const getManualStep = (s: string) => {
+    if(!character.value) return
+    return character.value.manualSteps.find((ms:any) => ms.step == s);
+  }
+  const isManualValid = (s: string) => {
+    if(!character.value) return
+    return getManualStep(s).valid || false;
+  }
+  const toggleManualStep = () => {
+    manualStep.value.valid = !manualStep.value.valid;
+    calculStep();
+  }
+  const manualStep = computed(() => character.value && character.value.manualSteps.find((s:any) => s.step == step.value));
 
   const changeStep = (name: string) => {
     if(step.value != name) {
@@ -68,29 +104,60 @@
       const a = character.value.race.name !== null;
       const b = character.value.race.source !== null;
       const c = character.value.subrace === null || character.value.subrace.name !== null;
+
+      const hasRaceOptions = computedRaceOptions.value !== null;
+      let roValid = true;
+      if(hasRaceOptions) {
+        computedRaceOptions.value.forEach((ro: any) => {
+          if(!character.value.raceOptions.find((e:any) => ro.replace == e.replace)) {
+            roValid = false;
+          }
+        });
+      }
+
       const d = character.value.class[0].name !== null && character.value.class[0].name.length > 0;
       const e = character.value.background !== null;
       const f = (abPoints.value === 27 || character.value.abilities.option === 'free') && checkBonus();
 
       let g = false; //Features
       if(f && classFeatures.value) {
-        if(classFeatures.value.find((cf:any) => cf.chooseSubclass) && !lastClass.value.subclass) g = false;
+        let s = 'features';
+        if(classFeatures.value.find((cf:any) => cf.chooseSubclass)) {
+          removeManualStep(s)
+          g = lastClass.value.subclass;
+        }
         else if(classFeatures.value.find((cf:any) => cf.options !== null)) {
-          // g = false;
+          removeManualStep(s)
           let allTrue = true;
           classFeatures.value.filter((cf:any) => cf.options !== null).forEach((cf:any) => {
             let choices = lastClass.value.features.find((ft: any) => ft.name == cf.name)?.choices.length;
-            console.log({choices, limit: cf.options.count});
             if(cf.options.count != choices) allTrue = false;
           });
           if(allTrue) g = true;
         }
-        else g = true;
+        else {
+          addManualStep(s);
+          g = isManualValid(s);
+        };
       }
 
-      const h = g;
-      const i = g;
-      const j = g;
+      addManualStep('hp');
+      const h = g && isManualValid('hp');
+
+      let i = false;
+      if(h && chooses.value && chooses.value.skills) {
+        i = true;
+        ['skills','expertises'].forEach(key => {
+          chooses.value[key].forEach((ch:any) => {
+            if(countProfByOrigin(key,ch.origin) != ch.count) {
+              i = false; return false;
+            };
+          });
+        })
+      }
+
+      const j = false;
+      const k = false;
 
       ss.push({
         name: 'race',
@@ -98,71 +165,110 @@
       });
 
       if(versions.value === null) {
-        console.error("value null ici pas normal");
-        return; //AllLoad not finish
+        console.error("AllLoad not finish");
+        return;
       }
       if (a && versions.value.length > 1) {
         ss.push({
           name: 'version',
           valid: b
         });
+        if(!b) return;
       }
       if (a && b && character.value.subrace !== null) {
         ss.push({
           name: 'subrace',
           valid: c
         });
+        if(!c) return;
       }
-      // todo check here if cantrip/spell/feat for race/subrace
+      // todo check here if cantrip/spell for race/subrace
+
+      if(hasRaceOptions) {
+        ss.push({
+          name: 'raceOptions',
+          valid: roValid
+        });
+        if(!roValid) return;
+      }
 
       if ((a && b && c) || d) {
         ss.push({
           name: 'class',
           valid: d
         });
+        if(!d) return
       }
       if (d || e) {
         ss.push({
           name: 'background',
           valid: e
         });
+        if(!e) return;
       }
       if (e) {
         ss.push({
           name: 'abilities',
           valid: f
         });
+        if(!f) return;
       }
+
+      const hasRacialFeat = computedRace.value && computedRace.value.feats;
+      if(hasRacialFeat) {
+        const racialFeatName = character.value.feats.find((f:any) => f.level == 1 && f.origin == 'race' && f.name != null)?.name;
+        let racialFeatValid = false;
+        if(racialFeatName) {
+          const feat = feats.value.find((f:any) => f.name == racialFeatName);
+          if(feat.ability && feat.ability[0].choose) {
+            racialFeatValid = character.value.abilities.improvments.filter((ip:any) => ip.origin == 'feat' && ip.level == 1).length != 0;
+          }
+          else {
+            racialFeatValid = true;
+          }
+        }
+        ss.push({
+          name: 'racialFeat',
+          valid: racialFeatValid
+        });
+        if(!racialFeatValid) return;
+      }
+
       if(f) {
         ss.push({
           name: 'features',
           valid: g
         });
+        if(!g) return;
       }
       if(g) {
         ss.push({
           name: 'hp',
-          valid: character.value.hp.max > 0
+          valid: h
         });
         calcHPMax(true);
+        if(!h) return;
       }
       if(h) {
         ss.push({
           name: 'proficiencies',
-          valid: false
+          valid: i
         });
+        if(!i) return;
       }
       if(i) {
         ss.push({
           name: 'spells',
-          valid: false
+          valid: j
         });
+        if(!j) return;
       }
       if(j) {
         ss.push({
           name: 'equipment',
-          valid: false
+          valid: k
         });
+        if(!k) return;
       }
       // todo check here if cantrip/spell/feat for background
     }
@@ -184,12 +290,22 @@
     return character.value.abilities[key].base+character.value.abilities[key].bonus;
   }
   const mod = (key: string) => {
-    const t = tAb(key);
+    if(!character.value) return 0;
+    const t = character.value.abilities[key].total;
     return Math.floor((t - 10) / 2);
   }
-  // formatNumber
-  const fn = (n: number) => {
-    return `${n > 0 ? `+${n}` : n}`;
+  const totalAbility = (key: string) => {
+    const t = character.value.abilities[key].total;
+    return `${t} (${fn(mod(key))})`;
+  }
+
+  const calcDatasAbilities = (reset: boolean = false) => {
+    Abilities.forEach(a => {
+      const ab = character.value.abilities[a.key];
+      const improve = character.value.abilities.improvments.filter((ip:any) => ip.ability == a.key).length;
+      ab.improve = improve;
+      ab.total = ab.base + ab.bonus + ab.improve;
+    });
   }
 
   // const hasNext = computed(() => steps.value.findIndex(s => s.name === step.value) < steps.value.length - 1);
@@ -220,6 +336,12 @@
     hps: [],
     features: []
   }
+  const defaultAb = {
+    base: 10,
+    bonus: 0,
+    improve: 0,
+    total: 10
+  }
   const defaultCharacter = {
     uuid: uuid.v4(),
     name: null,
@@ -234,38 +356,21 @@
       version: null
     },
     subrace: null,
+    raceOptions: [],
     class: [
       {...defaultClass}
     ],
     background: null,
     // TODO object with name/source ?
     abilities: {
-      str: {
-        base: 10,
-        bonus: 0
-      },
-      dex: {
-        base: 10,
-        bonus: 0
-      },
-      con: {
-        base: 10,
-        bonus: 0
-      },
-      int: {
-        base: 10,
-        bonus: 0
-      },
-      wis: {
-        base: 10,
-        bonus: 0
-      },
-      cha: {
-        base: 10,
-        bonus: 0
-      },
+      str: {...defaultAb},
+      dex: {...defaultAb},
+      con: {...defaultAb},
+      int: {...defaultAb},
+      wis: {...defaultAb},
+      cha: {...defaultAb},
       option: 'spend',
-      rolls: []
+      improvments: []
       // TODO improvments ? class/lvl/feat/ability add property same as bonus ?
     },
     hp: {
@@ -275,8 +380,8 @@
     ac: 0,
     save: [],
     spellcasting: [],
-    skillProf: [],
-    skillExp: [],
+    skills: [],
+    expertises: [],
     languages: [
       // TODO name / from / lvl / choose ? Exemple :
       // Common / Race / 1 / false
@@ -304,7 +409,8 @@
     ],
     feats: [
       // name / from
-    ]
+    ],
+    manualSteps: []
   }
 
   const character = ref<any>(null);
@@ -315,6 +421,7 @@
       calcDatasRace(false);
       calcDatasClass(false);
       calcDatasBG(false);
+      calcDatasAbilities(false);
       // calculStep();
     }
   }, {once: true});
@@ -368,7 +475,9 @@
   const defaultChoose = {
     ability: null,
     size: null,
-    languages: []
+    languages: [],
+    skills: [],
+    expertises: []
   }
   const chooses = ref<any>(null);
 
@@ -379,6 +488,7 @@
   const saveStorage = function() {
     // if(import.meta.env.DEV) console.log('saveStorage');
     localStorage.setItem(storagekey, JSON.stringify(character.value));
+    calcAllChooses();
     calculStep();
     logJson();
   };
@@ -388,6 +498,11 @@
   };
 
   watch(character, saveStorage, {deep: true});
+  watch(() => character.value && character.value.abilities, (newValue) => {
+    if(newValue) {
+      calcDatasAbilities(false);
+    }
+  }, {deep: true});
 
   const calcLevel = () => {
     let lvl = 0;
@@ -407,6 +522,7 @@
     character.value.race.name = r.name;
     character.value.race.source = r.source;
     character.value.race.version = null;
+    character.value.raceOptions = [];
     character.value.subrace = r.subrace == 0 ? null : {
       name: null,
       source: null
@@ -469,6 +585,21 @@
         c[k] = s[k];
       }
     });
+
+    character.value.raceOptions.forEach((ro:any) => {
+      const opt = c._versions.find((o:any) => o.name == ro.option);
+      let entries = {
+        ...opt._mod.entries.items
+      };
+      entries.name = entries.name.substring(entries.name.lastIndexOf(';') + 1).trim();
+      c.entries.push(entries);
+
+      if(opt.speed !== undefined) c.speed = opt.speed;
+      if(opt.skillProficiencies !== undefined) c.skillProficiencies = opt.skillProficiencies;
+      if(opt.additionalSpells !== undefined) c.additionalSpells = opt.additionalSpells;
+      if(opt.darkvision !== undefined) c.darkvision = opt.darkvision;
+    });
+
     return c;
   });
   const computedRaceEntries = computed(() => {
@@ -495,6 +626,57 @@
     if(s.length) return `${s} (${v.source})`;
     return v.source;
   }
+  const computedRaceOptions = computed(() => {
+    if(!computedRace.value) return null;
+    if(!computedRace.value._versions) return null;
+
+    const options: any[] = [];
+    computedRace.value._versions.forEach((v: any) => {
+      let choice = {
+        key: v.name,
+        name: v.name.substring(v.name.lastIndexOf(';') + 1).trim(),
+        entries: v._mod.entries.items.entries
+      };
+      const opt = options.find((o:any) => o.replace === v._mod.entries.replace);
+      if(!opt) {
+        options.push({
+          replace: v._mod.entries.replace,
+          entries: computedRace.value.entries.find((e:any) => e.name === v._mod.entries.replace)?.entries.filter((e2:any) => "string" == typeof e2),
+          choices: [choice]
+        });
+      }
+      else {
+        opt.choices.push(choice);
+      }
+    });
+    return options;
+  });
+
+  const changeRaceOptions = (e: any, replace: string) => {
+    if (!e.target.value) return;
+    const option = e.target.value;
+    const ro = character.value.raceOptions.find((o: any) => o.replace == replace);
+    if(ro) {
+      ro.option = option;
+    }
+    else {
+      character.value.raceOptions.push({
+        replace: replace,
+        option: option
+      });
+    }
+
+    const opt = computedRace.value._versions.find((o:any) => o.name == option);
+    if(opt.skillProficiencies !== undefined) resetSkills('race');
+    // if(opt.additionalSpells !== undefined) resetSpells('race'); TODO activer une fois les spells fait
+    calcDatasRace(false);
+    return;
+  }
+  const isRaceOptionsCheck = (replace: string, key: string) => {
+    const ro = character.value.raceOptions.find((e: any) => e.replace === replace)
+    if(!ro) return false;
+    return ro.option == key;
+  }
 
   const inlineClasses = computed(() => {
     const s: string[] = [];
@@ -505,21 +687,6 @@
     return s.join(', ');
   })
 
-  const inlineAbility = (ability: any[]) => {
-    const s: string[] = [];
-    // const a: any = ability[0];
-    ability.forEach((a:any) => {
-      Object.keys(a).forEach((k: string) => {
-        if (k == "choose") {
-          let am = a[k].amount ? a[k].amount : 1;
-          s.push(`${a[k].count&&a[k].count>1?a[k].count+' ':''}other +${am}`);
-        } else {
-          s.push(`${k} ${fn(a[k])}`);
-        }
-      })
-    });
-    return s.join(', ');
-  }
   const changeRaceSource = (v: any) => {
     if(character.value.race.source === v.source) {
       return;
@@ -530,6 +697,7 @@
       name: null,
       source: null
     }
+    character.value.raceOptions = [];
     calcDatasRace();
   }
   const changeSubrace = (s: any) => {
@@ -538,11 +706,20 @@
       name: displaySubrace(s),
       source: s.source
     };
+    character.value.raceOptions = [];
     calcDatasRace();
   }
 
   const calcDatasRace = (reset: boolean = true) => {
     if(reset) {
+      resetSkills('race');
+      if(computedRace.value && computedRace.value.skillProficiencies) {
+        const sp = computedRace.value.skillProficiencies[0];
+        Object.keys(sp).filter((k: string) => k != "choose" && k != "any").forEach((k: string) => {
+          let name: any = Skills.find(s => s.prof == k)?.name;
+          addSkillProf('skills', 'race', name, false);
+        });
+      }
       // chooses.value.languages = []; //don't use push or defaultChoose it's change ...
       character.value.abilities.str.bonus = 0;
       character.value.abilities.dex.bonus = 0;
@@ -557,6 +734,7 @@
       character.value.size = '';
       character.value.languages = [];
       character.value.resist = [];
+      character.value.manualSteps = [];
     }
     chooses.value = {
       ...defaultChoose
@@ -571,7 +749,7 @@
     }
     if(d.darkvision) character.value.darkvision = d.darkvision;
     if(d.speed) {
-      if("number" == typeof d.speed) character.value.speed.walk = d.speed;
+      if("number" == typeof d.speed) character.value.speed = {walk: d.speed};
       else character.value.speed = {...character.value.speed, ...d.speed};
     }
     if(d.ability) {
@@ -589,6 +767,7 @@
           }
         }
       });
+      calcDatasAbilities(reset);
     }
     // if(d.languageProficiencies) {
     //   d.languageProficiencies.forEach((l:any) => {
@@ -640,6 +819,7 @@
     character.value.class[i].subclass = null;
     character.value.class[i].dice = c.hd.faces;
     character.value.class[i].features = [];
+    character.value.manualSteps = [];
     calcDatasClass(true);
     if(i === 0) {
       setHPAverage();
@@ -649,6 +829,7 @@
   const calcDatasClass = (reset: boolean = true) => {
     if(reset) {
       // reset choose spells, equipment, subclass ...
+      resetSkills('class');
     }
     character.value.class.forEach((c:any, i:number) => {
       const cl = classes.value.find(c1 => c1.name === c.name);
@@ -656,11 +837,7 @@
       if(i === 0) {
         character.value.save = cl.proficiency;
         character.value.spellcasting = cl.spellcastingAbility ? [cl.spellcastingAbility] : [];
-
       }
-      // TODO : here save all optionalfeatureProgression
-      // TODO : save lvl for subclass ?
-
     });
   }
 
@@ -670,12 +847,110 @@
     calcDatasBG();
   }
   const calcDatasBG = (reset: boolean = true) => {
-    // TODO : add prof to chooses
+    // add prof to chooses
+    if(!bg.value) return;
+    if(!bg.value.skillProficiencies) return;
+    if(reset) {
+      resetSkills('background');
+      const sp = bg.value.skillProficiencies[0];
+      Object.keys(sp).filter((k: string) => k != "choose" && k != "any").forEach((k: string) => {
+        let name: any = Skills.find(s => s.prof == k)?.name;
+        addSkillProf('skills', 'background', name, false);
+      })
+    }
+  }
+  const resetSkills = (origin: string) => {
+    character.value.skills = character.value.skills.filter((sk:any) => sk.origin != origin && sk.level == character.value.level);
+    character.value.expertises = character.value.expertises.filter((sk:any) => sk.origin != origin && sk.level == character.value.level);
+  }
+  const addSkillProf = (key:string, origin: string, name: string, choose: boolean = true) => {
+    if(!name) return;
+    let o = {
+      name: name,
+      origin: origin,
+      level: character.value.level,
+      choose: choose
+    }
+    let cs = character.value[key].find((s:any) => s.name == name);
+    if(cs) {
+      cs = {
+        ...cs,
+        ...o
+      }
+    }
+    else {
+      character.value[key].push(o);
+    }
+  }
+
+  const calcAllChooses = () => {
+    const ch = chooses.value;
+    const level = character.value.level;
+    ch.skills = [];
+    ch.expertises = [];
+    if(level == 1) {
+      if (computedRace.value && computedRace.value.skillProficiencies) {
+        chooseAddSkill('race', computedRace.value.skillProficiencies[0]);
+      }
+      if (lastClass.value) {
+        const cl = classes.value.find((c:Class) => c.name === lastClass.value.name);
+        if(cl && cl.startingProficiencies.skills) {
+          chooseAddSkill('class', cl.startingProficiencies.skills[0])
+        }
+      }
+      if (bg.value && bg.value.skillProficiencies) {
+        chooseAddSkill('background', bg.value.skillProficiencies[0]);
+      }
+    }
+    // Check from feats, subclass ...
+    character.value.feats.filter((f:any) => f.level == level && f.name).forEach((f:any) => {
+      const feat = featsStore.findByName(f.name);
+      if(feat) {
+        if (feat.skillProficiencies) chooseAddSkill('feat', feat.skillProficiencies[0]);
+        if (feat.expertise) chooseAddExpertise('feat', feat.expertise[0]);
+      }
+    })
+  }
+  const chooseAddSkill = (origin:string, sp: any) => {
+    if(!sp) return;
+    const ch = chooses.value.skills;
+    if(sp.choose && sp.choose.from) {
+      ch.push({
+        origin: origin,
+        count: sp.choose.count || 1,
+        from: Skills.filter(s => sp.choose.from.includes(s.prof)).map(s => s.name)
+      });
+    }
+    else if(sp.any) {
+      ch.push({
+        origin: origin,
+        count: sp.any,
+        from: Skills.map(s => s.name)
+      });
+    }
+    else {
+      Object.keys(sp).filter((k:any) => {
+        // ch.push({
+        //   origin: origin,
+        //   count: sp.any,
+        //   from: Skills.find(s => s.name == k)
+        // });
+      })
+    }
+  }
+  const chooseAddExpertise = (origin:string, sp: any) => {
+    if (!sp) return;
+    const ch = chooses.value.expertises;
+    ch.push({
+      origin: origin,
+      count: sp.anyProficientSkill,
+      from: character.value.skills.map((s:any) => s.name)
+    });
   }
 
   const classes = computed(() => classesStore.getDefaults);
   const backgrounds = computed(() => bgStore.getDefaults);
-  const feats = computed(() => featsStore.getDefaults);
+  const feats = computed(() => featsStore.getDefaults(character.value));
   const bg = computed(() => backgrounds.value.find(b => b.name === character.value.background));
   const bgFeatures = computed(() => {
     if(!bg.value) return null;
@@ -686,10 +961,10 @@
   // const computedClasses = computed(() => classes.value.filter((cl:any) => character.value.class.map((x:any) => x.name).includes(cl.name)))
 
   const isSpendMode = computed(() => character.value && character.value.abilities.option === 'spend');
-  watch(isSpendMode, (newValue, oldValue) => {
-    if(!character.value) return
+  const rolls = ref<any[]>([]);
+  watch(isSpendMode, (newValue) => {
     if(newValue === false) {
-      character.value.abilities.rolls = [
+      rolls.value = [
         abilityRoll(),
         abilityRoll(),
         abilityRoll(),
@@ -697,9 +972,6 @@
         abilityRoll(),
         abilityRoll(),
       ];
-    }
-    else {
-      character.value.abilities.rolls = [];
     }
   });
 
@@ -810,6 +1082,25 @@
     let cl = lastClass.value;
     return classesStore.getFeatures(cl.name, cl.subclass, cl.level);
   });
+  const filterOptions = (name: string, from: any[]) => {
+    // if(!search.value[name]) return from;
+    const s = !search.value[name] ? "" : search.value[name].toLowerCase();
+    const hasAbilities = search.value[name+'-Abilities'] ?? false;
+    const hasSpells = search.value[name+'-Spells'] ?? false;
+    return from.filter((f:any) =>
+      (
+        (f.name && f.name.toLowerCase().includes(s)) ||
+        (f.shortName && f.shortName.toLowerCase().includes(s)) ||
+        (f.info && "string" == typeof f.info && f.info.toLowerCase().includes(s)) ||
+        (f.entries && (JSON.stringify(f.entries)).toLowerCase().includes(s)) ||
+        (f.prerequisite && f.prerequisite.join(' ').toLowerCase().includes(s))
+      )
+      &&
+      (!hasAbilities || f.hasAbility)
+      &&
+      (!hasSpells || f.hasSpells)
+    );
+  }
 
   const setHPAverage = () => {
     calcHPAverage();
@@ -854,14 +1145,103 @@
     character.value.hp.max = hp;
   }
 
-  const changeProf = (name:string) => {
-    if(character.value.skillProf.includes(name)) {
-      character.value.skillProf = character.value.skillProf.filter((sk:string) => sk != name);
+  // const skillProf = computed(() => character.value.skillProf.map((c:any) => c.name).filter((c:any) => c != null && c != ""));
+  // const skillExp: string[] = [];
+
+
+  const fromProfs = (key:string) => {
+    const from: string[] = [];
+    if (chooses.value[key]) {
+      chooses.value[key].forEach((ch: any) => {
+        const count = countProfByOrigin(key, ch.origin);
+        ch.from && ch.count > count && from.push(...ch.from)
+      });
+    }
+    return from;
+  }
+  const calculSkills = computed(() => Skills.map(s => {
+    const skill = character.value.skills.find((c:any) => c.name == s.name);
+    const expertise = character.value.expertises.find((c:any) => c.name == s.name);
+    const from = fromProfs('skills');
+    const fromExp = fromProfs('expertises');
+
+    let profDisabled = !from.includes(s.name);
+    let expDisabled = !fromExp.includes(s.name);
+    let profSelected = false;
+    let expSelected = false;
+    if(skill) {
+      profDisabled = skill.choose == false;
+      profSelected = true;
+    }
+    if(expertise) {
+      expDisabled = expertise.choose == false;
+      expSelected = true;
+    }
+    return {
+      ...s,
+      allDisabled: profDisabled && expDisabled && !profSelected,
+      profDisabled: profDisabled,
+      expDisabled: expDisabled,
+      profSelected: profSelected,
+      expSelected: expSelected,
+      mod: fn(mod(s.attribute.substring(0,3)) + (profSelected?prof.value:0) + (expSelected?prof.value:0) )
+    }
+  }))
+  const changeProf = (key:string, name:string) => {
+    const cs = character.value[key].find((s:any) => s.name == name);
+    if(cs) {
+      if(key == 'skills') character.value.skills = character.value.skills.filter((s:any) => s.name != name);
+      character.value.expertises = character.value.expertises.filter((s:any) => s.name != name);
     }
     else {
-      character.value.skillProf.push(name);
+      const chk = chooses.value[key].filter((s:any) => s.from.includes(name));
+      if(chk.length == 0) return
+      chk.every((ch:any) => {
+        const count = countProfByOrigin(key,ch.origin);
+        if(count >= ch.count) return true;
+        addSkillProf(key, ch.origin, name);
+        return false;
+      })
     }
   }
+  // const changeExp = (name:string) => {
+  //   const cs = character.value.expertises.find((s:any) => s.name == name);
+  //   if(cs) {
+  //     character.value.expertises = character.value.expertises.filter((s:any) => s.name != name);
+  //   }
+  //   else {
+  //     const chk = chooses.value.expertises.filter((s:any) => s.from.includes(name));
+  //     if(chk.length == 0) return
+  //     chk.every((ch:any) => {
+  //       const count = countProfByOrigin('expertises',ch.origin);
+  //       if(count >= ch.count) return true;
+  //       addExpertiseProf(ch.origin, name);
+  //       return false;
+  //     })
+  //   }
+  // }
+  const countProfByOrigin = (key:string, origin: string) => {
+    return character.value[key].filter((s:any) => s.origin == origin && s.choose).length;
+  }
+
+  const displayChoosesProf = (key: string, origin: string) => {
+    const c = chooses.value[key].find((sk:any) => sk.origin == origin)
+    if(!c) return null;
+    if(countProfByOrigin(key, origin) != c.count) return null;
+    const s: string[] = [];
+    const skills = character.value[key].filter((sk:any) => sk.origin == origin && sk.level == character.value.level).map((sk:any) => sk.name);
+    skills.forEach((a:string) => {
+      const sk: any = Skills.find(s => s.name == a);
+      s.push(`${sk.display} (${sk.attribute.substring(0,3)})`);
+    })
+    return s.join(', ');
+  }
+  const computedSkillsRace = computed(() => displayChoosesProf('skills','race'));
+  const computedSkillsBG = computed(() => displayChoosesProf('skills','background'));
+  const computedSkillsClass = computed(() => displayChoosesProf('skills','class'));  
+  const computedSkillsFeat = computed(() => displayChoosesProf('skills','feat'));
+  const computedExpertisesClass = computed(() => displayChoosesProf('expertises','class'));
+  const computedExpertisesFeat = computed(() => displayChoosesProf('expertises','feat'));
 
   const urlToken = async () => {
     let check = false;
@@ -894,6 +1274,60 @@
     }
     catch {
       alert(e);
+    }
+  }
+
+  const changeFeats = (e: any, origin: string) => {
+    const level = character.value.level;
+    if (!e.target.value) return;
+    const name = e.target.value;
+    const ft = character.value.feats.find((f:any) => f.origin == origin && f.level == level);
+    if(ft) ft.name = name;
+    else {
+      character.value.feats.push({
+        origin: origin,
+        level: level,
+        name: name
+      })
+    }
+    // clear / improve if only one ability
+    const imps = character.value.abilities.improvments;
+    character.value.abilities.improvments = imps.filter((ip:any) => !(ip.origin == 'feat' && ip.level == level));
+
+    const feat = feats.value.find((f:any) => f.name == name);
+    if(feat.ability && feat.ability[0].choose === undefined) {
+      Object.keys(feat.ability[0]).forEach((a:any) => {
+        improveAbility(a, 'feat');
+      });
+    }
+  }
+  const isFeatsCheck = (origin: string, name: string) => {
+    const level = character.value.level;
+    return character.value.feats.find((f:any) => f.origin == origin && f.level == level && f.name == name) !== undefined;
+  }
+  const improveAbility = (ability: string, origin: string) => {
+    const level = character.value.level;
+    if(!character.value.abilities.improvments) character.value.abilities.improvments = [];
+    const imps = character.value.abilities.improvments;
+
+    const f = imps.find((ip:any) => ip.origin == origin && ip.level == level && ip.ability == ability);
+    if(f) {
+      character.value.abilities.improvments = imps.filter((ip:any) => !(ip.origin == origin && ip.level == level && ip.ability == ability));
+      return;
+    }
+
+    const limit = origin == 'leveling' ? 2 : 1;
+    const current = imps.filter((ip:any) => ip.origin == origin && ip.level == level);
+    const no = {
+      origin: origin,
+      level: level,
+      ability: ability
+    };
+    if(current.length == 0 || (current.length == 1 && limit == 2)) {
+      imps.push(no);
+    }
+    else if(current.length == 1 && limit == 1) {
+      imps[0] = no;
     }
   }
 
@@ -947,19 +1381,13 @@
     <template v-if="dev">
       <div class="btn-group btn-group-sm mb-1 d-flex align-items-center">
         <button class="btn btn-secondary" @click="logJson">logJson</button>
-        <button class="btn btn-secondary" @click="json = steps">logSteps</button>
-        <button class="btn btn-secondary" @click="json = versions">logVersions</button>
-        <button class="btn btn-secondary" @click="json = subraces">logSubraces</button>
-        <button class="btn btn-secondary" @click="json = computedRace">loadComputedRace</button>
-        <button class="btn btn-secondary" @click="calcDatasRace(false)">calcDatas</button>
-        <button class="btn btn-secondary" @click="calcDatasRace(true)">calcDatas reset</button>
-        <button class="btn btn-secondary" @click="json = chooses">logChooses</button>
-        <button class="btn btn-secondary" @click="json = bg">logBg</button>
-        <button class="btn btn-secondary" @click="calcHPAverage(true)">setAverageHP</button>
-        <button class="btn btn-secondary" @click="calcHPMax(false)">calcHP</button>
-<!--        <button class="btn btn-secondary" @click="json = classesStore.getSubclassesInfo(lastClass.name)">getSubclassesInfo</button>-->
-<!--        <button class="btn btn-secondary" @click="json = classesStore.getChoicesByFeatureType('MV:B', lastClass.name, lastClass.subclass, lastClass.level).length">getFeatures</button>-->
+        <button class="btn btn-secondary" @click="json = computedRace">computedRace</button>
+        <button class="btn btn-secondary" @click="json = computedRaceOptions">computedRaceOptions</button>
+        <button class="btn btn-secondary" @click="json = chooses">chooses</button>
+        <button class="btn btn-secondary" @click="json = feats">feats</button>
+        <button class="btn btn-secondary" @click="json = search">search</button>
         <button class="btn btn-secondary" @click="json = classFeatures">classFeatures</button>
+        <button class="btn btn-secondary" @click="calcDatasRace(true)">calcDatasRace(true)</button>
       </div>
     </template>
 
@@ -1009,7 +1437,7 @@
           <button type="button" class="btn btn-success" @click="convert">Convert</button>
         </div>
       </div>
-      <div class="col-md-6">
+      <div class="col-lg-6">
 
 <!--        <div class="d-flex btn-group btn-group-sm">-->
 <!--          <template v-for="lvl in character.level" :key="lvl">-->
@@ -1064,6 +1492,29 @@
               </template>
             </template>
           </AccordionItem>
+
+          <AccordionItem name="raceOptions" :steps="steps" :step="step" @click="changeStep">
+            <template v-slot:header-label>Options</template>
+            <template v-slot:body>
+              <div v-for="ro in computedRaceOptions" :key="ro.replace">
+                <p class="fw-bold m-0 d-flex align-items-center">
+                  {{ro.replace}}
+                  <i v-if="ro.entries?.length > 0" class="ms-1 fa-solid fa-circle-question" :title="DS(ro)" v-tooltip></i>
+                </p>
+                <div v-for="roc in ro.choices" class="form-check pb-1" :key="roc.key">
+                  <input class="form-check-input" type="radio" :value="roc.key"
+                         :checked="isRaceOptionsCheck(ro.replace, roc.key)"
+                         @click="changeRaceOptions($event, ro.replace)"
+                  />
+                  <label class="form-check-label">
+                    {{ roc.name }}
+                  </label>
+                  <p style="white-space: pre-line" >{{ DS(roc) }}</p>
+                </div>
+              </div>
+            </template>
+          </AccordionItem>
+
           <AccordionItem name="class" :steps="steps" :step="step" @click="changeStep">
             <template v-slot:header-label>First class</template>
             <template v-slot:header-value>{{ character.class[0].name || CHOOSE }}</template>
@@ -1125,7 +1576,7 @@
                   Roll 6 series of 4d6, dropping the lowest die each time.
                   Assign the results to the 6 Ability Scores as you want.
                   Here's a roll :
-                  <template v-for="(r,i) in character.abilities.rolls">
+                  <template v-for="(r,i) in rolls">
                     <template v-if="i>0">-</template>
                     <b>{{r.total}}</b>
                   </template>
@@ -1163,10 +1614,37 @@
             </template>
           </AccordionItem>
 
-          <AccordionItem name="features" :steps="steps" :step="step" @click="changeStep">
+          <AccordionItem name="racialFeat" :steps="steps" :step="step" @click="changeStep">
+            <template v-slot:header-label>Racial Feat</template>
+            <template v-slot:header-value>{{ character.feats.find((f:any) => f.level == 1 && f.origin == 'race')?.name }}</template>
+            <template v-slot:body>
+              <div class="m-0 d-flex align-items-center mb-2">
+                <span class="fw-bold">{{ CHOOSE }}</span>
+                <input type="text" class="form-control form-control-sm ms-2" style="flex: 1" :value="search['feat']" @input="changeSearch($event, 'feat')" />
+                <div class="ms-2">
+                  <input type="checkbox" class="form-check-input" value="1" v-model="search['feat-Abilities']">
+                  <label class="form-check-label ms-1">Abilities</label>
+                </div>
+                <div class="ms-2">
+                  <input type="checkbox" class="form-check-input" v-model="search['feat-Spells']">
+                  <label class="form-check-label ms-1">Spells</label>
+                </div>
+              </div>
+              <div v-for="o in filterOptions('feat', feats)" class="form-check pb-1" :key="o.name">
+                <input class="form-check-input" type="radio" :value="o.name"
+                       :checked="isFeatsCheck('race', o.name)"
+                       @click="changeFeats($event, 'race')"
+                />
+                <FeatInfo :feat="o" :selected="isFeatsCheck('race', o.name)"
+                          :ability-selected="character.abilities.improvments.find((ip:any) => ip.origin=='feat' && ip.level==1)?.ability"
+                          @improve="(ability) => improveAbility(ability, 'feat')" />
+              </div>
+            </template>
+          </AccordionItem>
+
+          <AccordionItem name="features" :steps="steps" :step="step" @click="changeStep" :manual-steps="character.manualSteps" @toggle-manual-step="toggleManualStep">
             <template v-slot:header-label>Features</template>
             <template v-slot:body>
-              <!-- TODO Racial Feat here if apply -->
 <!--              <template v-for="(cl,i) in character.class" :key="i">-->
 <!--                <div v-if="character.class.length > 1" class="input-group">-->
 <!--                  <select class="form-select form-select-sm flex-grow-1" @change="changeMulticlass($event, i)" :disabled="i === 0">&lt;!&ndash;v-model="cl.name"&ndash;&gt;-->
@@ -1192,36 +1670,40 @@
 <!--                <template v-for="(cf,i) in classFeatures" :key="i">-->
 <!--                  {{cf.lvl}}.{{cf.name}}-->
 <!--                </template>-->
-              <div v-for="(cf,i) in classFeatures" :key="i" :class="`${i > 0 ? 'mt-2' : ''}`">
-                <p class="fw-bold m-0">{{ cf.name }} <i v-if="cf.entries" class="fa-solid fa-circle-question" :title="S(cf.entries)" v-tooltip></i></p>
+              <div v-for="(cf,i) in classFeatures" :key="`${lastClass.name}-${cf.name}`" :class="`${i > 0 ? 'mt-2' : ''}`">
+                <p class="fw-bold m-0 d-flex align-items-center">
+                  {{ cf.name }} <i v-if="cf.entries" class="ms-1 fa-solid fa-circle-question" :title="S(cf.entries)" v-tooltip></i>
+                  <input v-if="(cf.choose && cf.options) || cf.chooseSubclass" type="text" class="form-control form-control-sm ms-3" style="flex: 1" :value="search[cf.name]" @input="changeSearch($event, cf.name)" />
+                </p>
                 <template v-if="cf.chooseSubclass">
-                  <div v-for="(o,j) in cf.subclasses" class="form-check" :key="j">
+                  <div v-for="o in filterOptions(cf.name, cf.subclasses)" class="form-check" :key="o.shortName">
                     <input class="form-check-input" type="radio" :value="o.shortName" v-model="lastClass.subclass" :checked="lastClass.subclass == o.shortName">
-                    <label class="form-check-label" :title="S(o.info)" v-tooltip>
+                    <label class="form-check-label"><!--:title="S(o.info)" v-tooltip-->
                       {{ o.shortName }}
                     </label>
+                    <p>{{ S(o.info) }}</p>
                   </div>
                 </template>
                 <template v-if="cf.choose && cf.options">
                   <span v-if="cf.options.count>1" class="fst-italic">Choose {{cf.options.count}}</span>
-                  <div v-for="(o,j) in cf.options.from" class="form-check pb-2" :key="j">
+                  <div v-for="o in filterOptions(cf.name, cf.options.from)" class="form-check pb-1" :key="o.name">
                     <input class="form-check-input" :type="`${cf.options.count==1?'radio':'checkbox'}`" :value="o.name"
                            :checked="isFeatureCheck(cf.name, o.name)"
                            :disabled="isFeatureDisabled(cf.name, cf.options.count, o.name)"
                            @click="changeFeature($event, cf.name, cf.options.count)"
                     >
-                    <label class="form-check-label"><!--:title="S(o.info)" v-tooltip-->
+                    <label class="form-check-label">
                       {{ o.name }}
-                      <template v-if="o.prerequisite"> ({{o.prerequisite}})</template>
+                      <template v-if="o.prerequisite && o.prerequisite.length > 0"> ({{o.prerequisite.join(' or ')}})</template>
                     </label>
-                    <p class="lh-1 m-0 small">{{ S(o.info) }}</p>
+                    <p>{{ S(o.info) }}</p>
                   </div>
                 </template>
               </div>
             </template>
           </AccordionItem>
 
-          <AccordionItem name="hp" :steps="steps" :step="step" @click="changeStep">
+          <AccordionItem name="hp" :steps="steps" :step="step" @click="changeStep" :manual-steps="character.manualSteps" @toggle-manual-step="toggleManualStep">
             <template v-slot:header-label>Hit Points</template>
             <template v-slot:body>
               <div v-if="character.level > 1" class="d-flex w-100 justify-content-evenly">
@@ -1310,17 +1792,17 @@
 <!--              </div>-->
 <!--              TODO : Uniquement si lvl 1 ou choix dans le niveau suivant -->
               <p class="fw-bold m-0">Skills</p>
-              <div v-for="s in Skills" class="d-flex justify-content-center align-items-center my-1">
-                <label class="w-50 text-end" :title="s.example" v-tooltip>
+              <div v-for="s in calculSkills" class="d-flex justify-content-center align-items-center my-1">
+                <label class="w-50 text-end" :class="s.allDisabled ? 'text-body-tertiary' : ''" :title="s.example" v-tooltip data-bs-placement="right">
                   {{ textSkill(s.prof) }}
                 </label>
                 <div class="w-25 text-center">
                   <div class="btn-group">
-                    <button class="btn" :class="character.skillProf.includes(s.name) ? 'btn-primary' : 'btn-outline-secondary'" @click="() => changeProf(s.name)">P</button>
-                    <button class="btn" :class="character.skillExp.includes(s.name) ? 'btn-primary' : 'btn-outline-secondary'" :disabled="true">E</button>
+                    <button class="btn" :class="s.profSelected ? 'btn-primary' : s.profDisabled ? 'btn-outline-secondary' : 'btn-secondary'" :disabled="s.profDisabled" @click="() => changeProf('skills',s.name)">P</button>
+                    <button class="btn" :class="s.expSelected ? 'btn-primary' : s.expDisabled ? 'btn-outline-secondary' : 'btn-secondary'" :disabled="s.expDisabled" @click="() => changeProf('expertises', s.name)">E</button>
                   </div>
                 </div>
-                <span class="w-25 text-start">{{ fn( mod(s.attribute.substring(0,3)) + (character.skillProf.includes(s.name)?prof:0) + (character.skillExp.includes(s.name)?prof:0) ) }}</span>
+                <span class="w-25 text-start">{{ s.mod }}</span>
               </div>
             </template>
           </AccordionItem>
@@ -1328,6 +1810,7 @@
           <AccordionItem name="spells" :steps="steps" :step="step" @click="changeStep">
             <template v-slot:header-label>Spells</template>
             <template v-slot:body>
+              Not yet ...
             </template>
           </AccordionItem>
 
@@ -1340,7 +1823,7 @@
 
         </div>
       </div>
-      <div class="col-md-6 character-info">
+      <div class="col-lg-6 character-info">
 
         <div class="d-flex align-items-center">
           <label class="me-2 fw-bold fst-italic">Name</label>
@@ -1374,10 +1857,10 @@
               <div v-for="a in Abilities" class="d-flex flex-column align-items-center flex-grow-1">
                 <span>
                   {{a.key.toUpperCase()}}
-                  <i class="fa-brands fa-product-hunt" v-if="character.save.includes(a.key)" :title="`Saving Throw ${fn(mod(a.key)+prof)}`" v-tooltip></i>
+                  <i class="fa-brands fa-product-hunt" v-if="character.save.includes(a.key)" :title="`Saving Throw`" v-tooltip></i>
                   <i class="fa-solid fa-wand-magic-sparkles" v-if="character.spellcasting.includes(a.key)" title="Spellcasting" v-tooltip></i>
                 </span>
-                <span>{{calcAbility(a.key)}}</span>
+                <span>{{totalAbility(a.key)}}</span>
               </div>
             </div>
           </template>
@@ -1431,6 +1914,10 @@
               <span :title="DS(e, false)" v-tooltip>{{e.name}}</span>
             </template>
           </div>
+          <CharacterInfo v-if="computedSkillsRace">
+            <template v-slot:label>Skill Proficiencies:</template>
+            {{ computedSkillsRace }}
+          </CharacterInfo>
 
           <!-- Classes infos -->
           <template v-for="(cl,i) in character.class" :key="cl.name">
@@ -1439,6 +1926,15 @@
                 {{ cl.name }}
               </p>
               <ClassInfo :name="cl.name" :subclass="cl.subclass" :is-first="i === 0" :valid-abilities="validAbilities">
+                <template v-slot:skills v-if="computedSkillsClass">
+                  {{computedSkillsClass}}
+                </template>
+                <template v-slot:expertises v-if="computedExpertisesClass">
+                  <CharacterInfo>
+                    <template v-slot:label>Skill Expertises:</template>
+                    {{ computedExpertisesClass }}
+                  </CharacterInfo>
+                </template>
                 <CharacterInfo v-for="ft in cl.features" :key="ft.feature">
                   <template v-slot:label>{{ ft.name }}:</template>
                   <template v-for="(ftc,i) in ft.choices" :key="ftc">
@@ -1455,10 +1951,16 @@
             <p class="fw-bold border-bottom text-center mb-2 mt-1 fs-1-1">
               {{ character.background }}
             </p>
-            <CharacterInfo v-if="bg.skillProficiencies">
+
+            <CharacterInfo v-if="computedSkillsBG">
+              <template v-slot:label>Skill Proficiencies:</template>
+              {{ computedSkillsBG }}
+            </CharacterInfo>
+            <CharacterInfo v-else-if="bg.skillProficiencies">
               <template v-slot:label>Skill Proficiencies:</template>
               {{ inlineSkill(bg.skillProficiencies, true) }}
             </CharacterInfo>
+
             <CharacterInfo v-if="bg.toolProficiencies">
               <template v-slot:label>Tool Proficiencies:</template>
               {{ DS(bg.entries && bg.entries[0].items.find((ei:any) => ei.name == "Tool Proficiencies:"), false) }}
@@ -1480,6 +1982,25 @@
               </div>
             </template>
           </template>
+
+
+          <p v-if="character.feats.length > 0" class="fw-bold border-bottom text-center mb-2 mt-1 fs-1-1">
+            Feats
+          </p>
+          <template v-for="ft in character.feats" :key="ft.name">
+            <FeatInfo :feat="feats.find((feat:any) => feat.name == ft.name)" :choice="false"
+                      :ability-selected="character.abilities.improvments.find((ip:any) => ip.origin=='feat' && ip.level==ft.level)?.ability">
+                <CharacterInfo v-if="computedSkillsFeat && ft.level == character.level">
+                  <template v-slot:label>Skill Proficiencies:</template>
+                  {{ computedSkillsFeat }}
+                </CharacterInfo>
+                <CharacterInfo v-if="computedExpertisesFeat && ft.level == character.level">
+                  <template v-slot:label>Skill Expertises:</template>
+                  {{ computedExpertisesFeat }}
+                </CharacterInfo>
+            </FeatInfo>
+          </template>
+
         </template>
         <template v-else>
           <p class="text-center fst-italic">
@@ -1501,26 +2022,4 @@
 </template>
 
 <style scoped>
-  .h36 {
-    height: 36px;
-  }
-  .ability {
-    width: 75px;
-  }
-  p.small {
-    text-align: justify;
-    font-size: .875em;
-  }
-  .character-info p {
-    margin: 0;
-  }
-  .character-info .form-select-sm {
-    min-width: 100px;
-    padding-top: 0;
-    padding-bottom: 0;
-    padding-left: .5rem;
-  }
-  .fs-1-1 {
-    font-size: 1.1rem;
-  }
 </style>
