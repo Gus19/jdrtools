@@ -162,43 +162,52 @@ export const Abilities: Ability[] = [
   }
 ]
 
-export const LanguagesStandard = [
-  'Common',
-  'Dwarvish',
-  'Elvish',
-  'Giant',
-  'Gnomish',
-  'Goblin',
-  'Halfling',
-  'Orc',
+export interface NameKey {
+  name: string,
+  key: string,
+}
+
+export const LanguagesStandard: NameKey[] = [
+  {name: 'Common', key: 'common'},
+  {name: 'Dwarvish', key: 'dwarvish'},
+  {name: 'Elvish', key: 'elvish'},
+  {name: 'Giant', key: 'giant'},
+  {name: 'Gnomish', key: 'gnomish'},
+  {name: 'Goblin', key: 'goblin'},
+  {name: 'Halfling', key: 'halfling'},
+  {name: 'Orc', key: 'orc'}
 ];
-export const LanguagesExotic = [
-  'Abyssal',
-  'Aquan',
-  'Auran',
-  'Celestial',
-  'Draconic',
-  'Deep Speech',
-  'Ignan',
-  'Infernal',
-  'Primordial',
-  'Sylvan',
-  'Terran',
-  'Undercommon',
+export const LanguagesExotic: NameKey[] = [
+  {name: 'Abyssal', key: 'abyssal'},
+  {name: 'Aquan', key: 'aquan'},
+  {name: 'Auran', key: 'auran'},
+  {name: 'Celestial', key: 'celestial'},
+  {name: 'Draconic', key: 'draconic'},
+  {name: 'Deep Speech', key: 'deep speech'},
+  {name: 'Ignan', key: 'ignan'},
+  {name: 'Infernal', key: 'infernal'},
+  {name: 'Primordial', key: 'primordial'},
+  {name: 'Sylvan', key: 'sylvan'},
+  {name: 'Terran', key: 'terran'},
+  {name: 'Undercommon', key: 'undercommon'}
 ];
 // export const LANGUAGES_SECRET = [
 //   'Druidic',
 //   'Thieves\' cant',
 // ];
-export const LanguagesKey = [
-  ...LanguagesStandard,
-  ...LanguagesExotic
-].map(l => l.toLowerCase());
 
 export const LanguagesAll = [
   ...LanguagesStandard,
   ...LanguagesExotic
-].sort();
+];
+export const LanguagesKey = [
+  ...LanguagesAll.map(l => l.key)
+];
+
+export const LanguagesChoices = {
+  "Standard": LanguagesStandard,
+  "Exotic": LanguagesExotic
+}
 
 export const DS = (e: any, d: boolean = true) => {
   if("entries" in e) return S(e.entries[0], d);
@@ -318,6 +327,33 @@ export const abilityRoll = () => {
   return {
     total: sum,
     detail: a
+  }
+}
+
+export const inlineLang = (languages: any[]) => {
+  const s: string[] = [];
+  languages.forEach((a:any) => {
+    Object.keys(a).forEach((k: string) => s.push(textLang(k, a)) )
+  });
+  return s.join(', ');
+}
+export const textLang = (k: string, a:any = null) => {
+  if (k == "choose") {
+    let s = `Choose ${a[k].count||1}`;
+    s += ' (From: ';
+    s += a[k].from.map((f:string) => LanguagesAll.find(s => s.key === f)?.name).join(', ');
+    s += ')';
+    return s;
+  }
+  else if (k == "anyStandard") {
+    return `Any standard ${a[k]||1}`;
+  }
+  else if (k == "any") {
+    return `Any ${a[k]||1}`;
+  }
+  else {
+    const sk: any = LanguagesAll.find(s => s.key === k);
+    return `${sk.name}`;
   }
 }
 
@@ -533,4 +569,176 @@ export const messageSpell = (s: SpellInfo, repeatName: boolean = true): string =
   return lines.join('\n');
 }
 
-
+export const ToolsArtisan: NameKey[] = [
+  {
+    "name": "Alchemist's supplies",
+    "key": "alchemist's supplies"
+  },
+  {
+    "name": "Brewer's supplies",
+    "key": "brewer's supplies"
+  },
+  {
+    "name": "Calligrapher's supplies",
+    "key": "calligrapher's supplies"
+  },
+  {
+    "name": "Carpenter's tools",
+    "key": "carpenter's tools"
+  },
+  {
+    "name": "Cartographer's tools",
+    "key": "cartographer's tools"
+  },
+  {
+    "name": "Cobbler's tools",
+    "key": "cobbler's tools"
+  },
+  {
+    "name": "Cook's utensils",
+    "key": "cook's utensils"
+  },
+  {
+    "name": "Glassblower's tools",
+    "key": "glassblower's tools"
+  },
+  {
+    "name": "Jeweler's tools",
+    "key": "jeweler's tools"
+  },
+  {
+    "name": "Leatherworker's tools",
+    "key": "leatherworker's tools"
+  },
+  {
+    "name": "Mason's tools",
+    "key": "mason's tools"
+  },
+  {
+    "name": "Painter's supplies",
+    "key": "painter's supplies"
+  },
+  {
+    "name": "Potter's tools",
+    "key": "potter's tools"
+  },
+  {
+    "name": "Smith's tools",
+    "key": "smith's tools"
+  },
+  {
+    "name": "Tinker's tools",
+    "key": "tinker's tools"
+  },
+  {
+    "name": "Weaver's tools",
+    "key": "weaver's tools"
+  },
+  {
+    "name": "Woodcarver's tools",
+    "key": "woodcarver's tools"
+  }
+]
+export const ToolsGamingsets: NameKey[] = [
+  {
+    "name": "Dice set",
+    "key": "dice set"
+  },
+  {
+    "name": "Dragonchess set",
+    "key": "dragonchess set"
+  },
+  {
+    "name": "Playing card set",
+    "key": "playing card set"
+  },
+  {
+    "name": "Three-Dragon Ante set",
+    "key": "three-dragon ante set"
+  }
+]
+export const ToolsInstrument: NameKey[] = [
+  {
+    "name": "Bagpipes",
+    "key": "bagpipes"
+  },
+  {
+    "name": "Drum",
+    "key": "drum"
+  },
+  {
+    "name": "Dulcimer",
+    "key": "dulcimer"
+  },
+  {
+    "name": "Flute",
+    "key": "flute"
+  },
+  {
+    "name": "Lute",
+    "key": "lute"
+  },
+  {
+    "name": "Lyre",
+    "key": "lyre"
+  },
+  {
+    "name": "Horn",
+    "key": "horn"
+  },
+  {
+    "name": "Pan flute",
+    "key": "pan flute"
+  },
+  {
+    "name": "Shawm",
+    "key": "shawm"
+  },
+  {
+    "name": "Viol",
+    "key": "viol"
+  }
+]
+export const ToolsOther: NameKey[] = [
+  {
+    "name": "Disguise Kit",
+    "key": "disguise kit"
+  },
+  {
+    "name": "Forgery kit",
+    "key": "forgery kit"
+  },
+  {
+    "name": "Herbalism kit",
+    "key": "herbalism kit"
+  },
+  {
+    "name": "Navigator's tools",
+    "key": "navigator's tools"
+  },
+  {
+    "name": "Poisoner's kit",
+    "key": "poisoner's kit"
+  },
+  {
+    "name": "Thieves' tools",
+    "key": "thieves' tools"
+  },
+  {
+    "name": "Vehicles (land)",
+    "key": "vehicles (land)"
+  },
+  {
+    "name": "Vehicles (water)",
+    "key": "vehicles (water)"
+  }
+]
+export const ToolsAll = [
+  ...ToolsArtisan,
+  ...ToolsGamingsets,
+  ...ToolsInstrument,
+  ...ToolsOther
+]
+export const ToolsKey = [
+  ...ToolsAll.map(l => l.key)
+];

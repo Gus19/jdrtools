@@ -7,20 +7,31 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
   import {useBackgroundsStore,classBackground} from "@/stores/backgrounds";
   import {useFeatsStore} from "@/stores/feats";
   import type {RaceBuilder} from "@/stores/races";
-  import {
-    Abilities,
-    LanguagesStandard,
-    LanguagesExotic,
-    LanguagesKey,
-    Sizes,
-    Skills,
-    displaySubrace,
-    DS, S,
-    roll, abilityRoll, textSkill, inlineSkill, fn, inlineAbility, spellSlots
-  } from "@/utils/refs";
+import {
+  Abilities,
+  LanguagesStandard,
+  LanguagesExotic,
+  LanguagesKey,
+  Sizes,
+  Skills,
+  displaySubrace,
+  DS,
+  S,
+  roll,
+  abilityRoll,
+  textSkill,
+  inlineSkill,
+  fn,
+  inlineAbility,
+  spellSlots,
+  LanguagesAll,
+  inlineLang,
+  ToolsOther,
+  ToolsArtisan, ToolsInstrument, ToolsGamingsets, ToolsAll, ToolsKey
+} from "@/utils/refs";
   import AccordionItem from "@/components/AccordionItem.vue";
   import CharacterInfo from "@/components/CharacterInfo.vue";
-  import {type Class, useClassesStore} from "@/stores/classes";
+import {type Class, type StartingProficiencies, useClassesStore} from "@/stores/classes";
   import download from "downloadjs";
   import DamageType from "@/components/DamageType.vue";
   import ClassInfo from "@/components/ClassInfo.vue";
@@ -245,7 +256,7 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
       }
 
       let i = true;
-      if(chooses.value && chooses.value.skills) {
+      if(chooses.value && (chooses.value.skills || chooses.value.expertises.length > 0)) {
         ['skills','expertises'].forEach(key => {
           chooses.value[key].forEach((ch:any) => {
             if(countProfByOrigin(key,ch.origin) != ch.count) {
@@ -260,36 +271,52 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
         if(!i) return;
       }
 
+      let i2 = true;
+      if(i && (chooses.value.languages.length > 0 || chooses.value.tools.length > 0)) {
+        ['languages', 'tools'].forEach(key => {
+          chooses.value[key] && chooses.value[key].forEach((ch:any) => {
+            if(countProfByOrigin(key,ch.origin) != ch.count) {
+              i2 = false; return false;
+            };
+          });
+        })
+        ss.push({
+          name: 'otherprof',
+          valid: i2
+        });
+        if(!i2) return;
+      }
+
       let j = false;
-      if(i) {
+      if(i2) {
         let ch = chooses.value.cantrips;
         let sp = chooses.value.spells;
         let pr = chooses.value.prepared;
 
-        let i1 = true, i2 = true, i3 = true;
+        let j1 = true, j2 = true, j3 = true;
 
         if(ch && ch.known > 0) {
-          i1 = ch.known == ch.selected
+          j1 = ch.known == ch.selected
           ss.push({
             name: 'cantrips',
-            valid: i1
+            valid: j1
           });
         }
         if(sp && sp.known > 0) {
-          i2 = sp.known == sp.selected || (pr && pr.known > 0 && sp.selected >= sp.known);
+          j2 = sp.known == sp.selected || (pr && pr.known > 0 && sp.selected >= sp.known);
           ss.push({
             name: 'spellsKnown',
-            valid: i2
+            valid: j2
           });
         }
         if(pr && pr.known > 0) {
-          i3 = pr.known == pr.selected;
+          j3 = pr.known == pr.selected;
           ss.push({
             name: 'spellsPrepared',
-            valid: i3
+            valid: j3
           });
         }
-        if(i1 && i2 && i3) {
+        if(j1 && j2 && j3) {
           j = true;
         }
         if(!j) return;
@@ -418,16 +445,8 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
     spellcasterlevel: 0,
     skills: [],
     expertises: [],
-    languages: [
-      // TODO name / from / lvl / choose ? Exemple :
-      // Common / Race / 1 / false
-      // Elvish / Race / 1 / false
-      // Giant / Race / 1 / true
-      // X / Background Acolyte / 1 / true
-      // Y / Background Acolyte / 1 / true
-      // => create a computedLangs [l1, l2 ...]
-      // TODO => same process for Prof, feats, Spells ...
-    ],
+    languages: [],
+    tools: [],
     vulnerable: [],
     resist: [],
     immune: [],
@@ -519,6 +538,7 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
     ability: null,
     size: null,
     languages: [],
+    tools: [],
     skills: [],
     expertises: [],
     cantrips: {},
@@ -616,12 +636,12 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
               ]
             }
           }
+          else {
+            c[k] = s[k];
+          }
         }
         else if("object" == typeof s[k]) {
-          c[k] = {
-            ...c[k],
-            ...s[k]
-          }
+          c[k] = s[k]
         }
         else {
           c[k] = s[k];
@@ -714,6 +734,8 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
 
     const opt = computedRace.value._versions.find((o:any) => o.name == option);
     if(opt.skillProficiencies !== undefined) resetSkills('race');
+    if(opt.languageProficiencies !== undefined) resetLanguages('race');
+    // if(opt.toolsProficiencies !== undefined) resetTools('race');
     // if(opt.additionalSpells !== undefined) resetSpells('race'); TODO activer une fois les spells fait
     calcDatasRace(false);
     return;
@@ -759,12 +781,29 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
   const calcDatasRace = (reset: boolean = true) => {
     if(reset) {
       resetSkills('race');
-      if(computedRace.value && computedRace.value.skillProficiencies) {
-        const sp = computedRace.value.skillProficiencies[0];
-        Object.keys(sp).filter((k: string) => k != "choose" && k != "any").forEach((k: string) => {
-          let name: any = Skills.find(s => s.prof == k)?.name;
-          addSkillProf('skills', 'race', name, false);
-        });
+      resetLanguages('race');
+      resetTools('race');
+      resetFeat('race');
+      if(computedRace.value) {
+        if(computedRace.value.skillProficiencies) {
+          const sp = computedRace.value.skillProficiencies[0];
+          Object.keys(sp).filter((k: string) => k != "choose" && k != "any").forEach((k: string) => {
+            let name: any = Skills.find(s => s.prof == k)?.name;
+            addSkillProf('skills', 'race', name, false);
+          });
+        }
+        if(computedRace.value.languageProficiencies) {
+          const lp = computedRace.value.languageProficiencies[0];
+          Object.keys(lp).filter((k: string) => LanguagesKey.includes(k)).forEach((k: string) => {
+            addSkillProf('languages', 'race', k, false);
+          });
+        }
+        if(computedRace.value.toolProficiencies) {
+          const tp = computedRace.value.toolProficiencies[0];
+          Object.keys(tp).filter((k: string) => ToolsKey.includes(k)).forEach((k: string) => {
+            addSkillProf('tools', 'race', k, false);
+          });
+        }
       }
       // chooses.value.languages = []; //don't use push or defaultChoose it's change ...
       character.value.abilities.str.bonus = 0;
@@ -778,7 +817,6 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
       }
       character.value.darkvision = null;
       character.value.size = '';
-      character.value.languages = [];
       character.value.resist = [];
       character.value.manualSteps = [];
     }
@@ -815,22 +853,6 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
       });
       calcDatasAbilities(reset);
     }
-    // if(d.languageProficiencies) {
-    //   d.languageProficiencies.forEach((l:any) => {
-    //     Object.keys(l).forEach(k => {
-    //       if(LanguagesKey.includes(k)) {
-    //         if(reset) character.value.languages.push(k)
-    //         chooses.value.languages = [...chooses.value.languages, k];
-    //       }
-    //       else if(k === "anyStandard") {
-    //         for (let i = 1; i <= l.anyStandard; i++) {
-    //           if(reset) character.value.languages.push("")
-    //           chooses.value.languages = [...chooses.value.languages, k];
-    //         }
-    //       }
-    //     });
-    //   });
-    // }
     if(d.resist) character.value.resist = d.resist;
     // if(d.entries.find((e:any) => e.name === 'Fey Ancestry') && !character.value.resist.includes('charmed')) character.value.resist = [...character.value.resist, 'charmed'];
   }
@@ -924,6 +946,8 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
     if(reset) {
       // reset choose spells, equipment, subclass ...
       resetSkills('class');
+      resetLanguages('class');
+      resetTools('class');
     }
     character.value.class.forEach((c:any, i:number) => {
       const cl = classes.value.find(c1 => c1.name === c.name);
@@ -931,6 +955,13 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
       if(i === 0) {
         character.value.save = cl.proficiency;
         character.value.spellcasting = cl.spellcastingAbility ? [cl.spellcastingAbility] : [];
+        if(cl.startingProficiencies.toolProficiencies) {
+          const tp = cl.startingProficiencies.toolProficiencies[0];
+          Object.keys(tp).filter((k: string) => ToolsKey.includes(k)).forEach((k: string) => {
+            addSkillProf('tools', 'class', k, false);
+          });
+        }
+
       }
     });
   }
@@ -941,17 +972,30 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
     calcDatasBG();
   }
   const calcDatasBG = (reset: boolean = true) => {
-    // add prof to chooses
     if(!bg.value) return;
-    if(!bg.value.skillProficiencies) return;
     if(reset) {
       resetSkills('background');
-      const sp = bg.value.skillProficiencies[0];
-      Object.keys(sp).filter((k: string) => k != "choose" && k != "any").forEach((k: string) => {
-        let name: any = Skills.find(s => s.prof == k)?.name;
-        // debugger;
-        addSkillProf('skills', 'background', name, false);
-      })
+      resetLanguages('background');
+      resetTools('background');
+      if(bg.value.skillProficiencies) {
+        const sp = bg.value.skillProficiencies[0];
+        Object.keys(sp).filter((k: string) => k != "choose" && k != "any").forEach((k: string) => {
+          let name: any = Skills.find(s => s.prof == k)?.name;
+          addSkillProf('skills', 'background', name, false);
+        })
+      }
+      if(bg.value.languageProficiencies) {
+        const lp = bg.value.languageProficiencies[0];
+        Object.keys(lp).filter((k: string) => LanguagesKey.includes(k)).forEach((k: string) => {
+          addSkillProf('languages', 'background', k, false);
+        });
+      }
+      if(bg.value.toolProficiencies) {
+        const tp = bg.value.toolProficiencies[0];
+        Object.keys(tp).filter((k: string) => ToolsKey.includes(k)).forEach((k: string) => {
+          addSkillProf('tools', 'background', k, false);
+        });
+      }
     }
   }
   const resetSkills = (origin: string) => {
@@ -982,37 +1026,63 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
     const level = character.value.level;
     ch.skills = [];
     ch.expertises = [];
+    ch.languages = [];
     ch.spells = {};
     ch.cantrips = {};
     ch.prepared = {};
+    ch.tools = [];
 
     const lc = lastClass.value;
 
     if(level == 1) {
-      if (computedRace.value && computedRace.value.skillProficiencies) {
-        chooseAddSkill('race', computedRace.value.skillProficiencies[0]);
+      if (computedRace.value) {
+        if(computedRace.value.skillProficiencies) {
+          chooseAddSkill('race', computedRace.value.skillProficiencies[0]);
+        }
+        if(computedRace.value.languageProficiencies) {
+          chooseAddLanguage('race', computedRace.value.languageProficiencies);
+        }
+        if(computedRace.value.toolProficiencies) {
+          chooseAddTools('race', computedRace.value.toolProficiencies);
+        }
       }
       if (lc) {
         const cl = classes.value.find((c:Class) => c.name === lc.name);
-        if(cl && cl.startingProficiencies.skills) {
-          chooseAddSkill('class', cl.startingProficiencies.skills[0])
+        if(cl) {
+          if (cl.startingProficiencies.skills) {
+            chooseAddSkill('class', cl.startingProficiencies.skills[0])
+          }
+          if (cl.startingProficiencies.toolProficiencies) {
+            chooseAddTools('class', cl.startingProficiencies.toolProficiencies);
+          }
         }
       }
-      if (bg.value && bg.value.skillProficiencies) {
-        chooseAddSkill('background', bg.value.skillProficiencies[0]);
+      if (bg.value) {
+        if(bg.value.skillProficiencies) {
+          chooseAddSkill('background', bg.value.skillProficiencies[0]);
+        }
+        if(bg.value.languageProficiencies) {
+          chooseAddLanguage('background', bg.value.languageProficiencies);
+        }
+        if(bg.value.toolProficiencies) {
+          chooseAddTools('background', bg.value.toolProficiencies);
+        }
       }
     }
+
     // Check from feats, subclass ...
     character.value.feats.filter((f:any) => f.level == level && f.name).forEach((f:any) => {
       const feat = featsStore.findByName(f.name);
       if(feat) {
         if (feat.skillProficiencies) chooseAddSkill('feat', feat.skillProficiencies[0]);
         if (feat.expertise) chooseAddExpertise('feat', feat.expertise[0]);
+        if (feat.languageProficiencies) chooseAddLanguage('feat', feat.languageProficiencies);
+        // TODO add chooses Langs / Tools
       }
     })
 
+    // Spells
     if(lc) {
-      // Spells
       const cantrip = classesStore.cantripProgression(lc.name, lc.subclass, lc.level);
       const known = classesStore.spellsKnownProgression(lc.name, lc.subclass, lc.level);
       const max = spellSlotsInfo.value.max;
@@ -1097,6 +1167,136 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
       count: sp.anyProficientSkill,
       from: character.value.skills.map((s:any) => s.name)
     });
+  }
+
+  const chooseAddLanguage = (origin:string, lp: any) => {
+    if(!lp) return;
+    const ch = chooses.value.languages;
+    lp.forEach((l:any) => {
+      Object.keys(l).filter(k => !LanguagesKey.includes(k)).forEach(k => {
+        if(k === "anyStandard") {
+          ch.push({
+            origin: origin,
+            count: l.anyStandard,
+            from: LanguagesStandard.map(l => l.key)
+          });
+        }
+        else if(k === "any") {
+          ch.push({
+            origin: origin,
+            count: l.any,
+            from: LanguagesKey
+          });
+        }
+        else if(k === "choose") {
+          ch.push({
+            origin: origin,
+            ...l.choose
+          });
+        }
+        else {
+          console.error(`LanguageKey not supported`, k);
+        }
+      });
+    });
+  }
+  const resetLanguages = (origin: string) => {
+    character.value.languages = character.value.languages.filter((sk:any) => sk.origin != origin && sk.level == character.value.level);
+  }
+
+  const getToolsFrom = (k: string): string[] => {
+    if(k == "any") return ToolsKey;
+    if(k == "anyArtisansTool" || k == "artisan's tools") return ToolsArtisan.map(l => l.key);
+    if(k == "anyMusicalInstrument" || k == "musical instrument") return ToolsInstrument.map(l => l.key);
+    if(k == "anyGamingSet" || k == "gaming set") return ToolsGamingsets.map(l => l.key);
+    console.error(`ToolsKey not supported`, k);
+    return [];
+  }
+
+  const chooseAddTools = (origin:string, lp: any) => {
+    if(!lp) return;
+    const ch = chooses.value.tools;
+    lp.forEach((l:any) => {
+      Object.keys(l).filter(k => !ToolsKey.includes(k)).forEach(k => {
+        if(k == "choose") {
+          const from: string[] = [];
+          l.choose.from.forEach((f:string) => {
+            if(ToolsKey.includes(f)) from.push(f);
+            else from.push(...getToolsFrom(f));
+          });
+          ch.push({
+            origin: origin,
+            count: l.choose.count || 1,
+            from: from
+          });
+        }
+        else {
+          ch.push({
+            origin: origin,
+            count: l[k] || 1,
+            from: getToolsFrom(k)
+          });
+        }
+      });
+    });
+  }
+  const resetTools = (origin: string) => {
+    character.value.tools = character.value.tools.filter((sk:any) => sk.origin != origin && sk.level == character.value.level);
+  }
+
+  const languagesChoices = computed(() => {
+    const from = fromProfs('languages', true);
+    const ret = [];
+    if(LanguagesStandard.find(l => from.includes(l.key))) {
+      ret.push({
+        name: "Standard",
+        choices: LanguagesStandard
+      })
+    }
+    if(LanguagesExotic.find(l => from.includes(l.key))) {
+      ret.push({
+        name: "Exotic",
+        choices: LanguagesExotic
+      })
+    }
+    return ret;
+  });
+  const toolsChoices = computed(() => {
+    const from = fromProfs('tools', true);
+    const ret = [];
+    if(ToolsOther.find(l => from.includes(l.key))) {
+      ret.push({
+        name: "Others",
+        choices: ToolsOther
+      })
+    }
+    if(ToolsArtisan.find(l => from.includes(l.key))) {
+      ret.push({
+        name: "Artisan's tools",
+        choices: ToolsArtisan
+      })
+    }
+    if(ToolsInstrument.find(l => from.includes(l.key))) {
+      ret.push({
+        name: "Musical instruments",
+        choices: ToolsInstrument
+      })
+    }
+    if(ToolsGamingsets.find(l => from.includes(l.key))) {
+      ret.push({
+        name: "Gaming sets",
+        choices: ToolsGamingsets
+      })
+    }
+
+    return ret;
+  });
+
+  const resetFeat = (origin: string) => {
+    const level = character.value.level;
+    character.value.feats = character.value.feats.filter((sk:any) => sk.origin != origin && sk.level == level);
+    character.value.abilities.improvments = character.value.abilities.improvments.filter((ip:any) => !(ip.origin == 'feat' && ip.level == level));
+    // TODO : reset other items add by the Feat (spells ...)
   }
 
   const classes = computed(() => classesStore.getDefaults);
@@ -1272,7 +1472,6 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
     calcHPAverage();
     calcHPMax();
   }
-
   const calcHPAverage = (reset: boolean = true) => {
     character.value.class.forEach((c:any, i:number) => {
       if(reset) c.hps = [];
@@ -1290,14 +1489,12 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
       }
     });
   }
-
   const changeHP = (e: any/*, i: number, j: number*/) => {
     if (!e.target.value) return;
     //character.value.class[i].hps[j] = parseInt(e.target.value);
     lastClass.value.hps[lastClass.value.hps.length - 1] = parseInt(e.target.value);
     calcHPMax();
   }
-
   const calcHPMax = (force: boolean = false) => {
     if(!force && !validAbilities.value) {
       character.value.hp.max = 0;
@@ -1311,17 +1508,24 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
     character.value.hp.max = hp;
   }
 
-  // const skillProf = computed(() => character.value.skillProf.map((c:any) => c.name).filter((c:any) => c != null && c != ""));
-  // const skillExp: string[] = [];
-
-
-  const fromProfs = (key:string) => {
+  const fromProfs = (key:string, readonly: boolean = false) => {
     const from: string[] = [];
     if (chooses.value[key]) {
       chooses.value[key].forEach((ch: any) => {
         const count = countProfByOrigin(key, ch.origin);
-        ch.from && ch.count > count && from.push(...ch.from)
+        if(ch.from) {
+          if (readonly) {
+            from.push(...ch.from);
+          }
+          else {
+            ch.count > count && from.push(...ch.from);
+          }
+        }
       });
+    }
+    if(readonly) {
+      const auto = character.value[key].filter((t:any) => !t.choose).map((t:any) => t.name);
+      if(auto.length > 0) from.push(...auto);
     }
     return from;
   }
@@ -1356,8 +1560,13 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
   const changeProf = (key:string, name:string) => {
     const cs = character.value[key].find((s:any) => s.name == name);
     if(cs) {
-      if(key == 'skills') character.value.skills = character.value.skills.filter((s:any) => s.name != name);
-      character.value.expertises = character.value.expertises.filter((s:any) => s.name != name);
+      if(key == 'skills') {
+        character.value.skills = character.value.skills.filter((s: any) => s.name != name);
+        character.value.expertises = character.value.expertises.filter((s: any) => s.name != name);
+      }
+      else {
+        character.value[key] = character.value[key].filter((s: any) => s.name != name);
+      }
     }
     else {
       const chk = chooses.value[key].filter((s:any) => s.from.includes(name));
@@ -1370,35 +1579,35 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
       })
     }
   }
-  // const changeExp = (name:string) => {
-  //   const cs = character.value.expertises.find((s:any) => s.name == name);
-  //   if(cs) {
-  //     character.value.expertises = character.value.expertises.filter((s:any) => s.name != name);
-  //   }
-  //   else {
-  //     const chk = chooses.value.expertises.filter((s:any) => s.from.includes(name));
-  //     if(chk.length == 0) return
-  //     chk.every((ch:any) => {
-  //       const count = countProfByOrigin('expertises',ch.origin);
-  //       if(count >= ch.count) return true;
-  //       addExpertiseProf(ch.origin, name);
-  //       return false;
-  //     })
-  //   }
-  // }
   const countProfByOrigin = (key:string, origin: string) => {
     return character.value[key].filter((s:any) => s.origin == origin && s.choose).length;
   }
-
   const displayChoosesProf = (key: string, origin: string) => {
     const c = chooses.value[key].find((sk:any) => sk.origin == origin)
-    if(!c) return null;
-    if(countProfByOrigin(key, origin) != c.count) return null;
+    if(!c) {
+      return null;
+    };
+    if(countProfByOrigin(key, origin) != c.count) {
+      return null;
+    };
     const s: string[] = [];
-    const skills = character.value[key].filter((sk:any) => sk.origin == origin && sk.level == character.value.level).map((sk:any) => sk.name);
-    skills.forEach((a:string) => {
-      const sk: any = Skills.find(s => s.name == a);
-      s.push(`${sk.display} (${sk.attribute.substring(0,3)})`);
+    const profs = character.value[key].filter((sk:any) => sk.origin == origin && sk.level == character.value.level).map((sk:any) => sk.name);
+    profs.forEach((a:string) => {
+      if(key == "skills" || key == "expertises") {
+        const sk: any = Skills.find(s => s.name == a);
+        s.push(`${sk.display} (${sk.attribute.substring(0, 3)})`);
+      }
+      else if(key == "languages") {
+        const sk: any = LanguagesAll.find(s => s.key == a);
+        s.push(`${sk.name}`);
+      }
+      else if(key == "tools") {
+        const sk: any = ToolsAll.find(s => s.key == a);
+        s.push(`${sk.name}`);
+      }
+      else {
+        console.error('KeyNotSupported', key);
+      }
     })
     return s.join(', ');
   }
@@ -1408,6 +1617,8 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
   const computedSkillsFeat = computed(() => displayChoosesProf('skills','feat'));
   const computedExpertisesClass = computed(() => displayChoosesProf('expertises','class'));
   const computedExpertisesFeat = computed(() => displayChoosesProf('expertises','feat'));
+  const computedLangRace = computed(() => displayChoosesProf('languages','race'));
+  const computedLangBG = computed(() => displayChoosesProf('languages','background'));
 
   const urlToken = async () => {
     let check = false;
@@ -1444,6 +1655,8 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
   }
 
   const changeFeats = (e: any, origin: string) => {
+    resetLanguages('feat');
+    resetTools('feat');
     const level = character.value.level;
     if (!e.target.value) return;
     const name = e.target.value;
@@ -1532,6 +1745,15 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
     return limit > 1 && lastClass.value.features.find((f:any) => f.name == feature)?.choices.length >= limit;
   }
 
+  const isOtherProfCheck = (key:string, name: string) => {
+    return character.value[key].find((f:any) => f.name == name) !== undefined;
+  }
+  const isOtherProfDisabled = (key:string, name: string) => {
+    if(character.value[key].find((f:any) => f.name == name && !f.choose) !== undefined) return true;
+    if(isOtherProfCheck(key, name)) return false;
+    return !fromProfs(key).includes(name);
+  }
+
   const spellSlotsInfo = computed(() => spellSlots(character.value.spellcasterlevel));
   const changeSpell = (e: any, spellSlot: number, prepared:boolean = true, origin:string = "class") => {
     if (!e.target.value) return;
@@ -1566,7 +1788,6 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
   const isSpellDisabled = (name: string) => {
     return character.value.spells.find((f:any) => f.name == name && !f.choose) !== undefined;
   }
-
 </script>
 
 <template>
@@ -1587,8 +1808,7 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
         <button class="btn btn-secondary" @click="json = computedRaceOptions">computedRaceOptions</button>
         <button class="btn btn-secondary" @click="json = chooses">chooses</button>
         <button class="btn btn-secondary" @click="json = feats">feats</button>
-        <button class="btn btn-secondary" @click="() => calculSpellcasterLevel()">calculSpellcasterLevel</button>
-        <button class="btn btn-secondary" @click="json = spellsStore.spellsChoice(lastClass.name, '', lastClass.level)">spells</button>
+        <button class="btn btn-secondary" @click="() => calcDatasClass(true)">calcDatasClass</button>
       </div>
     </template>
 
@@ -1976,26 +2196,6 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
           <AccordionItem name="proficiencies" :steps="steps" :step="step" @click="changeStep">
             <template v-slot:header-label>Skill Proficiencies</template>
             <template v-slot:body>
-              <!-- TODO : Skills, Tools, Langs -->
-<!--              TODO : Uniquement si lvl 1-->
-<!--              <div v-if="chooses.languages.length">-->
-<!--                <p class="fw-bold m-0">Race languages</p>-->
-<!--                <div class="d-flex align-items-center">-->
-<!--                  <template v-for="(c,i) in chooses.languages">-->
-<!--                    <select class="form-select form-select-sm" v-model="character.languages[i]" :disabled="c !== 'anyStandard'">-->
-<!--                      <option value="">{{CHOOSE}}</option>-->
-<!--                      <optgroup label="Standard">-->
-<!--                        <option v-for="l in LanguagesStandard" :key="l" :value="l.toLowerCase()" :disabled="character.languages.includes(l.toLowerCase())">{{ l }}</option>-->
-<!--                      </optgroup>-->
-<!--                      <optgroup label="Exotic">-->
-<!--                        <option v-for="l in LanguagesExotic" :key="l" :value="l.toLowerCase()" :disabled="character.languages.includes(l.toLowerCase())">{{ l }}</option>-->
-<!--                      </optgroup>-->
-<!--                    </select>-->
-<!--                  </template>-->
-<!--                </div>-->
-<!--              </div>-->
-<!--              TODO : Uniquement si lvl 1 ou choix dans le niveau suivant -->
-<!--              <p class="fw-bold m-0">Skills</p>-->
               <div v-for="s in calculSkills" class="d-flex justify-content-center align-items-center my-1">
                 <label class="w-50 text-end" :class="s.allDisabled ? 'text-body-tertiary' : ''" :title="s.example" v-tooltip data-bs-placement="right">
                   {{ textSkill(s.prof) }}
@@ -2008,6 +2208,43 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
                 </div>
                 <span class="w-25 text-start">{{ s.mod }}</span>
               </div>
+            </template>
+          </AccordionItem>
+
+          <AccordionItem name="otherprof" :steps="steps" :step="step" @click="changeStep">
+            <template v-slot:header-label>Other Proficiencies</template>
+            <template v-slot:body>
+              <template v-if="chooses.languages.length > 0">
+                <p class="fw-bold m-0">Languages</p>
+                <div class="d-flex">
+                  <div class="flex-1" v-for="cl in languagesChoices" :key="cl.name">
+                    <p class="fst-italic m-0">{{ cl.name }}</p>
+                    <div v-for="l in cl.choices" class="form-check pb-1" :key="l.key">
+                      <input class="form-check-input" type="checkbox" :value="l.key" @click="changeProf('languages', l.key)"
+                             :checked="isOtherProfCheck('languages', l.key)"
+                             :disabled="isOtherProfDisabled('languages', l.key)"
+                      />
+                      <label class="form-check-label">{{ l.name }}</label>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <template v-if="chooses.tools.length > 0">
+                <p class="fw-bold m-0">Tools</p>
+                <div class="d-flex">
+                  <div class="flex-1" v-for="cl in toolsChoices" :key="cl.name">
+                    <p class="fst-italic m-0">{{ cl.name }}</p>
+                    <div v-for="l in cl.choices" class="form-check pb-1" :key="l.key">
+                      <input class="form-check-input" type="checkbox" :value="l.key" @click="changeProf('tools', l.key)"
+                             :checked="isOtherProfCheck('tools', l.key)"
+                             :disabled="isOtherProfDisabled('tools', l.key)"
+                      />
+                      <label class="form-check-label">{{ l.name }}</label>
+                    </div>
+                  </div>
+                </div>
+              </template>
             </template>
           </AccordionItem>
 
@@ -2164,6 +2401,16 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
             </div>
           </template>
 
+          <CharacterInfo v-if="spellSlotsInfo">
+            <template v-slot:label>Spell slots:</template>
+            <template v-for="j in 9">
+              <template v-if="spellSlotsInfo[`s${j}`] > 0">
+                <template v-if="j>1">, </template>
+                Lvl{{j}}: {{spellSlotsInfo[`s${j}`]}}
+              </template>
+            </template>
+          </CharacterInfo>
+
           <p v-if="character.race.name" class="fw-bold border-bottom text-center mt-2 mb-2 fs-1-1">
             {{ character.race.name }} {{ character.subrace?.name }}
           </p>
@@ -2204,16 +2451,6 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
             </template>
           </CharacterInfo>
 
-          <CharacterInfo v-if="spellSlotsInfo">
-            <template v-slot:label>Spell slots:</template>
-            <template v-for="j in 9">
-              <template v-if="spellSlotsInfo[`s${j}`] > 0">
-                <template v-if="j>1">, </template>
-                Lvl{{j}}: {{spellSlotsInfo[`s${j}`]}}
-              </template>
-            </template>
-          </CharacterInfo>
-
           <CharacterInfo v-if="['race','version','subrace'].includes(step)" v-for="e in computedRaceEntries">
             <template v-slot:label>{{ e.name }}:</template>
             {{ DS(e, false) }}
@@ -2227,6 +2464,12 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
           <CharacterInfo v-if="computedSkillsRace">
             <template v-slot:label>Skill Proficiencies:</template>
             {{ computedSkillsRace }}
+          </CharacterInfo>
+
+          <CharacterInfo v-if="computedRace.languageProficiencies">
+            <template v-slot:label>Languages:</template>
+            <template v-if="computedLangRace">{{ computedLangRace }}</template>
+            <template v-else>{{ inlineLang(computedRace.languageProficiencies) }}</template>
           </CharacterInfo>
 
           <!-- Classes infos -->
@@ -2263,13 +2506,15 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
               {{ character.background }}
             </p>
 
-            <CharacterInfo v-if="computedSkillsBG">
+            <CharacterInfo v-if="bg.skillProficiencies">
               <template v-slot:label>Skill Proficiencies:</template>
-              {{ computedSkillsBG }}
+              <template v-if="computedSkillsBG">{{ computedSkillsBG }}</template>
+              <template v-else>{{ inlineSkill(bg.skillProficiencies, true) }}</template>
             </CharacterInfo>
-            <CharacterInfo v-else-if="bg.skillProficiencies">
-              <template v-slot:label>Skill Proficiencies:</template>
-              {{ inlineSkill(bg.skillProficiencies, true) }}
+            <CharacterInfo v-if="bg.languageProficiencies">
+              <template v-slot:label>Languages:</template>
+              <template v-if="computedLangBG">{{ computedLangBG }}</template>
+              <template v-else>{{ inlineLang(bg.languageProficiencies) }}</template>
             </CharacterInfo>
 
             <CharacterInfo v-if="bg.toolProficiencies">
@@ -2293,7 +2538,6 @@ import {onMounted, computed, ref, watch, cloneVNode} from "vue";
               </div>
             </template>
           </template>
-
 
           <p v-if="character.feats.length > 0" class="fw-bold border-bottom text-center mb-2 mt-1 fs-1-1">
             Feats
