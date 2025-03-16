@@ -264,6 +264,44 @@ export const useClassesStore = defineStore("ClassesStore", {
         })
         return choices;
       }
+    },
+    cantripProgression() {
+      return (name: string, subclass: string|null, level: number): number => {
+        const classProgression = this.classes.find(c => c.name == name);
+        const subclassProgression = this.subclasses.find(s => s.shortName == subclass && s.className == name);
+        if(classProgression || subclassProgression) {
+          const valClass = classProgression && classProgression.cantripProgression !== undefined ? classProgression.cantripProgression[level - 1] : 0;
+          const valSub = subclassProgression && subclassProgression.cantripProgression !== undefined ? subclassProgression.cantripProgression[level - 1] : 0;
+          return Math.max(valClass, valSub);
+        }
+        return 0;
+      }
+    },
+    spellsKnownProgression() {
+      return (name: string, subclass: string|null, level: number): number => {
+        let val = 0
+        const classProgression = this.classes.find(c => c.name == name);
+        const subclassProgression = this.subclasses.find(s => s.shortName == subclass && s.className == name);
+        if(classProgression || subclassProgression) {
+          const valClass = classProgression && classProgression.spellsKnownProgression !== undefined ? classProgression.spellsKnownProgression[level - 1] : 0;
+          const valSub = subclassProgression && subclassProgression.spellsKnownProgression !== undefined ? subclassProgression.spellsKnownProgression[level - 1] : 0;
+          val = Math.max(valClass, valSub);
+        }
+        if(classProgression && classProgression.preparedSpells && val == 0) {
+          if(!classProgression.spellsKnownProgressionFixed) val = -1
+          else {
+            classProgression.spellsKnownProgressionFixed.forEach((f:number, l:number) => {
+              if(l <= level - 1) val += f;
+            })
+          }
+        }
+        return val;
+      }
+    },
+    findSubclass() {
+      return (name: string, subclass: string): Subclass|undefined => {
+        return this.subclasses.find(c => c.className == name && c.shortName == subclass);
+      }
     }
   }
 });

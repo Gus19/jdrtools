@@ -5,9 +5,13 @@
   import {inlineSkill, S} from "@/utils/refs";
   const props = defineProps({
     name: { type: String, required: true },
-    subclass: { type: String, required: false },
+    subclass: { type: String, required: false, default: null },
+    level: {type: Number, required: true},
     isFirst: Boolean,
-    validAbilities: Boolean
+    validAbilities: Boolean,
+    cantrips: {type: Number, required: false},
+    spellsKnown: {type: Number, required: false},
+    spellsPrepared: {type: Number, required: false}
   })
   const classesStore = useClassesStore();
   const classes = computed(() => classesStore.getDefaults);
@@ -47,6 +51,25 @@
         <template v-slot:label>Tool Proficiencies:</template>
         {{ cl.startingProficiencies.tools.map((t:any) => S(t)).join(', ') }}
       </CharacterInfo>
+
+      <div class="d-flex">
+        <CharacterInfo v-if="cantrips">
+          <template v-slot:label>Cantrips known:</template>
+          {{cantrips}}
+        </CharacterInfo>
+        <CharacterInfo v-if="spellsKnown">
+          <template v-slot:label>Spells known:</template>
+          {{spellsKnown}}
+        </CharacterInfo>
+        <CharacterInfo v-if="spellsPrepared">
+          <template v-slot:label>Spells prepared:</template>
+          {{spellsPrepared}}
+        </CharacterInfo>
+      </div>
+<!--      <CharacterInfo>-->
+<!--        <template v-slot:label>Spells known:</template>-->
+<!--        4 (<span title="spell1" v-tooltip>spell1</span>, <span title="spell1" v-tooltip>spell2</span>, <span title="spell1" v-tooltip>spell3</span>, <span title="spell1" v-tooltip>spell4</span>)-->
+<!--      </CharacterInfo>-->
     </template>
     <template v-else-if="cl.multiclassing">
       <div class="d-flex">

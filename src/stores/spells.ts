@@ -1,4 +1,5 @@
 import {defineStore} from 'pinia'
+import {formatOptionalEntries, messageSpell} from "@/utils/refs";
 
 const urlSpells = [
   "/data/spells/spells-aag.json",
@@ -24,9 +25,26 @@ export const useSpellsStore = defineStore("SpellsStore", {
   actions: {
     async initSources() {
       this.sources = [];
-      const response = await fetch(`${import.meta.env.VITE_BASEURL}/data/generated/gendata-spell-source-lookup.json`);
+      const response = await fetch(`${import.meta.env.VITE_BASEURL}/data/spells/sources.json`);
       const data = await response.json();
-      this.sources = data;
+      // console.log({data});
+      let test: SpellClasses[] = [];
+      Object.keys(data).forEach(k =>
+        Object.keys(data[k]).forEach((j) => {
+          const classes = [];
+          if(data[k][j].class) {
+            classes.push(...data[k][j].class.map((c:any) => c.name));
+          }
+          if(data[k][j].classVariant) {
+            classes.push(...data[k][j].classVariant.map((c:any) => c.name));
+          }
+          test.push({
+            name: j,
+            classes: classes
+          })
+        })
+      );
+      this.sources = test;
     },
     async initSpells() {
       if(this.spells.length > 0) {
@@ -39,7 +57,12 @@ export const useSpellsStore = defineStore("SpellsStore", {
           const response = await fetch(`${import.meta.env.VITE_BASEURL}${u}`);
           const data = await response.json();
           if (data.spell) {
-            localSpells.push(...data.spell);
+            localSpells.push(...data.spell.map((s:any) => {
+              return {
+                ...s,
+                info: messageSpell(s)
+              }
+            }));
           }
         }
         this.spells = localSpells;
@@ -56,6 +79,29 @@ export const useSpellsStore = defineStore("SpellsStore", {
 
   getters: {
     isLoad: (state) => state.spells.length > 0,
+    spellsChoice() {
+      return (className: string, subclass: string|null = null, level: number|null = null): SpellInfo[] => {
+        const names = this.sources.filter((s:any) => s.classes.includes(className)).map((s:any) => s.name);
+        return this.spellsSort(this.spells
+          .filter(s => names.includes(s.name) && (level == null || s.level == level))
+        );
+      }
+    },
+    spellsChoiceFromList() {
+      return (names: string[]): SpellInfo[] => {
+        return this.spellsSort(this.spells
+          .filter(s => names.includes(s.name))
+        );
+      }
+    },
+    spellsSort() {
+      return (spells: SpellInfo[]): SpellInfo[] => {
+        return spells
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .sort((a, b) => a.time[0].unit.localeCompare(b.time[0].unit))
+        ;
+      }
+    }
   }
 });
 
@@ -91,6 +137,7 @@ export interface SpellInfo {
   damageImmune?: string[]
   hasFluff?: boolean
   additionalSources?: AdditionalSource[]
+  info?: string
 }
 
 export interface Time {
@@ -150,7 +197,12 @@ export interface AdditionalSource {
 }
 
 export type RootState = {
-  sources: [];
+  sources: SpellClasses[];
   spells: SpellInfo[];
   error: boolean
 };
+
+export interface SpellClasses {
+  name: string,
+  classes: string[],
+}

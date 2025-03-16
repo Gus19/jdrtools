@@ -1,14 +1,17 @@
 <script setup lang="ts">
-  import {ref} from "vue";
+import {ref, watch} from "vue";
   import {S,inlineAbility} from "@/utils/refs";
   const props = defineProps({
     feat: {type: Object, required: true},
     choice: {type: Boolean, default: true},
-    open: {type: Boolean, default: true},
+    open: {type: Boolean, default: false},
     selected: {type: Boolean, default: false},
     abilitySelected: {type: String, required: false}
   });
   const open = ref(props.open || props.selected);
+  watch(() => props.open, n => {
+    open.value = n;
+  })
 
   const emits = defineEmits([
     'improve'

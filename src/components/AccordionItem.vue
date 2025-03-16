@@ -66,7 +66,7 @@ const manualStep = computed(() => props.manualSteps && props.manualSteps.find((s
 
 <style scoped>
   em {
-    width: 115px;
+    width: 145px;
   }
   .accordion-button, .accordion-body {
     padding: .5rem !important;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import {onMounted, computed, ref, watch} from "vue";
+import {onMounted, computed, ref, watch, cloneVNode} from "vue";
   import { uuid } from 'vue-uuid';
   import JsonEditor from 'vue3-ts-jsoneditor';
   import {useSpellsStore} from "@/stores/spells";
@@ -16,7 +16,7 @@
     Skills,
     displaySubrace,
     DS, S,
-    roll, abilityRoll, textSkill, inlineSkill, fn, inlineAbility
+    roll, abilityRoll, textSkill, inlineSkill, fn, inlineAbility, spellSlots
   } from "@/utils/refs";
   import AccordionItem from "@/components/AccordionItem.vue";
   import CharacterInfo from "@/components/CharacterInfo.vue";
@@ -25,6 +25,7 @@
   import DamageType from "@/components/DamageType.vue";
   import ClassInfo from "@/components/ClassInfo.vue";
   import FeatInfo from "@/components/FeatInfo.vue";
+  import SpellInfo from "@/components/SpellInfo.vue";
   const spellsStore = useSpellsStore();
   const racesStore = useRacesStore();
   const bgStore = useBackgroundsStore();
@@ -36,6 +37,7 @@
 
   onMounted(async () => {
     await spellsStore.initSpells();
+    await spellsStore.initSources();
     await racesStore.initStore();
     await bgStore.initBackgrounds();
     await classesStore.initClasses();
@@ -54,6 +56,8 @@
   const changeSearch = (e: any, name: string) => {
     search.value[name] = e.target.value;
   }
+  const showAllSpells = ref(false);
+  const showAllFeats = ref(false);
 
   const step = ref<string>('');
   const steps = ref<any[]>([]);
@@ -101,23 +105,103 @@
   const calculStep = () => {
     const ss = [];
     try {
-      const a = character.value.race.name !== null;
-      const b = character.value.race.source !== null;
-      const c = character.value.subrace === null || character.value.subrace.name !== null;
-
-      const hasRaceOptions = computedRaceOptions.value !== null;
-      let roValid = true;
-      if(hasRaceOptions) {
-        computedRaceOptions.value.forEach((ro: any) => {
-          if(!character.value.raceOptions.find((e:any) => ro.replace == e.replace)) {
-            roValid = false;
-          }
-        });
+      if(versions.value === null) {
+        console.error("AllLoad not finish");
+        return;
       }
 
-      const d = character.value.class[0].name !== null && character.value.class[0].name.length > 0;
-      const e = character.value.background !== null;
-      const f = (abPoints.value === 27 || character.value.abilities.option === 'free') && checkBonus();
+      let f = false;
+      if(character.value.level > 0) {
+        const a = character.value.race.name !== null;
+        const b = character.value.race.source !== null;
+        const c = character.value.subrace === null || character.value.subrace.name !== null;
+
+        const hasRaceOptions = computedRaceOptions.value !== null;
+        let roValid = true;
+        if(hasRaceOptions) {
+          computedRaceOptions.value.forEach((ro: any) => {
+            if(!character.value.raceOptions.find((e:any) => ro.replace == e.replace)) {
+              roValid = false;
+            }
+          });
+        }
+
+        const d = character.value.class[0].name !== null && character.value.class[0].name.length > 0;
+        const e = character.value.background !== null;
+        f = (abPoints.value === 27 || character.value.abilities.option === 'free') && checkBonus();
+
+        ss.push({
+          name: 'race',
+          valid: a
+        });
+        if (a && versions.value.length > 1) {
+          ss.push({
+            name: 'version',
+            valid: b
+          });
+          if (!b) return;
+        }
+        if (a && b && character.value.subrace !== null) {
+          ss.push({
+            name: 'subrace',
+            valid: c
+          });
+          if (!c) return;
+        }
+        // todo check here if cantrip/spell for race/subrace
+
+        if (hasRaceOptions) {
+          ss.push({
+            name: 'raceOptions',
+            valid: roValid
+          });
+          if (!roValid) return;
+        }
+
+        if ((a && b && c) || d) {
+          ss.push({
+            name: 'class',
+            valid: d
+          });
+          if (!d) return
+        }
+        if (d || e) {
+          ss.push({
+            name: 'background',
+            valid: e
+          });
+          if (!e) return;
+        }
+        if (e) {
+          ss.push({
+            name: 'abilities',
+            valid: f
+          });
+          if (!f) return;
+        }
+
+        const hasRacialFeat = computedRace.value && computedRace.value.feats;
+        if (hasRacialFeat) {
+          const racialFeatName = character.value.feats.find((f: any) => f.level == 1 && f.origin == 'race' && f.name != null)?.name;
+          let racialFeatValid = false;
+          if (racialFeatName) {
+            const feat = feats.value.find((f: any) => f.name == racialFeatName);
+            if (feat.ability && feat.ability[0].choose) {
+              racialFeatValid = character.value.abilities.improvments.filter((ip: any) => ip.origin == 'feat' && ip.level == 1).length != 0;
+            } else {
+              racialFeatValid = true;
+            }
+          }
+          ss.push({
+            name: 'racialFeat',
+            valid: racialFeatValid
+          });
+          if (!racialFeatValid) return;
+        }
+      }
+      else {
+        f = true;
+      }
 
       let g = false; //Features
       if(f && classFeatures.value) {
@@ -141,99 +225,6 @@
         };
       }
 
-      addManualStep('hp');
-      const h = g && isManualValid('hp');
-
-      let i = false;
-      if(h && chooses.value && chooses.value.skills) {
-        i = true;
-        ['skills','expertises'].forEach(key => {
-          chooses.value[key].forEach((ch:any) => {
-            if(countProfByOrigin(key,ch.origin) != ch.count) {
-              i = false; return false;
-            };
-          });
-        })
-      }
-
-      const j = false;
-      const k = false;
-
-      ss.push({
-        name: 'race',
-        valid: a
-      });
-
-      if(versions.value === null) {
-        console.error("AllLoad not finish");
-        return;
-      }
-      if (a && versions.value.length > 1) {
-        ss.push({
-          name: 'version',
-          valid: b
-        });
-        if(!b) return;
-      }
-      if (a && b && character.value.subrace !== null) {
-        ss.push({
-          name: 'subrace',
-          valid: c
-        });
-        if(!c) return;
-      }
-      // todo check here if cantrip/spell for race/subrace
-
-      if(hasRaceOptions) {
-        ss.push({
-          name: 'raceOptions',
-          valid: roValid
-        });
-        if(!roValid) return;
-      }
-
-      if ((a && b && c) || d) {
-        ss.push({
-          name: 'class',
-          valid: d
-        });
-        if(!d) return
-      }
-      if (d || e) {
-        ss.push({
-          name: 'background',
-          valid: e
-        });
-        if(!e) return;
-      }
-      if (e) {
-        ss.push({
-          name: 'abilities',
-          valid: f
-        });
-        if(!f) return;
-      }
-
-      const hasRacialFeat = computedRace.value && computedRace.value.feats;
-      if(hasRacialFeat) {
-        const racialFeatName = character.value.feats.find((f:any) => f.level == 1 && f.origin == 'race' && f.name != null)?.name;
-        let racialFeatValid = false;
-        if(racialFeatName) {
-          const feat = feats.value.find((f:any) => f.name == racialFeatName);
-          if(feat.ability && feat.ability[0].choose) {
-            racialFeatValid = character.value.abilities.improvments.filter((ip:any) => ip.origin == 'feat' && ip.level == 1).length != 0;
-          }
-          else {
-            racialFeatValid = true;
-          }
-        }
-        ss.push({
-          name: 'racialFeat',
-          valid: racialFeatValid
-        });
-        if(!racialFeatValid) return;
-      }
-
       if(f) {
         ss.push({
           name: 'features',
@@ -241,6 +232,9 @@
         });
         if(!g) return;
       }
+
+      addManualStep('hp');
+      const h = isManualValid('hp');
       if(g) {
         ss.push({
           name: 'hp',
@@ -249,20 +243,60 @@
         calcHPMax(true);
         if(!h) return;
       }
-      if(h) {
+
+      let i = true;
+      if(chooses.value && chooses.value.skills) {
+        ['skills','expertises'].forEach(key => {
+          chooses.value[key].forEach((ch:any) => {
+            if(countProfByOrigin(key,ch.origin) != ch.count) {
+              i = false; return false;
+            };
+          });
+        })
         ss.push({
           name: 'proficiencies',
           valid: i
         });
         if(!i) return;
       }
+
+      let j = false;
       if(i) {
-        ss.push({
-          name: 'spells',
-          valid: j
-        });
+        let ch = chooses.value.cantrips;
+        let sp = chooses.value.spells;
+        let pr = chooses.value.prepared;
+
+        let i1 = true, i2 = true, i3 = true;
+
+        if(ch && ch.known > 0) {
+          i1 = ch.known == ch.selected
+          ss.push({
+            name: 'cantrips',
+            valid: i1
+          });
+        }
+        if(sp && sp.known > 0) {
+          i2 = sp.known == sp.selected || (pr && pr.known > 0 && sp.selected >= sp.known);
+          ss.push({
+            name: 'spellsKnown',
+            valid: i2
+          });
+        }
+        if(pr && pr.known > 0) {
+          i3 = pr.known == pr.selected;
+          ss.push({
+            name: 'spellsPrepared',
+            valid: i3
+          });
+        }
+        if(i1 && i2 && i3) {
+          j = true;
+        }
         if(!j) return;
       }
+      else j = true;
+
+      const k = false;
       if(j) {
         ss.push({
           name: 'equipment',
@@ -289,7 +323,7 @@
     if(!character.value) return 10;
     return character.value.abilities[key].base+character.value.abilities[key].bonus;
   }
-  const mod = (key: string) => {
+  const mod = (key: string, onlyPositiv: boolean = false) => {
     if(!character.value) return 0;
     const t = character.value.abilities[key].total;
     return Math.floor((t - 10) / 2);
@@ -321,7 +355,7 @@
   // }
 
   const lastStep = () => {
-    step.value = steps.value.find(s => !s.valid).name;
+    step.value = steps.value.find(s => !s.valid)?.name || 'final';
   }
 
   const faState = (b: boolean) => {
@@ -334,7 +368,8 @@
     subclass: null,
     dice: null,
     hps: [],
-    features: []
+    features: [],
+    casterProgression: null
   }
   const defaultAb = {
     base: 10,
@@ -380,6 +415,7 @@
     ac: 0,
     save: [],
     spellcasting: [],
+    spellcasterlevel: 0,
     skills: [],
     expertises: [],
     languages: [
@@ -403,10 +439,17 @@
     size: '',
     spells: [
       // {name: null, level: 0 à 9, from: race, subrace, class, subclass, origin: le name, }
+      // {
+      //   "name": "Vicious Mockery",
+      //   "origin": "class",
+      //   "level": 1,
+      //   "spellSlot": 0,
+      //   "choose": true
+      // }
     ],
-    spellSlots: [
-      // {1:0}
-    ],
+    // spellSlots: [
+    //   // {1:0}
+    // ],
     feats: [
       // name / from
     ],
@@ -477,7 +520,10 @@
     size: null,
     languages: [],
     skills: [],
-    expertises: []
+    expertises: [],
+    cantrips: {},
+    spells: {},
+    prepared: {}
   }
   const chooses = ref<any>(null);
 
@@ -747,7 +793,7 @@
       else
         chooses.value.size = d.size;
     }
-    if(d.darkvision) character.value.darkvision = d.darkvision;
+    /*if(d.darkvision)*/character.value.darkvision = d.darkvision;
     if(d.speed) {
       if("number" == typeof d.speed) character.value.speed = {walk: d.speed};
       else character.value.speed = {...character.value.speed, ...d.speed};
@@ -805,7 +851,8 @@
 
   const changeFirstClass = (c: any) => {
     const i = 0;
-    if(character.value.class[i].name === c.name) return;
+    const cl = character.value.class[i];
+    if(cl.name === c.name) return;
     // if(i === 0 && character.value.class.length > 1) {
     //   character.value.class = [
     //     {
@@ -815,15 +862,62 @@
     //   ]
     // }
     character.value.leveling = [c.name];
-    character.value.class[i].name = c.name;
-    character.value.class[i].subclass = null;
-    character.value.class[i].dice = c.hd.faces;
-    character.value.class[i].features = [];
+    cl.name = c.name;
+    cl.subclass = null;
+    cl.dice = c.hd.faces;
+    cl.features = [];
+    cl.casterProgression = c.casterProgression || null;
+    // cl.preparedSpells = c.preparedSpells || null;
+    cl.preparedSpells = {has: c.preparedSpells != undefined};
+    cl.spellcastingAbility = c.spellcastingAbility || null;
+    calculSpellcasterLevel();
     character.value.manualSteps = [];
+    character.value.spells = [];
     calcDatasClass(true);
     if(i === 0) {
       setHPAverage();
     }
+  }
+  const changeSubclass = (e: any) => {
+    if (!e.target.value) return;
+    const subclass = e.target.value;
+    lastClass.value.subclass = subclass;
+    // set casterProgression if subclass has property
+    const sub = classesStore.findSubclass(lastClass.value.name, subclass);
+    if(sub && sub.casterProgression) {
+      lastClass.value.casterProgression = sub.casterProgression;
+      lastClass.value.preparedSpells = {has: false /*sub.preparedSpells != undefined*/};
+      lastClass.value.spellcastingAbility = sub.spellcastingAbility || null;
+      calculSpellcasterLevel();
+    }
+  }
+  const calculSpellcasterLevel = () => {
+    let l = 0;
+    character.value.class.forEach((c: any) => {
+      let clvl = 0;
+      if(c.casterProgression) {
+        switch(c.casterProgression) {
+          case "full":
+            clvl = c.level;
+            break;
+          case "1/2":
+          case "artificier":
+            clvl = Math.round(c.level / 2);
+            break;
+          case "1/3":
+            clvl = Math.round(c.level / 3);
+            break;
+          default:
+            break;
+        }
+        l += clvl;
+      }
+      if(c.preparedSpells.has) {
+        c.preparedSpells.count = clvl + mod(c.spellcastingAbility);
+        if(c.preparedSpells.count <= 0) c.preparedSpells.count = 1;
+      }
+    });
+    character.value.spellcasterlevel = l;
   }
 
   const calcDatasClass = (reset: boolean = true) => {
@@ -855,6 +949,7 @@
       const sp = bg.value.skillProficiencies[0];
       Object.keys(sp).filter((k: string) => k != "choose" && k != "any").forEach((k: string) => {
         let name: any = Skills.find(s => s.prof == k)?.name;
+        // debugger;
         addSkillProf('skills', 'background', name, false);
       })
     }
@@ -865,16 +960,15 @@
   }
   const addSkillProf = (key:string, origin: string, name: string, choose: boolean = true) => {
     if(!name) return;
-    let o = {
+    const o = {
       name: name,
       origin: origin,
       level: character.value.level,
       choose: choose
     }
-    let cs = character.value[key].find((s:any) => s.name == name);
-    if(cs) {
-      cs = {
-        ...cs,
+    let cs = character.value[key].findIndex((s:any) => s.name == name);
+    if(cs != -1) {
+      character.value[key][cs] = {
         ...o
       }
     }
@@ -888,12 +982,18 @@
     const level = character.value.level;
     ch.skills = [];
     ch.expertises = [];
+    ch.spells = {};
+    ch.cantrips = {};
+    ch.prepared = {};
+
+    const lc = lastClass.value;
+
     if(level == 1) {
       if (computedRace.value && computedRace.value.skillProficiencies) {
         chooseAddSkill('race', computedRace.value.skillProficiencies[0]);
       }
-      if (lastClass.value) {
-        const cl = classes.value.find((c:Class) => c.name === lastClass.value.name);
+      if (lc) {
+        const cl = classes.value.find((c:Class) => c.name === lc.name);
         if(cl && cl.startingProficiencies.skills) {
           chooseAddSkill('class', cl.startingProficiencies.skills[0])
         }
@@ -910,6 +1010,57 @@
         if (feat.expertise) chooseAddExpertise('feat', feat.expertise[0]);
       }
     })
+
+    if(lc) {
+      // Spells
+      const cantrip = classesStore.cantripProgression(lc.name, lc.subclass, lc.level);
+      const known = classesStore.spellsKnownProgression(lc.name, lc.subclass, lc.level);
+      const max = spellSlotsInfo.value.max;
+
+      if(cantrip) {
+        const selected = character.value.spells.filter((s:any) => s.origin == "class" /*&& s.level == lc.level*/ && s.spellslot == 0 && s.choose).length;
+        ch.cantrips = {
+          known: cantrip,
+          selected: selected,
+          from: spellsStore.spellsChoice(lastClass.value.name, lastClass.value.subclass, 0)
+        };
+      }
+      if(known > 0) {
+        const selected = character.value.spells.filter((s:any) => s.origin == "class" /*&& s.level == lc.level*/ && s.spellslot > 0 && s.choose).length;
+        ch.spells = {
+          known: known,
+          selected: selected,
+          maxlevel: max,
+          prepared: lc.preparedSpells.count && lc.preparedSpells.count > 0 ? false : true,
+          from: {}
+        }
+        for (let l = 1; l <= max; l++) {
+          ch.spells.from[l] = spellsStore.spellsChoice(lastClass.value.name, lastClass.value.subclass, l);
+        }
+      }
+      if(lc.preparedSpells.count && lc.preparedSpells.count > 0) {
+        const selected = character.value.spells.filter((s:any) => s.origin == "class" /*&& s.level == lc.level*/ && s.spellslot > 0 && s.choose && s.prepared).length;
+        ch.prepared = {
+          known: lc.preparedSpells.count,
+          selected: selected,
+          maxlevel: max,
+          onlyPrepared: false,
+          from: {}
+        }
+        if(known == -1) {
+          for (let l = 1; l <= max; l++) {
+            ch.prepared.from[l] = spellsStore.spellsChoice(lastClass.value.name, lastClass.value.subclass, l);
+          }
+        }
+        else if(known > 0) {// wizard ... need to get the previusly chooses
+          ch.prepared.onlyPrepared = true;
+          for (let l = 1; l <= max; l++) {
+            const spellsChooses = character.value.spells.filter((s:any) => s.origin == "class" && s.spellslot == l && s.choose).map((s:any) => s.name);
+            ch.prepared.from[l] = spellsStore.spellsChoiceFromList(spellsChooses);
+          }
+        }
+      }
+    }
   }
   const chooseAddSkill = (origin:string, sp: any) => {
     if(!sp) return;
@@ -1050,11 +1201,17 @@
     return false;
   };
   const modCon = computed(() => mod('con'));
+  const modInt = computed(() => mod('int'));
+  const modWis = computed(() => mod('wis'));
+  const modCha = computed(() => mod('cha'));
   const prof = computed(() => character.value.level <= 4 ? 2 : character.value.level <= 8 ? 3 : character.value.level <= 12 ? 4 : character.value.level <= 16 ? 5 : 6)
   watch(modCon, (newValue) => {
     if(newValue) {
       calcHPMax();
     }
+  });
+  watch(() => [modInt.value,modWis.value,modCha.value], (newValue) => {
+    if (newValue) calculSpellcasterLevel();
   });
 
   const addOtherClass = () => {
@@ -1083,10 +1240,15 @@
     return classesStore.getFeatures(cl.name, cl.subclass, cl.level);
   });
   const filterOptions = (name: string, from: any[]) => {
+    if(!from) return [];
     // if(!search.value[name]) return from;
     const s = !search.value[name] ? "" : search.value[name].toLowerCase();
     const hasAbilities = search.value[name+'-Abilities'] ?? false;
     const hasSpells = search.value[name+'-Spells'] ?? false;
+
+    const hasConcentration = search.value[name+'-Concentration'] ?? false;
+    const hasRitual = search.value[name+'-Ritual'] ?? false;
+
     return from.filter((f:any) =>
       (
         (f.name && f.name.toLowerCase().includes(s)) ||
@@ -1099,6 +1261,10 @@
       (!hasAbilities || f.hasAbility)
       &&
       (!hasSpells || f.hasSpells)
+      &&
+      (!hasConcentration || f.duration[0].concentration)
+      &&
+      (!hasRitual || f.meta?.ritual)
     );
   }
 
@@ -1365,6 +1531,42 @@
     if(isFeatureCheck(feature, option)) return false;
     return limit > 1 && lastClass.value.features.find((f:any) => f.name == feature)?.choices.length >= limit;
   }
+
+  const spellSlotsInfo = computed(() => spellSlots(character.value.spellcasterlevel));
+  const changeSpell = (e: any, spellSlot: number, prepared:boolean = true, origin:string = "class") => {
+    if (!e.target.value) return;
+    const name = e.target.value;
+    const spells = character.value.spells;
+    if(e.target.checked) {
+      spells.push({
+        name: name,
+        origin: origin,
+        level: character.value.level,
+        spellslot: spellSlot,
+        choose: true,
+        prepared: prepared
+      })
+    }
+    else {
+      character.value.spells = spells.filter((s:any) => !(s.name == name && s.choose));
+    }
+  }
+  const changeSpellPrepared = (e: any) => {
+    if (!e.target.value) return;
+    const name = e.target.value;
+    const sp = character.value.spells.find((f:any) => f.name == name);
+    sp.prepared = e.target.checked;
+  }
+  const isSpellCheck = (name: string) => {
+    return character.value.spells.find((f:any) => f.name == name) !== undefined;
+  }
+  const isSpellPrepared = (name: string) => {
+    return character.value.spells.find((f:any) => f.name == name && f.prepared) !== undefined;
+  }
+  const isSpellDisabled = (name: string) => {
+    return character.value.spells.find((f:any) => f.name == name && !f.choose) !== undefined;
+  }
+
 </script>
 
 <template>
@@ -1385,9 +1587,8 @@
         <button class="btn btn-secondary" @click="json = computedRaceOptions">computedRaceOptions</button>
         <button class="btn btn-secondary" @click="json = chooses">chooses</button>
         <button class="btn btn-secondary" @click="json = feats">feats</button>
-        <button class="btn btn-secondary" @click="json = search">search</button>
-        <button class="btn btn-secondary" @click="json = classFeatures">classFeatures</button>
-        <button class="btn btn-secondary" @click="calcDatasRace(true)">calcDatasRace(true)</button>
+        <button class="btn btn-secondary" @click="() => calculSpellcasterLevel()">calculSpellcasterLevel</button>
+        <button class="btn btn-secondary" @click="json = spellsStore.spellsChoice(lastClass.name, '', lastClass.level)">spells</button>
       </div>
     </template>
 
@@ -1509,7 +1710,7 @@
                   <label class="form-check-label">
                     {{ roc.name }}
                   </label>
-                  <p style="white-space: pre-line" >{{ DS(roc) }}</p>
+                  <p style="white-space: pre-line">{{ DS(roc) }}</p>
                 </div>
               </div>
             </template>
@@ -1629,13 +1830,16 @@
                   <input type="checkbox" class="form-check-input" v-model="search['feat-Spells']">
                   <label class="form-check-label ms-1">Spells</label>
                 </div>
+                <div class="ms-2">
+                  <i class="fa-regular" :class="showAllFeats ? 'fa-eye-slash' : 'fa-eye'" @click="showAllFeats = !showAllFeats" />
+                </div>
               </div>
               <div v-for="o in filterOptions('feat', feats)" class="form-check pb-1" :key="o.name">
                 <input class="form-check-input" type="radio" :value="o.name"
                        :checked="isFeatsCheck('race', o.name)"
                        @click="changeFeats($event, 'race')"
                 />
-                <FeatInfo :feat="o" :selected="isFeatsCheck('race', o.name)"
+                <FeatInfo :feat="o" :selected="isFeatsCheck('race', o.name)" :open="showAllFeats"
                           :ability-selected="character.abilities.improvments.find((ip:any) => ip.origin=='feat' && ip.level==1)?.ability"
                           @improve="(ability) => improveAbility(ability, 'feat')" />
               </div>
@@ -1677,8 +1881,8 @@
                 </p>
                 <template v-if="cf.chooseSubclass">
                   <div v-for="o in filterOptions(cf.name, cf.subclasses)" class="form-check" :key="o.shortName">
-                    <input class="form-check-input" type="radio" :value="o.shortName" v-model="lastClass.subclass" :checked="lastClass.subclass == o.shortName">
-                    <label class="form-check-label"><!--:title="S(o.info)" v-tooltip-->
+                    <input class="form-check-input" type="radio" :value="o.shortName" @click="changeSubclass($event)" :checked="lastClass.subclass == o.shortName">
+                    <label class="form-check-label"><!--:title="S(o.info)" v-tooltip v-model="lastClass.subclass"-->
                       {{ o.shortName }}
                     </label>
                     <p>{{ S(o.info) }}</p>
@@ -1770,7 +1974,7 @@
           </AccordionItem>
 
           <AccordionItem name="proficiencies" :steps="steps" :step="step" @click="changeStep">
-            <template v-slot:header-label>Proficiencies</template>
+            <template v-slot:header-label>Skill Proficiencies</template>
             <template v-slot:body>
               <!-- TODO : Skills, Tools, Langs -->
 <!--              TODO : Uniquement si lvl 1-->
@@ -1791,7 +1995,7 @@
 <!--                </div>-->
 <!--              </div>-->
 <!--              TODO : Uniquement si lvl 1 ou choix dans le niveau suivant -->
-              <p class="fw-bold m-0">Skills</p>
+<!--              <p class="fw-bold m-0">Skills</p>-->
               <div v-for="s in calculSkills" class="d-flex justify-content-center align-items-center my-1">
                 <label class="w-50 text-end" :class="s.allDisabled ? 'text-body-tertiary' : ''" :title="s.example" v-tooltip data-bs-placement="right">
                   {{ textSkill(s.prof) }}
@@ -1807,20 +2011,115 @@
             </template>
           </AccordionItem>
 
-          <AccordionItem name="spells" :steps="steps" :step="step" @click="changeStep">
-            <template v-slot:header-label>Spells</template>
+          <AccordionItem name="cantrips" :steps="steps" :step="step" @click="changeStep">
+            <template v-slot:header-label>Cantrips</template>
+            <template v-slot:header-value>{{chooses.cantrips.selected}}/{{chooses.cantrips.known}}</template>
             <template v-slot:body>
-              Not yet ...
+              <div class="m-0 d-flex align-items-center mb-2">
+                <input type="text" class="form-control form-control-sm" style="flex: 1" :value="search['spell']" @input="changeSearch($event, 'spell')" />
+                <div class="ms-2">
+                  <input type="checkbox" class="form-check-input" value="1" v-model="search['spell-Concentration']">
+                  <label class="form-check-label ms-1">Concentration</label>
+                </div>
+                <div class="ms-2">
+                  <input type="checkbox" class="form-check-input" v-model="search['spell-Ritual']">
+                  <label class="form-check-label ms-1">Ritual</label>
+                </div>
+                <div class="ms-2">
+                  <i class="fa-regular" :class="showAllSpells ? 'fa-eye-slash' : 'fa-eye'" @click="showAllSpells = !showAllSpells" />
+                </div>
+              </div>
+              <template v-for="l in [0]">
+<!--                <p class="fw-bold m-0">-->
+<!--                  <template v-if="l == 0">Cantrip</template>-->
+<!--                  <template v-else>Level {{ l }}</template>-->
+<!--                </p>-->
+                <div v-for="spell in filterOptions('spell', chooses.cantrips.from)" class="form-check pb-1">
+                  <input class="form-check-input" type="checkbox" :value="spell.name"
+                         @click="changeSpell($event, l)"
+                        :checked="isSpellCheck(spell.name)"
+                        :disabled="isSpellDisabled(spell.name)"
+                  />
+                  <SpellInfo :spell="spell" :open="showAllSpells" />
+                </div>
+              </template>
+            </template>
+          </AccordionItem>
+
+          <AccordionItem name="spellsKnown" :steps="steps" :step="step" @click="changeStep">
+            <template v-slot:header-label>Spells Known</template>
+            <template v-slot:header-value>{{chooses.spells.selected}}/{{chooses.spells.known}}</template>
+            <template v-slot:body>
+              <div class="m-0 d-flex align-items-center mb-2">
+                <input type="text" class="form-control form-control-sm" style="flex: 1" :value="search['spell']" @input="changeSearch($event, 'spell')" />
+                <div class="ms-2">
+                  <input type="checkbox" class="form-check-input" value="1" v-model="search['spell-Concentration']">
+                  <label class="form-check-label ms-1">Concentration</label>
+                </div>
+                <div class="ms-2">
+                  <input type="checkbox" class="form-check-input" v-model="search['spell-Ritual']">
+                  <label class="form-check-label ms-1">Ritual</label>
+                </div>
+                <div class="ms-2">
+                  <i class="fa-regular" :class="showAllSpells ? 'fa-eye-slash' : 'fa-eye'" @click="showAllSpells = !showAllSpells" />
+                </div>
+              </div>
+              <template v-for="l in chooses.spells.maxlevel">
+                <p class="fw-bold m-0">
+                  Level {{ l }}
+                </p>
+                <div v-for="spell in filterOptions('spell', chooses.spells.from[l])" class="form-check pb-1">
+                  <input class="form-check-input" type="checkbox" :value="spell.name"
+                         @click="changeSpell($event, l, chooses.spells.prepared)"
+                         :checked="isSpellCheck(spell.name)"
+                         :disabled="isSpellDisabled(spell.name)"
+                  />
+                  <SpellInfo :spell="spell" :open="showAllSpells" />
+                </div>
+              </template>
+            </template>
+          </AccordionItem>
+          <AccordionItem name="spellsPrepared" :steps="steps" :step="step" @click="changeStep">
+            <template v-slot:header-label>Spells Prepared</template>
+            <template v-slot:header-value>{{chooses.prepared.selected}}/{{chooses.prepared.known}}</template>
+            <template v-slot:body>
+              <div class="m-0 d-flex align-items-center mb-2">
+                <input type="text" class="form-control form-control-sm" style="flex: 1" :value="search['spell']" @input="changeSearch($event, 'spell')" />
+                <div class="ms-2">
+                  <input type="checkbox" class="form-check-input" value="1" v-model="search['spell-Concentration']">
+                  <label class="form-check-label ms-1">Concentration</label>
+                </div>
+                <div class="ms-2">
+                  <input type="checkbox" class="form-check-input" v-model="search['spell-Ritual']">
+                  <label class="form-check-label ms-1">Ritual</label>
+                </div>
+                <div class="ms-2">
+                  <i class="fa-regular" :class="showAllSpells ? 'fa-eye-slash' : 'fa-eye'" @click="showAllSpells = !showAllSpells" />
+                </div>
+              </div>
+              <template v-for="l in chooses.prepared.maxlevel">
+                <p class="fw-bold m-0">
+                  Level {{ l }}
+                </p>
+                <div v-for="spell in filterOptions('spell', chooses.prepared.from[l])" class="form-check pb-1">
+                  <input class="form-check-input" type="checkbox" :value="spell.name"
+                         @click="chooses.prepared.onlyPrepared ? changeSpellPrepared($event) : changeSpell($event, l)"
+                         :checked="isSpellPrepared(spell.name)"
+                         :disabled="isSpellDisabled(spell.name)"
+                  />
+                  <SpellInfo :spell="spell" :open="showAllSpells" />
+                </div>
+              </template>
             </template>
           </AccordionItem>
 
           <AccordionItem name="equipment" :steps="steps" :step="step" @click="changeStep">
             <template v-slot:header-label>Equipment</template>
             <template v-slot:body>
+              <p class="text-center text-warning fw-bold m-0">In progress ...</p>
               <!-- TODO Computed Armor Training / Weapon Proficiencies / Tool Proficiencies here ? if lvl > 1 -->
             </template>
           </AccordionItem>
-
         </div>
       </div>
       <div class="col-lg-6 character-info">
@@ -1904,6 +2203,17 @@
               <DamageType :name="r" />
             </template>
           </CharacterInfo>
+
+          <CharacterInfo v-if="spellSlotsInfo">
+            <template v-slot:label>Spell slots:</template>
+            <template v-for="j in 9">
+              <template v-if="spellSlotsInfo[`s${j}`] > 0">
+                <template v-if="j>1">, </template>
+                Lvl{{j}}: {{spellSlotsInfo[`s${j}`]}}
+              </template>
+            </template>
+          </CharacterInfo>
+
           <CharacterInfo v-if="['race','version','subrace'].includes(step)" v-for="e in computedRaceEntries">
             <template v-slot:label>{{ e.name }}:</template>
             {{ DS(e, false) }}
@@ -1925,7 +2235,8 @@
               <p class="fw-bold border-bottom text-center mb-2 mt-1 fs-1-1">
                 {{ cl.name }}
               </p>
-              <ClassInfo :name="cl.name" :subclass="cl.subclass" :is-first="i === 0" :valid-abilities="validAbilities">
+              <ClassInfo :name="cl.name" :subclass="cl.subclass" :level="cl.level" :is-first="i === 0" :valid-abilities="validAbilities"
+                         :cantrips="chooses.cantrips?.known" :spells-known="chooses.spells?.known" :spells-prepared="chooses.prepared?.known">
                 <template v-slot:skills v-if="computedSkillsClass">
                   {{computedSkillsClass}}
                 </template>

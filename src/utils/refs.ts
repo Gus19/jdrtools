@@ -1,3 +1,5 @@
+import type {Duration, EntriesHigherLevel, SpellInfo, Time} from "@/stores/spells";
+
 export interface Skill {
   name: string,
   attribute: string,
@@ -59,15 +61,51 @@ export const
     "ms,rs": "Melee or Ranged Spell Attack"
   },
   Schools: any = {
-    "A": "Abjuration",
-    "C": "Conjuration",
-    "D": "Divination",
-    "E": "Enchantment",
-    "V": "Evocation",
-    "I": "Illusion",
-    "N": "Necromancy",
-    "P": "Psionic",
-    "T": "Transmutation"
+    "A": {
+      name: "Abjuration",
+      color: "#00b921",
+      info: "Spells are protective in nature, though some of them have aggressive uses. They create magical barriers, negate harmful effects, harm trespassers, or banish creatures to other planes of existence."
+    },
+    "C": {
+      name: "Conjuration",
+      color: "#bd0044",
+      info: "Spells involve the transportation of objects and creatures from one location to another. Some spells summon creatures or objects to the caster's side, whereas others allow the caster to teleport to another location. Some conjurations create objects or effects out of nothing."
+    },
+    "D": {
+      name: "Divination",
+      color: "#00adb3",
+      info: "Spells reveal information, whether in the form of secrets long forgotten, glimpses of the future, the locations of hidden things, the truth behind illusions, or visions of distant people or places."
+    },
+    "E": {
+      name: "Enchantment",
+      color: "#b30083",
+      info: "Spells affect the minds of others, influencing or controlling their behavior. Such spells can make enemies see the caster as a friend, force creatures to take a course of action, or even control another creature like a puppet."
+    },
+    "V": {
+      name: "Evocation",
+      color: "#bb0100",
+      info: "Spells manipulate magical energy to produce a desired effect. Some call up blasts of fire or lightning. Others channel positive energy to heal wounds."
+    },
+    "I": {
+      name: "Illusion",
+      color: "#006dbd",
+      info: "Spells deceive the senses or minds of others. They cause people to see things that are not there, to miss things that are there, to hear phantom noises, or to remember things that never happened. Some illusions create phantom images that any creature can see, but the most insidious illusions plant an image directly in the mind of a creature.\n"
+    },
+    "N": {
+      name: "Necromancy",
+      color: "#6c00cc",
+      info: "Spells manipulate the energies of life and death. Such spells can grant an extra reserve of life force, drain the life energy from another creature, create the undead, or even bring the dead back to life. Creating the undead through the use of necromancy spells such as animate dead is not a good act, and only evil casters use such spells frequently."
+    },
+    "P": {
+      name: "Psionic",
+      color: "#FFF",
+      info: ""
+    },
+    "T": {
+      name: "Transmutation",
+      color: "#ccbe00",
+      info: "Spells change the properties of a creature, object, or environment. They might turn an enemy into a harmless creature, bolster the strength of an ally, make an object move at the caster's command, or enhance a creature's innate healing abilities to rapidly recover from injury."
+    }
   }
 ;
 
@@ -338,3 +376,161 @@ export const inlineAbility = (ability: any[]) => {
 export const fn = (n: number) => {
   return `${n > 0 ? `+${n}` : n}`;
 }
+
+export const castingTime = (s: SpellInfo/*t: Time*/, short: boolean = false) => {
+  const t = s.time[0];
+  if(t.unit == 'action' && short) return 'Action';
+  if(t.unit == 'bonus' && short) return 'Bonus';
+  if(t.unit == 'reaction' && short) return 'Reaction';
+  return `${t.number} ${t.unit}${t.condition && !short ? ', '+t.condition : ''}`;
+}
+
+export const castingRange = (s: SpellInfo) => {
+  let m = 'Range: ';
+  let distance = (s.range.distance?.amount ? s.range.distance.amount + ' ' : '') + s.range.distance?.type;
+  if(s.range.type == "point") {
+    m += distance;
+  }
+  else {
+    m += s.range.type + ' (' + distance +')';
+  }
+  return m;
+}
+
+export const spellDuration = (s: SpellInfo) => {
+  const ds: string[] = [];
+  s.duration.forEach((d: Duration) => {
+    let m = "";
+    switch (d.type) {
+      case "instant":
+        m = "Instantaneous"
+        break
+      case "permanent":
+        m = `Until ${d.ends?.join(" or ")}`;
+        break
+      case "timed":
+        m = `${d.duration?.amount} ${d.duration?.type}`;
+        break
+    }
+    ds.push(m);
+    if(d.concentration) {
+      ds.push('concentration');
+    }
+  });
+  if(ds.length > 0)
+    return `Duration: ${ds.join(', ')}`;
+  return "";
+}
+
+export const spellSlots = (level: number|null = null): any => {
+  const slots = [];
+  let min = 1; let max = 20;
+  if(level != null) {
+    min = level; max = level;
+  }
+  for (let i = min; i <= max; i++) {
+    let s1 = 2;
+    if(i == 2) s1 = 3; else if (i > 2) s1 = 4;
+    let s2 = 0;
+    if(i == 3) s2 = 2; else if (i > 3) s2 = 3;
+    let s3 = 0;
+    if(i == 5) s3 = 2; else if (i > 5) s3 = 3;
+    let s4 = 0;
+    if(i == 7) s4 = 1; else if (i == 8) s4 = 2; else if (i > 8) s4 = 3;
+    let s5 = 0;
+    if(i == 9) s5 = 1; else if (i > 9 && i < 18) s5 = 2; else if (i >= 18) s5 = 3;
+    let s6 = 0;
+    if(i >= 11 && i < 19) s6 = 1; else if (i >= 19) s6 = 2;
+    let s7 = 0;
+    if(i >= 13 && i < 20) s7 = 1; else if (i == 20) s7 = 2;
+    let s8 = 0;
+    if(i >= 15) s8 = 1;
+    let s9 = 0;
+    if(i >= 17) s9 = 1;
+    
+    let max = 0;
+    if(s9 != 0) max = 9;
+    else if(s8 != 0) max = 8;
+    else if(s7 != 0) max = 7;
+    else if(s6 != 0) max = 6;
+    else if(s5 != 0) max = 5;
+    else if(s4 != 0) max = 4;
+    else if(s3 != 0) max = 3;
+    else if(s2 != 0) max = 2;
+    else if(s1 != 0) max = 1;
+
+    slots.push({
+      level: i,
+      s1: s1,
+      s2: s2,
+      s3: s3,
+      s4: s4,
+      s5: s5,
+      s6: s6,
+      s7: s7,
+      s8: s8,
+      s9: s9,
+      max: max
+    });
+  }
+
+  if(level != null) return slots.find(s => s.level == level);
+  else return slots;
+}
+
+export const spellDetails = (s: SpellInfo): string => {
+  let lines: string[] = [];
+  s.entries.forEach((en: any) => {
+    if("string" == typeof en) {
+      lines.push(S(en))
+    }
+    else {
+      if("type" in en && en.type === "list") {
+        en.items.forEach((it: any) => lines.push('- ' + S(it)));
+      }
+      else if("name" in en && "entries" in en) {
+        lines.push(S(`${en.name}: ${en.entries.join(" ")}`));
+      }
+    }
+  });
+  if(s.entriesHigherLevel) {
+    s.entriesHigherLevel.forEach((h: EntriesHigherLevel) => {
+      if (h.type === 'entries') {
+        lines.push(`${h.name}. ${h.entries.join('\n')}`);
+      }
+    });
+  }
+  if(lines.length == 0) return "";
+  return lines.join('\n');
+}
+
+export const messageSpell = (s: SpellInfo, repeatName: boolean = true): string => {
+  let lines = [];
+
+  if(repeatName) lines.push(`${s.name}, ${s.level == 0 ? 'Cantrip' : `Level ${s.level}`} ${Schools[<string>s.school].name}${s.meta && s.meta.ritual ? ' (ritual)':''}`);
+  else lines.push(`School: ${Schools[<string>s.school].name}`);
+
+  if(s.time) {
+    // s.time.forEach((t: Time) => lines.push(`Casting Time: ${castingTime(t)}`))
+    lines.push(`Casting Time: ${castingTime(s)}`);
+  }
+  if(s.range) {
+    let m = castingRange(s);
+    lines.push(m);
+  }
+
+  let comps: string[] = [];
+  if(s.components.v) comps.push('V');
+  if(s.components.s) comps.push('S');
+  if(s.components.m) comps.push(`M (${s.components.m})`);
+  if(comps.length > 0)
+    lines.push(`Components: ${comps.join(', ')}`);
+
+  const ds = spellDuration(s);
+  if(ds.length > 0) lines.push(ds);
+
+  lines.push(spellDetails(s));
+  return lines.join('\n');
+}
+
+

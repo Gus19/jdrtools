@@ -4,7 +4,7 @@
   import JsonEditor from 'vue3-ts-jsoneditor';
   import {useSpellsStore} from "@/stores/spells";
   import type {EntriesHigherLevel,Duration,Time} from "@/stores/spells";
-  import {Alignments, Schools, Sizes, Skills, S} from "@/utils/refs";
+  import {Alignments, Schools, Sizes, Skills, S, messageSpell} from "@/utils/refs";
   import type {Skill, Property} from "@/utils/refs";
 
   onMounted(() => {
@@ -917,73 +917,7 @@
     }
     else {
       const s = ex.spell;
-      let lines = [];
-      lines.push(`${s.name}, ${s.level == 0 ? 'Cantrip' : `Level ${s.level}`} ${Schools[<string>s.school]}${s.meta && s.meta.ritual ? ' (ritual)':''}`);
-      if(s.time) {
-        s.time.forEach((t: Time) => lines.push(`Casting Time: ${t.number} ${t.unit}${t.condition ? ', '+t.condition : ''}`))
-      }
-      if(s.range) {
-        let m = 'Range: ';
-        let distance = (s.range.distance?.amount ? s.range.distance.amount + ' ' : '') + s.range.distance?.type;
-        if(s.range.type == "point") {
-          m += distance;
-        }
-        else {
-          m += s.range.type + ' (' + distance +')';
-        }
-        lines.push(m);
-      }
-
-      let comps: string[] = [];
-      if(s.components.v) comps.push('V');
-      if(s.components.s) comps.push('S');
-      if(s.components.m) comps.push(`M (${s.components.m})`);
-      if(comps.length > 0)
-        lines.push(`Components: ${comps.join(', ')}`);
-
-      const ds: string[] = [];
-      s.duration.forEach((d: Duration) => {
-        let m = "";
-        switch (d.type) {
-          case "instant":
-            m = "Instantaneous"
-            break
-          case "permanent":
-            m = `Until ${d.ends?.join(" or ")}`;
-            break
-          case "timed":
-            m = `${d.duration?.amount} ${d.duration?.type}`;
-            break
-        }
-        ds.push(m);
-        if(d.concentration) {
-          ds.push('concentration');
-        }
-      });
-      if(ds.length > 0)
-        lines.push(`Duration: ${ds.join(', ')}`);
-
-      s.entries.forEach((en: any) => {
-        if("string" == typeof en) {
-          lines.push(S(en))
-        }
-        else {
-          if("type" in en && en.type === "list") {
-            en.items.forEach((it: any) => lines.push('- ' + S(it)));
-          }
-          else if("name" in en && "entries" in en) {
-            lines.push(S(`${en.name}: ${en.entries.join(" ")}`));
-          }
-        }
-      });
-      if(s.entriesHigherLevel) {
-        s.entriesHigherLevel.forEach((h: EntriesHigherLevel) => {
-          if (h.type === 'entries') {
-            lines.push(`${h.name}. ${h.entries.join('\n')}`);
-          }
-        });
-      }
-      message = lines.join('\n');
+      message = s.info;
     }
     const id = getParent(ex.name + '-spell');
     addMessage({

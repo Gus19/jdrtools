@@ -93,9 +93,9 @@ span[data-bs-original-title], label[data-bs-original-title] {
 .form-check p {
   /*.small*/
   text-align: justify;
-  font-size: .875em;
+  font-size: 0.925rem;
   /*.lh-1*/
-  line-height: 1 !important;
+  line-height: 1rem !important;
   /*.py-1*/
   padding-bottom: .25rem !important;
   margin: 0 !important;
@@ -109,7 +109,7 @@ span[data-bs-original-title], label[data-bs-original-title] {
 }
 p.small {
   text-align: justify;
-  font-size: .875em;
+  font-size: 0.925em;
 }
 .character-info p {
   margin: 0;
@@ -122,4 +122,7 @@ p.small {
 }
 .fs-1-1 {
   font-size: 1.1rem;
+}
+.flex-1 {
+  flex: 1;
 }
