@@ -130,3 +130,16 @@ p.small {
 .form-check-input:checked ~ .form-check-label, .form-check-input[checked] ~ .form-check-label {
   opacity: 1 !important;
 }
+
+.gp {
+  color: gold;
+}
+.sp {
+  color: silver;
+}
+.cp {
+  color: #b87333;
+}
+.w-33 {
+  width: calc(100% / 3);
+}

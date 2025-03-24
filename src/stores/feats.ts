@@ -1,5 +1,4 @@
 import {defineStore} from 'pinia'
-import {formatOptionalEntries} from "@/utils/refs";
 
 export const useFeatsStore = defineStore("FeatsStore", {
   state: (): RootState => ({
@@ -28,13 +27,6 @@ export const useFeatsStore = defineStore("FeatsStore", {
   },
   getters: {
     isLoad: (state) => state.feats.length > 0,
-    // getDefaults: (state) => state.feats.filter((b: any) =>
-    //   true
-    //     defaultFeats.includes(b.name) && (b.source != "XPHB")
-    //   // && b.feats
-    //   // && b.skillProficiencies[0].any
-    // )
-    //prerequisite => only if prerequisite match
     getDefaults() {
       return (character: any): any[] => {
         const level = character.level ?? 1;

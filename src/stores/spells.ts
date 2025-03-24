@@ -1,5 +1,5 @@
 import {defineStore} from 'pinia'
-import {formatOptionalEntries, messageSpell} from "@/utils/refs";
+import {messageSpell, S} from "@/utils/refs";
 
 const urlSpells = [
   "/data/spells/spells-aag.json",
@@ -60,7 +60,7 @@ export const useSpellsStore = defineStore("SpellsStore", {
             localSpells.push(...data.spell.map((s:any) => {
               return {
                 ...s,
-                info: messageSpell(s)
+                info: S(messageSpell(s, false))
               }
             }));
           }
@@ -80,10 +80,10 @@ export const useSpellsStore = defineStore("SpellsStore", {
   getters: {
     isLoad: (state) => state.spells.length > 0,
     spellsChoice() {
-      return (className: string, subclass: string|null = null, level: number|null = null): SpellInfo[] => {
+      return (className: string, level: number|null = null, schools: null|string[] = null): SpellInfo[] => {
         const names = this.sources.filter((s:any) => s.classes.includes(className)).map((s:any) => s.name);
         return this.spellsSort(this.spells
-          .filter(s => names.includes(s.name) && (level == null || s.level == level))
+          .filter(s => names.includes(s.name) && (level == null || s.level == level) && (schools == null || schools.includes(s.school)))
         );
       }
     },
@@ -100,6 +100,11 @@ export const useSpellsStore = defineStore("SpellsStore", {
           .sort((a, b) => a.name.localeCompare(b.name))
           .sort((a, b) => a.time[0].unit.localeCompare(b.time[0].unit))
         ;
+      }
+    },
+    findByName() {
+      return (name: string): SpellInfo|undefined => {
+        return this.spells.find(f => f.name.toLowerCase() == name.toLowerCase());
       }
     }
   }

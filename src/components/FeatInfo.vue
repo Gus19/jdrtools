@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import {ref, watch} from "vue";
-  import {S,inlineAbility} from "@/utils/refs";
+  import {type PropType, ref, watch} from "vue";
+  import {S, inlineAbility, featEntries} from "@/utils/refs";
+  import type {Feat} from "@/stores/feats";
   const props = defineProps({
-    feat: {type: Object, required: true},
+    feat: {type: Object as PropType<Feat>, required: true},
     choice: {type: Boolean, default: true},
     open: {type: Boolean, default: false},
     selected: {type: Boolean, default: false},
@@ -20,13 +21,16 @@ import {ref, watch} from "vue";
 
 <template>
   <div class="d-flex" :class="choice ? 'flex-column' : 'justify-content-between'">
-    <label class="form-check-label">
-      {{ feat.name }}
-      <span class="small" v-if="feat.prerequisite && feat.prerequisite.length > 0">
+    <div>
+      <label v-if="choice" class="form-check-label">{{ feat.name }}</label>
+      <label v-else :title="featEntries(feat)" v-tooltip class="form-check-label">{{ feat.name }}</label>
+      <label class="small ms-1" v-if="feat.prerequisite && feat.prerequisite.length > 0">
         ({{feat.prerequisite.join(' or ')}})
-      </span>
-      <i class="fa-regular" :class="open ? 'fa-eye-slash' : 'fa-eye'" @click="open = !open" />
-    </label>
+      </label>
+      <label v-if="choice" class="ms-1">
+        <i class="fa-regular" :class="open ? 'fa-eye-slash' : 'fa-eye'" @click="open = !open" />
+      </label>
+    </div>
     <template v-if="feat.ability">
       <p v-if="abilitySelected && !choice">{{abilitySelected.toUpperCase()}} +1</p>
       <p v-else-if="!selected || !feat.ability[0].choose">{{inlineAbility(feat.ability)}}</p>

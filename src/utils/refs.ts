@@ -1,4 +1,5 @@
 import type {Duration, EntriesHigherLevel, SpellInfo, Time} from "@/stores/spells";
+import type {Feat} from "@/stores/feats";
 
 export interface Skill {
   name: string,
@@ -112,24 +113,29 @@ export const
 export interface Damage {
   name: string,
   display: string,
-  example: string
+  example: string,
+  key ?: string
 }
 
 export const Damages: Damage[] = [
   {name: "acid", display: "Acid", example: "Corrosive liquids, digestive enzymes" },
-  {name: "bludgeoning", display: "Bludgeoning", example: "Blunt objects, constriction, falling" },
+  {name: "bludgeoning", display: "Bludgeoning", example: "Blunt objects, constriction, falling", key: 'B' },
   {name: "cold", display: "Cold", example: "Freezing water, icy blasts" },
   {name: "fire", display: "Fire", example: "Flames, unbearable heat" },
   {name: "force", display: "Force", example: "Pure magical energy" },
   {name: "lightning", display: "Lightning", example: "Electricity" },
-  {name: "necrotic", display: "Necrotic", example: "Life-draining energy" },
-  {name: "piercing", display: "Piercing", example: "Fangs, puncturing objects" },
+  {name: "necrotic", display: "Necrotic", example: "Life-draining energy", key: 'N' },
+  {name: "piercing", display: "Piercing", example: "Fangs, puncturing objects", key: 'P' },
   {name: "poison", display: "Poison", example: "Toxic gas, venom" },
   {name: "psychic", display: "Psychic", example: "Mind-rending energy" },
-  {name: "tadiant", display: "Radiant", example: "Holy energy, searing radiation" },
-  {name: "slashing", display: "Slashing", example: "Claws, cutting objects" },
+  {name: "radiant", display: "Radiant", example: "Holy energy, searing radiation", key: 'R' },
+  {name: "slashing", display: "Slashing", example: "Claws, cutting objects", key: 'S' },
   {name: "thunder", display: "Thunder", example: "Concussive sound" }
 ]
+
+export const damageByKey = (key: string) => {
+  return Damages.find(damage => damage.key == key);
+}
 
 export interface Ability {
   name: string,
@@ -251,7 +257,7 @@ export const S = (e: any, d: boolean = true) => {
           break;
         case"damage":
         case"dice":
-          t = t.replace(n, `{${i}}`);
+          t = t.replace(n, `{${i.split('|')[0].replace('×', '*')}}`);
           break;
         // case"skill":
         //   t = t.replace(n, `${i}${d ? ` {1d20 + ${i.toLowerCase()}}` : ``}`);
@@ -297,7 +303,7 @@ export const S = (e: any, d: boolean = true) => {
     return t
   }
   catch (ex) {
-    console.log(e, d, ex);
+    console.error(e, d, ex);
   }
   return t;
 }
@@ -311,6 +317,34 @@ export const displaySubrace = (s: any) => {
 export const roll = (max:number, min:number = 1) => {
   return min + Math.floor(Math.random() * (max - min + 1));
 }
+export const rollFormula = (f: string): number => {
+  const a = /(?<dice>(?<dices>\d+)?[dD](?<faces>\d+)?)/g;
+  let e = f.replace('{','').replace('}','');
+  let g;
+  while (g = a.exec(f)) {
+    if(g.groups) {
+      let faces = parseInt(g.groups.faces);
+      let dices = parseInt(g.groups.dices);
+      let rolls = [];
+      for (let i = 1; i <= dices; i++) {
+        rolls.push(roll(faces));
+      }
+      e = e.replace(g.groups['dice'], `(${rolls.join('+')})`);
+    }
+  }
+  try {
+    const dynamicCode = "return " + e;
+    const sumFunction = new Function(dynamicCode);
+    const r = sumFunction();
+    if(isNaN(r)) return 0;
+    return r;
+  }
+  catch(ex) {
+    console.error(ex);
+    return 0;
+  }
+}
+
 export const abilityRoll = () => {
   // 4d6kh3
   let a = [
@@ -353,6 +387,33 @@ export const textLang = (k: string, a:any = null) => {
   }
   else {
     const sk: any = LanguagesAll.find(s => s.key === k);
+    return `${sk.name}`;
+  }
+}
+
+export const inlineTool = (tools: any[]) => {
+  const s: string[] = [];
+  tools.forEach((a:any) => {
+    Object.keys(a).forEach((k: string) => s.push(textTool(k, a)) )
+  });
+  return s.join(', ');
+}
+export const textTool = (k: string, a:any = null) => {
+  if (k == "choose") {
+    let s = `Choose ${a[k].count||1}`;
+    s += ' (From: ';
+    s += a[k].from.map((f:string) => ToolsAll.find(s => s.key === f)?.name).join(', ');
+    s += ')';
+    return s;
+  }
+  else if (k == "anyStandard") {
+    return `Any standard ${a[k]||1}`;
+  }
+  else if (k == "any") {
+    return `Any ${a[k]||1}`;
+  }
+  else {
+    const sk: any = ToolsAll.find(s => s.key === k);
     return `${sk.name}`;
   }
 }
@@ -460,6 +521,10 @@ export const spellDuration = (s: SpellInfo) => {
 
 export const spellSlots = (level: number|null = null): any => {
   const slots = [];
+  if(level == 0) {
+    return null;
+  }
+
   let min = 1; let max = 20;
   if(level != null) {
     min = level; max = level;
@@ -484,16 +549,16 @@ export const spellSlots = (level: number|null = null): any => {
     let s9 = 0;
     if(i >= 17) s9 = 1;
     
-    let max = 0;
-    if(s9 != 0) max = 9;
-    else if(s8 != 0) max = 8;
-    else if(s7 != 0) max = 7;
-    else if(s6 != 0) max = 6;
-    else if(s5 != 0) max = 5;
-    else if(s4 != 0) max = 4;
-    else if(s3 != 0) max = 3;
-    else if(s2 != 0) max = 2;
-    else if(s1 != 0) max = 1;
+    let smax = 0;
+    if(s9 != 0) smax = 9;
+    else if(s8 != 0) smax = 8;
+    else if(s7 != 0) smax = 7;
+    else if(s6 != 0) smax = 6;
+    else if(s5 != 0) smax = 5;
+    else if(s4 != 0) smax = 4;
+    else if(s3 != 0) smax = 3;
+    else if(s2 != 0) smax = 2;
+    else if(s1 != 0) smax = 1;
 
     slots.push({
       level: i,
@@ -506,7 +571,7 @@ export const spellSlots = (level: number|null = null): any => {
       s7: s7,
       s8: s8,
       s9: s9,
-      max: max
+      max: smax
     });
   }
 
@@ -514,9 +579,47 @@ export const spellSlots = (level: number|null = null): any => {
   else return slots;
 }
 
+export const spellSlotsPact = (level: number|null = null): any => {
+  const slots = [];
+  if(level == 0) {
+    return null;
+  }
+
+  let min = 1; let max = 20;
+  if(level != null) {
+    min = level; max = level;
+  }
+
+  for (let i = min; i <= max; i++) {
+    let smax = 0;
+    let slot = 0;
+
+    if(i == 1) slot = 1
+    else if(i <= 10) slot = 2;
+    else if(i <= 16) slot = 3;
+    else slot = 4;
+
+    if(i <= 2) smax = 1
+    else if(i <= 4) smax = 2
+    else if(i <= 6) smax = 3
+    else if(i <= 8) smax = 4
+    else smax = 5
+
+    slots.push({
+      level: i,
+      slot: slot,
+      max: smax
+    });
+  }
+
+  if(level != null) return slots.find(s => s.level == level);
+  else return slots;
+
+}
+
 export const spellDetails = (s: SpellInfo): string => {
   let lines: string[] = [];
-  s.entries.forEach((en: any) => {
+  s.entries.forEach(en => {
     if("string" == typeof en) {
       lines.push(S(en))
     }
@@ -558,7 +661,7 @@ export const messageSpell = (s: SpellInfo, repeatName: boolean = true): string =
   let comps: string[] = [];
   if(s.components.v) comps.push('V');
   if(s.components.s) comps.push('S');
-  if(s.components.m) comps.push(`M (${s.components.m})`);
+  if(s.components.m) comps.push(`M (${s.components.m.text ? s.components.m.text : s.components.m})`);
   if(comps.length > 0)
     lines.push(`Components: ${comps.join(', ')}`);
 
@@ -742,3 +845,39 @@ export const ToolsAll = [
 export const ToolsKey = [
   ...ToolsAll.map(l => l.key)
 ];
+
+export const featEntries = (f: Feat) => {
+  let lines: string[] = [];
+  f.entries.forEach(en => {
+    if("string" == typeof en) {
+      lines.push(S(en))
+    }
+    else {
+      if("type" in en && en.type === "list") {
+        en.items.forEach((it: any) => lines.push('- ' + S(it)));
+      }
+      else if("name" in en && "entries" in en) {
+        lines.push(S(`${en.name}: ${en.entries.join(" ")}`));
+      }
+    }
+  });
+
+  if(lines.length == 0) return "";
+  return lines.join('\n');
+}
+
+export const cfl = (s: string) => {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+export const calculMoney = (value: number) => {
+  const gp = Math.floor(value / 100);
+  const sp = Math.floor((value - gp * 100) / 10);
+  const cp = value - gp * 100 - sp * 10;
+
+  return {
+    gp: gp,
+    sp: sp,
+    cp: cp
+  }
+
+}

@@ -39,6 +39,10 @@
         <slot name="skills">{{ inlineSkill(cl.startingProficiencies.skills, true) }}</slot>
       </CharacterInfo>
       <slot name="expertises"></slot>
+      <CharacterInfo v-if="cl.startingProficiencies.tools">
+        <template v-slot:label>Tool Proficiencies:</template>
+        <slot name="tools">{{ cl.startingProficiencies.tools.map((t:any) => S(t)).join(', ') }}</slot>
+      </CharacterInfo>
       <CharacterInfo v-if="cl.startingProficiencies.armor">
         <template v-slot:label>Armor Training:</template>
         {{ cl.startingProficiencies.armor.map((t:any) => t.proficiency ? t.proficiency : S(t)).join(', ') }}
@@ -46,10 +50,6 @@
       <CharacterInfo v-if="cl.startingProficiencies.weapons">
         <template v-slot:label>Weapon Proficiencies:</template>
         {{ cl.startingProficiencies.weapons.map((t:any) => t.proficiency ? t.proficiency : S(t)).join(', ') }}
-      </CharacterInfo>
-      <CharacterInfo v-if="cl.startingProficiencies.tools">
-        <template v-slot:label>Tool Proficiencies:</template>
-        {{ cl.startingProficiencies.tools.map((t:any) => S(t)).join(', ') }}
       </CharacterInfo>
 
       <div class="d-flex">
