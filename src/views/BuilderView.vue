@@ -28,7 +28,15 @@
     LanguagesAll,
     inlineLang,
     ToolsOther,
-    ToolsArtisan, ToolsInstrument, ToolsGamingsets, ToolsAll, ToolsKey, inlineTool, spellSlotsPact, rollFormula
+    ToolsArtisan,
+    ToolsInstrument,
+    ToolsGamingsets,
+    ToolsAll,
+    ToolsKey,
+    inlineTool,
+    spellSlotsPact,
+    rollFormula,
+    inlineEntries, Damages
   } from "@/utils/refs";
   import AccordionItem from "@/components/AccordionItem.vue";
   import CharacterInfo from "@/components/CharacterInfo.vue";
@@ -376,6 +384,7 @@
 
     }
     catch (e) {
+      console.error(e);
     }
     finally {
       steps.value = ss;
@@ -670,61 +679,137 @@
         "anyStandard": 1
       }];
     }
-    if(!s) return v;
+     // return v;
     let c: any = {
       ...v
     };
-    Object.keys(s).forEach((k:string) => {
-      if(k in c) {
-        if(s.overwrite && s.overwrite[k]) {
-          c[k] = s[k];
-        }
-        else if("string" == typeof c[k]) {
-          if(c[k] !== s[k]) {
-            c[k] += " " + s[k];
-          }
-        }
-        else if(Array.isArray(s[k])) {
-          c[k] = [
-            ...c[k],
-            ...s[k]
-          ]
-          if(k === "entries") {
-            let overwrite = c[k].filter((e:any) => e.data && e.data.overwrite).map((e:any) => e.data.overwrite);
-            if(overwrite) {
+    c.entries = [ // force initials values
+      ...v.entries
+    ]
+    if(s) {
+      Object.keys(s).forEach((k: string) => {
+        if (k in c) {
+          if (s.overwrite && s.overwrite[k]) {
+            c[k] = s[k];
+          } else if ("string" == typeof c[k]) {
+            if (c[k] !== s[k]) {
+              c[k] += " " + s[k];
+            }
+          } else if (Array.isArray(s[k])) {
+            if (k == "entries") {
+              c[k].push(...s[k].filter((e: any) => !(e.data && e.data.overwrite)));
+              s[k].forEach((e: any) => {
+                if(e.data && e.data.overwrite) {
+                  let idx = c[k].findIndex((a: any) => a.name == e.data.overwrite);
+                  if (idx >= 0) c[k][idx] = e;
+                  else c[k].push(e);
+                }
+              });
+            }
+            else if (k != 'ability') {
+              c[k] = s[k];
+            }
+            else {
               c[k] = [
-                ...c[k].filter((e: any) => !overwrite.includes(e.name))
+                ...c[k],
+                ...s[k]
               ]
             }
-          }
-          else if (k != 'ability') {
+          } else if ("object" == typeof s[k]) {
+            c[k] = s[k]
+          } else {
             c[k] = s[k];
           }
-        }
-        else if("object" == typeof s[k]) {
-          c[k] = s[k]
-        }
-        else {
+        } else {
           c[k] = s[k];
         }
-      }
-      else {
-        c[k] = s[k];
-      }
-    });
+      });
+    }
+
+    if(c._versions && c._versions[0]._abstract) {
+      const abs = c._versions[0]._abstract;
+      c._versions[0]._implementations.forEach((e: any) => {
+        let n = abs.name;
+        const a = /{{(.*?)}}/g;
+        let g = a.exec(abs.name);
+        if(g) n = n.replace(abs.name, e._variables[g[1]]);
+        let r = abs._mod.entries.find((en:any) => en.mode == 'removeArr')?.names;
+
+        if(c._versions.find((v:any) => v.name == n)) return;
+
+        let nv = {
+          name: n,
+          _mod: {
+            entries: {
+              replace: r,
+              items: {
+                name: `${r} ${n}`,
+                type: "entries",
+                entries: [
+                  `Damage Type: ${Damages.find(d => d.name == e._variables.damageType)?.display}`,
+                ]
+              },
+              otherReplace: abs._mod.entries.filter((ae:any) => ae.replace && ae.items).map((ae: any) => {
+                const it = ae.items;
+                return {
+                  type: it.type,
+                  name: it.name,
+                  entries: [...it.entries.map((en: any) => {
+                    const a = /{{(.*?)}}/g;
+                    let s = en;
+                    if("string" != typeof s) return s;
+                    let g;
+                    while (g = a.exec(s)) {
+                      // console.log(g, e._variables[g[1]]);
+                      s = s.replace(g[0], e._variables[g[1]]);
+                    }
+                    return s;
+                  })]
+                }
+              }),
+            }
+          },
+          _variables: e._variables,
+          resist: e._variables.resist || e.resist
+        }
+        c._versions.push(nv);
+      })
+    }
 
     character.value.raceOptions.forEach((ro:any) => {
       const opt = c._versions.find((o:any) => o.name == ro.option);
+
       let entries = {
         ...opt._mod.entries.items
       };
-      entries.name = entries.name.substring(entries.name.lastIndexOf(';') + 1).trim();
-      c.entries.push(entries);
+      if(entries.name.lastIndexOf(';') > 0) {
+        entries.name = entries.name.substring(entries.name.lastIndexOf(';') + 1).trim();
+      }
+      let idx = c.entries.findIndex((e:any) => e.name == ro.replace);
+      if(idx >= 0) {
+        c.entries[idx] = entries;
+      }
+      else {
+        c.entries.push(entries);
+      }
+
+      if(opt._mod.entries.otherReplace) {
+        opt._mod.entries.otherReplace.forEach((or: any) => {
+          let idx = c.entries.findIndex((e:any) => e.name == or.name);
+          if(idx >= 0) {
+            c.entries[idx] = or;
+          }
+          else {
+            c.entries.push(or);
+          }
+        })
+      }
 
       if(opt.speed !== undefined) c.speed = opt.speed;
       if(opt.skillProficiencies !== undefined) c.skillProficiencies = opt.skillProficiencies;
       if(opt.additionalSpells !== undefined) c.additionalSpells = opt.additionalSpells;
       if(opt.darkvision !== undefined) c.darkvision = opt.darkvision;
+      if(opt.resist !== undefined) c.resist = opt.resist;
     });
 
     return c;
@@ -736,7 +821,7 @@
       !["Age","Size","Languages","Language","Superior Darkvision","Darkvision","Alignment","Speed","Appearance","Tool Proficiency"].includes(e.name) &&
       e.name.indexOf('Resistance') < 0 &&
       e.type === "entries"
-      && !e.entries.find((e2: any) => "string" !== typeof e2)
+      // && "string" == typeof e.entries[0] /*.find((e2: any) => "string" !== typeof e2)*/
     )
     // if(!computedRace.value.traitTags) return;
     // return computedRace.value.entries.filter((e:any) => computedRace.value.traitTags.includes(e.name));
@@ -759,6 +844,7 @@
 
     const options: any[] = [];
     computedRace.value._versions.forEach((v: any) => {
+      if(!v.name) return;
       let choice = {
         key: v.name,
         name: v.name.substring(v.name.lastIndexOf(';') + 1).trim(),
@@ -776,6 +862,7 @@
         opt.choices.push(choice);
       }
     });
+    if(options.length == 0) return null;
     return options;
   });
 
@@ -925,7 +1012,13 @@
       });
       calcDatasAbilities(reset);
     }
-    if(d.resist) character.value.resist = d.resist;
+    if(d.resist) {
+      character.value.resist = [];
+      d.resist.forEach((a: any) => {
+        //&& !character.value.resist.find((r:string) => r == a)
+        if("string" == typeof a) character.value.resist.push(a);
+      })
+    }
     // if(d.entries.find((e:any) => e.name === 'Fey Ancestry') && !character.value.resist.includes('charmed')) character.value.resist = [...character.value.resist, 'charmed'];
   }
 
@@ -1400,10 +1493,19 @@
       }
 
       if(c.known) {
-        // let kn = c.known._;
         Object.keys(c.known).forEach(kn => {
           if(kn == "_" || kn == character.value.level) {
-            c.known[kn].forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin));
+            if(c.known[kn].rest) {
+              Object.keys(c.known[kn].rest).forEach((o: any) => {
+                c.known[kn].rest[o].forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin));
+              })
+            }
+            else if(c.known[kn]._) {
+              c.known[kn]._.forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin));
+            }
+            else {
+              c.known[kn].forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin));
+            }
           }
         })
       }
@@ -2106,7 +2208,6 @@
         <button class="btn btn-secondary" @click="json = computedRaceOptions">computedRaceOptions</button>
         <button class="btn btn-secondary" @click="json = chooses">chooses</button>
         <button class="btn btn-secondary" @click="json = startingEquipments">startingEquipments</button>
-        <button class="btn btn-secondary" @click="json = defaultCharacter()">defaultCharacter</button>
       </div>
     </template>
 
@@ -2228,7 +2329,7 @@
               <div v-for="ro in computedRaceOptions" :key="ro.replace">
                 <p class="fw-bold m-0 d-flex align-items-center">
                   {{ro.replace}}
-                  <i v-if="ro.entries?.length > 0" class="ms-1 fa-solid fa-circle-question" :title="DS(ro)" v-tooltip></i>
+                  <i v-if="ro.entries?.length > 0" class="ms-1 fa-solid fa-circle-question" :title="inlineEntries(ro.entries)" v-tooltip></i>
                 </p>
                 <div v-for="roc in ro.choices" class="form-check pb-1" :key="roc.key">
                   <input class="form-check-input" type="radio" :value="roc.key"
@@ -2238,7 +2339,7 @@
                   <label class="form-check-label">
                     {{ roc.name }}
                   </label>
-                  <p style="white-space: pre-line">{{ DS(roc) }}</p>
+                  <p style="white-space: pre-line">{{ inlineEntries(roc.entries) }}</p>
                 </div>
               </div>
             </template>
@@ -2836,14 +2937,14 @@
             </template>
           </CharacterInfo>
 
-          <CharacterInfo v-if="['race','version','subrace'].includes(step)" v-for="e in computedRaceEntries">
+          <CharacterInfo v-if="['race','version','subrace','raceOptions'].includes(step)" v-for="e in computedRaceEntries">
             <template v-slot:label>{{ e.name }}:</template>
-            {{ DS(e, false) }}
+            {{ inlineEntries(e.entries) }}
           </CharacterInfo>
           <div v-else>
-            <template v-for="(e,i) in computedRaceEntries">
+            <template v-for="(e,i) in computedRaceEntries" :key="e.name">
               <template v-if="i>0">, </template>
-              <span :title="DS(e, false)" v-tooltip>{{e.name}}</span>
+              <span :title="inlineEntries(e.entries)" v-tooltip>{{e.name}}</span>
             </template>
           </div>
           <CharacterInfo v-if="computedSkillsRace">
@@ -2989,15 +3090,15 @@
             <template v-if="character.race.name && !character.race.version">Choose a version ...</template>
           </p>
         </template>
-        <json-editor v-if="show.json"
-            mode="text"
-            v-model:json="json"
-            :dark-theme="true"
-            :status-bar="false"
-            :main-menu-bar="false"
-            class="my-editor"
-        />
       </div>
+      <json-editor v-if="show.json"
+                   mode="text"
+                   v-model:json="json"
+                   :dark-theme="true"
+                   :status-bar="false"
+                   :main-menu-bar="false"
+                   class="my-editor col-12"
+      />
     </div>
   </div>
 </template>

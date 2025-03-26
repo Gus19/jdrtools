@@ -41,7 +41,6 @@ export const useRacesStore = defineStore("RacesStore", {
         let races: RaceBuilder[] = [];
         organisation[k].forEach((n: string) => {
           const rf =  this.getRaceByName(n)||[];
-          // if(rf.length <= 1) return;
           const srf = [];
           rf.forEach(r => {
             srf.push(...this.getSubraceByName(r.name, r.source)||[]);
@@ -70,14 +69,12 @@ export const useRacesStore = defineStore("RacesStore", {
         r.name == n
         && !('_copy' in r)
         && r.source != "XPHB"
-        // && !('reprintedAs' in r)
       ).sort((a:any,b:any) => a.name > b.name ? 1 : 0) : null
     },
     getSubraceByName: (state) => {
       return (n: string, s:string|null = null) => state.racessource ? state.racessource.subrace.filter(r =>
         r.raceName == n
         && (s == null || r.raceSource == s)
-        // && r.traitTags
       ).sort((a:any,b:any) => a.name && displaySubrace(a) > displaySubrace(b)) : null
     }
   }
@@ -85,7 +82,6 @@ export const useRacesStore = defineStore("RacesStore", {
 
 const organisation: any = {
   "Common": [
-    "Dragonborn",
     "Dwarf",
     "Elf",
     "Gnome",
@@ -93,7 +89,9 @@ const organisation: any = {
     "Half-Orc",
     "Halfling",
     "Human",
-    "Tiefling"
+    "Tiefling",
+    "Dragonborn",
+    "Dragonborn (Chromatic)","Dragonborn (Gem)","Dragonborn (Metallic)",
   ],
   "Exotic": [
     "Aarakocra",

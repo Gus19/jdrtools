@@ -387,6 +387,10 @@ export const textLang = (k: string, a:any = null) => {
   }
   else {
     const sk: any = LanguagesAll.find(s => s.key === k);
+    if(!sk) {
+      console.error("Languages not found", k);
+      return "";
+    }
     return `${sk.name}`;
   }
 }
@@ -414,6 +418,10 @@ export const textTool = (k: string, a:any = null) => {
   }
   else {
     const sk: any = ToolsAll.find(s => s.key === k);
+    if(!sk) {
+      console.error("Tools not found", k);
+      return "";
+    }
     return `${sk.name}`;
   }
 }
@@ -619,19 +627,7 @@ export const spellSlotsPact = (level: number|null = null): any => {
 
 export const spellDetails = (s: SpellInfo): string => {
   let lines: string[] = [];
-  s.entries.forEach(en => {
-    if("string" == typeof en) {
-      lines.push(S(en))
-    }
-    else {
-      if("type" in en && en.type === "list") {
-        en.items.forEach((it: any) => lines.push('- ' + S(it)));
-      }
-      else if("name" in en && "entries" in en) {
-        lines.push(S(`${en.name}: ${en.entries.join(" ")}`));
-      }
-    }
-  });
+  lines.push(inlineEntries(s.entries));
   if(s.entriesHigherLevel) {
     s.entriesHigherLevel.forEach((h: EntriesHigherLevel) => {
       if (h.type === 'entries') {
@@ -847,14 +843,25 @@ export const ToolsKey = [
 ];
 
 export const featEntries = (f: Feat) => {
+  return inlineEntries(f.entries);
+}
+export const inlineEntries = (entries: any) => {
+  if(!Array.isArray(entries)) return "";
   let lines: string[] = [];
-  f.entries.forEach(en => {
+  entries.forEach((en:any) => {
     if("string" == typeof en) {
       lines.push(S(en))
     }
     else {
       if("type" in en && en.type === "list") {
-        en.items.forEach((it: any) => lines.push('- ' + S(it)));
+        en.items.forEach((it: any) => {
+          if("string" == typeof it) {
+            lines.push(`- ${S(it)}`);
+          }
+          else if(it.type == "item") {
+            lines.push(`- ${S(it.name)}: ${S(it.entry ? it.entry : it.entries.join(" "))}`);
+          }
+        });
       }
       else if("name" in en && "entries" in en) {
         lines.push(S(`${en.name}: ${en.entries.join(" ")}`));
