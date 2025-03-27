@@ -47,6 +47,8 @@
   import FeatInfo from "@/components/FeatInfo.vue";
   import SpellInfo from "@/components/SpellInfo.vue";
   import ItemInfo from "@/components/ItemInfo.vue";
+  import ItemSearch from "@/components/ItemSearch.vue";
+  import Money from "@/components/Money.vue";
   const spellsStore = useSpellsStore();
   const racesStore = useRacesStore();
   const bgStore = useBackgroundsStore();
@@ -113,6 +115,16 @@
   const toggleManualStep = () => {
     manualStep.value.valid = !manualStep.value.valid;
     calculStep();
+  }
+  const toggleStartingEquipment = () => {
+    if(!manualStep.value.valid) {
+      // TODO calcul all equipements
+      // character.value.equipment = []
+    }
+    else {
+      character.value.equipment = [];
+    }
+    toggleManualStep();
   }
   const manualStep = computed(() => character.value && character.value.manualSteps.find((s:any) => s.step == step.value));
 
@@ -357,8 +369,25 @@
 
       let k = false;
       if(j) {
-        let k1 = false;
-        // TODO check if all chooses ok
+        let k1 = true;
+        const se = character.value.startingEquipment;
+        if(se.option == 'gold') {
+          if(se.manuals.find((m:any) => m.key == null)) k1 = false;
+          if(se.gp == null || se.rest < 0) k1 = false;
+        }
+        else {
+          chooses.value.startingEquipmentManual.forEach((c:any, i: number) => {
+            if(c != null) {
+              if(!se.manuals[i]) k1 = false;
+            }
+          });
+        }
+        chooses.value.startingEquipment.forEach((c:any) => {
+          c.values.forEach((v:any, i: number) => {
+            if(!se[c.origin][i]) k1 = false;
+          });
+        });
+
         if(k1) {
           addManualStep('startingEquipment');
           k = isManualValid('startingEquipment');
@@ -526,7 +555,8 @@
       startingEquipment: {
         option: 'default',
         background: {},
-        class: {}
+        class: {},
+        // rest: 1
       },
       equipment: [],
       money: {
@@ -610,7 +640,8 @@
     cantrips: {},
     spells: {},
     prepared: {},
-    startingEquipment: []
+    startingEquipment: [],
+    startingEquipmentManual: []
   }
   const chooses = ref<any>(null);
 
@@ -636,9 +667,6 @@
       calcDatasAbilities(false);
     }
   }, {deep: true});
-  watch(() => character.value && character.value.startingEquipment.option, (newValue) => {
-    if(newValue) character.value.startingEquipment.class = {};
-  })
 
   const calcLevel = () => {
     let lvl = 0;
@@ -1118,7 +1146,9 @@
       resetLanguages('class');
       resetTools('class');
       resetSpells('class');
-      character.value.startingEquipment.class = {};
+      resetSpells('race'); // just in case
+      // character.value.startingEquipment.class = {};
+      changeStartingEquipment();
     }
     character.value.class.forEach((c:any, i:number) => {
       const cl = classes.value.find(c1 => c1.name === c.name);
@@ -1192,6 +1222,7 @@
     ch.tools = [];
     ch.additionalSpells = [];
     ch.startingEquipment = [];
+    ch.startingEquipmentManual = [];
 
     const lc = lastClass.value;
 
@@ -1229,6 +1260,51 @@
           chooseAddTools('background', bg.value.toolProficiencies[0]);
         }
       }
+
+      const r = [];
+      if (bg.value && bg.value.startingEquipment) {
+        let values = bg.value.startingEquipment;
+        r.push({
+          origin: 'background',
+          originName: bg.value.name,
+          values: values
+        });
+      }
+      if (computedLastClass.value && computedLastClass.value.startingEquipment.defaultData) {
+        let values = character.value.startingEquipment.option == 'default' ? computedLastClass.value.startingEquipment.defaultData : [];
+        r.push({
+          origin: 'class',
+          originName: computedLastClass.value.name,
+          values: values
+        });
+      }
+      let c = 0;
+      r.forEach((startingEquipment:any) => {
+        startingEquipment.values.forEach((se:any,i:number) => {
+          Object.keys(se).forEach(j => {
+            if(j == "_") {
+              character.value.startingEquipment[startingEquipment.origin][i] = j;
+            }
+            else {
+              let seo = se[j]
+              seo.forEach((item:any) => {
+                if(item.equipmentType) {
+                  for (let k = 1; k <= (item.quantity || 1); k++) {
+                    if(character.value.startingEquipment[startingEquipment.origin][i] == j) {
+                      ch.startingEquipmentManual[c] = item.equipmentType;
+                    }
+                    else {
+                      character.value.startingEquipment.manuals[i] = null;
+                    }
+                    c++;
+                  }
+                }
+              })
+            }
+          });
+        })
+      })
+      ch.startingEquipment = r;
     }
 
     if(computedRace.value) {
@@ -1513,6 +1589,9 @@
         Object.keys(c.innate).forEach(kn => {
           if(kn == "_" || kn == character.value.level) {
             let innate = c.innate[kn];
+            if(Array.isArray(innate)) {
+              innate.forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin));
+            }
             if (innate.will) {
               innate.will.forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin));
             }
@@ -1532,6 +1611,18 @@
           }
         });
         // let innate = c.innate._;
+      }
+      if(c.expanded && (spellSlotsPactInfo.value != null || spellSlotsInfo.value != null)) {
+        // console.log('add expanded spells', c.expanded, spellSlotsPactInfo.value, spellSlotsInfo.value);
+        Object.keys(c.expanded).forEach(kn => {
+          if(spellSlotsInfo.value) {
+            if(spellSlotsInfo.value[kn] <= 0) return;
+          }
+          if(spellSlotsPactInfo.value) {
+            if(spellSlotsPactInfo.value.max < parseInt(kn.substring(1))) return;
+          }
+          c.expanded[kn].forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin));
+        })
       }
 
       Object.keys(spellslots).forEach(spellslot => {
@@ -2167,26 +2258,62 @@
     return character.value.spells.find((f:any) => f.name == name && (!f.choose || f.origin != origin)) !== undefined;
   }
 
-  const startingEquipments = computed(() => {
-    const r = [];
-    if(bg.value && bg.value.startingEquipment) {
-      r.push({
-        origin: 'background',
-        originName: bg.value.name,
-        values: bg.value.startingEquipment
-      });
+  const changeStartingEquipment = (e :any = null) => {
+    const se = character.value.startingEquipment;
+    se.gp = null;
+    se.class = {};
+    se.manuals = [],
+    se.option = e ? e.target.value : 'default';
+    if(se.option == 'gold') {
+      addManualItem(0, null);
     }
-    if(computedLastClass.value && computedLastClass.value.startingEquipment.defaultData) {
-      r.push({
-        origin: 'class',
-        originName: computedLastClass.value.name,
-        values: character.value.startingEquipment.option == 'default' ? computedLastClass.value.startingEquipment.defaultData : []
+  }
+  const addManualItem = (i: number, item: string|null, quantity: number = 1) => {
+    const se = character.value.startingEquipment;
+    if(!se.manuals) se.manuals = [];
+    se.manuals[i] = {
+      key: item,
+      quantity: quantity
+    };
+    calculGoldManual();
+  };
+  const changeItemQuantity = (i: number, q: number = 1) => {
+    const se = character.value.startingEquipment.manuals;
+    if(se[i]) {
+      se[i].quantity = Math.max(q, 1);
+    }
+    else {
+      se[i] = {
+        key: null,
+        quantity: Math.max(q, 1)
+      };
+    }
+    calculGoldManual();
+  }
+  const removeItem = (i: number) => {
+    const me = character.value.startingEquipment.manuals;
+    me.splice(i, 1);
+    calculGoldManual();
+  }
+  const rollStartingGold = () => {
+    if(!computedLastClass.value) return;
+    character.value.startingEquipment.gp = rollFormula(S(computedLastClass.value.startingEquipment.goldAlternative));
+    calculGoldManual();
+  }
+  const calculGoldManual = () => {
+    const se = character.value.startingEquipment;
+    if(se.option == 'gold') {
+      se.rest = se.gp * 100;
+      se.manuals.forEach((e: any, i: number) => {
+        if(e != null && e.key != null) {
+          const it = itemsStore.findByKey(e.key);
+          if(!it || !it.value || e.quantity <= 0) return;
+          se.rest = se.rest - (it.value * e.quantity);
+        }
       });
     }
 
-    return r;
-  });
-
+  }
 </script>
 
 <template>
@@ -2207,7 +2334,8 @@
         <button class="btn btn-secondary" @click="json = computedRace">computedRace</button>
         <button class="btn btn-secondary" @click="json = computedRaceOptions">computedRaceOptions</button>
         <button class="btn btn-secondary" @click="json = chooses">chooses</button>
-        <button class="btn btn-secondary" @click="json = startingEquipments">startingEquipments</button>
+        <button class="btn btn-secondary" @click="json = chooses.startingEquipment">ch.startingEquipment</button>
+        <button class="btn btn-secondary" @click="json = chooses.startingEquipmentManual">ch.startingEquipmentManual</button>
       </div>
     </template>
 
@@ -2790,28 +2918,49 @@
             </template>
           </AccordionItem>
 
-          <AccordionItem name="startingEquipment" :steps="steps" :step="step" @click="changeStep" :manual-steps="character.manualSteps" @toggle-manual-step="toggleManualStep">
+          <AccordionItem name="startingEquipment" :steps="steps" :step="step" @click="changeStep" :manual-steps="character.manualSteps" @toggle-manual-step="toggleStartingEquipment">
             <template v-slot:header-label>Starting equipment</template>
             <template v-slot:body>
-              <p class="text-center text-warning fw-bold m-0">In progress ...</p>
-              <template v-for="(startingEquipment,n) in startingEquipments">
+              <template v-for="(startingEquipment,n) in chooses.startingEquipment">
                 <p class="m-0" :class="n>0 ? 'mt-1' : ''">
                   <label class="fw-bold">{{ startingEquipment.originName }}</label>
                 </p>
 
                 <div v-if="startingEquipment.origin == 'class'" class="btn-group btn-group-sm w-100 pb-1">
-                  <input type="radio" class="btn-check" id="startingEquipment-default" value="default" v-model="character.startingEquipment.option">
+                  <input type="radio" class="btn-check" id="startingEquipment-default" value="default" @change="changeStartingEquipment" :checked="character.startingEquipment.option == 'default'">
                   <label class="btn" :class="character.startingEquipment.option == 'default' ? 'btn-primary' : 'btn-outline-secondary'" for="startingEquipment-default">Default</label>
 
-                  <input type="radio" class="btn-check" id="startingEquipment-gold" value="gold" v-model="character.startingEquipment.option">
+                  <input type="radio" class="btn-check" id="startingEquipment-gold" value="gold" @change="changeStartingEquipment" :checked="character.startingEquipment.option == 'gold'">
                   <label class="btn" :class="character.startingEquipment.option == 'gold' ? 'btn-primary' : 'btn-outline-secondary'" for="startingEquipment-gold">Gold alternative</label>
                 </div>
 
-                <div class="d-flex align-items-center justify-content-between pt-1" v-if="startingEquipment.origin == 'class' && character.startingEquipment.option == 'gold'">
-                  <label class="me-1 flex-grow-1">Start with {{computedLastClass && S(computedLastClass.startingEquipment.goldAlternative) }} <span class="gp">gp</span> to buy your own equipment</label>
-                  <input type="number" v-model="character.startingEquipment.gp" class="form-control h36" style="max-width: 100px" step="1" min="0" />
-                  <i v-if="computedLastClass" class="fa-solid fa-dice-d20 ms-1" @click="character.startingEquipment.gp = rollFormula(S(computedLastClass.startingEquipment.goldAlternative))"></i>
-                </div>
+                <template v-if="startingEquipment.origin == 'class' && character.startingEquipment.option == 'gold'">
+                  <div class="d-flex align-items-center justify-content-between pt-1 pb-2">
+                    <label class="me-1 flex-grow-1">Start with {{computedLastClass && S(computedLastClass.startingEquipment.goldAlternative) }} <span class="gp">gp</span> to buy your own equipment</label>
+                    <input type="number" v-model="character.startingEquipment.gp" @change="calculGoldManual" class="form-control h36" style="max-width: 100px" step="1" min="0" />
+                    <i v-if="computedLastClass" class="fa-solid fa-dice-d20 ms-1" @click="rollStartingGold"></i>
+                  </div>
+                  <template v-if="character.startingEquipment.gp">
+                    <template v-for="(m,i) in character.startingEquipment.manuals" :key="m">
+                      <ItemSearch type="all" :label="false"
+                                  :current="m" @select="(item, q) => addManualItem(i, item, q)"
+                                  :has-delete="true" @delete="() => removeItem(i)"
+                                  :has-quantity="true" @quantity="(q) => changeItemQuantity(i, q)"
+                                  :min-value="0" :max-value="character.startingEquipment.gp * 100" />
+                    </template>
+                    <div class="d-flex align-items-center justify-content-between mt-2">
+                      <button type="button" class="btn btn-sm btn-outline-success" @click="() => addManualItem(character.startingEquipment.manuals.length, null)">
+                        <i class="fa fa-solid fa-plus-circle" />
+                        Add new item
+                      </button>
+                      <div v-if="character.startingEquipment.rest != null">
+                        <span>Rest: </span>
+                        <Money v-if="character.startingEquipment.rest >= 0" :value="character.startingEquipment.rest" />
+                        <b class="text-warning" v-else>You spend too much</b>
+                      </div>
+                    </div>
+                  </template>
+                </template>
                 <template v-else>
                   <div class="d-flex w-100 pt-1" v-for="(se,i) in startingEquipment.values" :key="i">
                     <div class="form-check" :class="Object.keys(se).length > 1 && 'w-33'" v-for="(seo,j) in se" :key="j">
@@ -2826,13 +2975,23 @@
                   </div>
                 </template>
               </template>
-              <!-- TODO Choose here if not fixe equipement (=Instrument, Martial ...) -->
+
+              <template v-if="chooses.startingEquipmentManual.length > 0">
+                <p class="m-0 mt-1">
+                  <label class="fw-bold">{{ CHOOSE }}</label>
+                </p>
+                <template v-for="(sem,i) in chooses.startingEquipmentManual" :key="i">
+                  <ItemSearch v-if="sem" :type="sem" :current="character.startingEquipment.manuals[i]" @select="(item) => addManualItem(i, item)" :min-value="0" />
+                </template>
+              </template>
+
             </template>
           </AccordionItem>
 
           <AccordionItem name="equipment" :steps="steps" :step="step" @click="changeStep" :manual-steps="character.manualSteps" @toggle-manual-step="toggleManualStep">
             <template v-slot:header-label>Equipment</template>
             <template v-slot:body>
+              <p class="text-center text-warning fw-bold m-0">In progress ...</p>
               <!-- TODO Computed Armor Training / Weapon Proficiencies / Tool Proficiencies here ? if lvl > 1 -->
               <p class="fw-bold m-0">Armors</p>
               <p class="fst-italic m-0">List armor and shields Calc CA here</p>
@@ -2851,6 +3010,7 @@
               <p class="fst-italic m-0">All other items</p>
               <p class="fw-bold m-0">Sum weight</p>
             </template>
+            {{ character.equipment }}
           </AccordionItem>
 
         </div>

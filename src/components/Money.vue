@@ -4,15 +4,18 @@
 
   const props = defineProps({
     value: {type: Number, required: true},
+    spaces: {type: Boolean, default: false},
   });
 
   const money = computed(() => calculMoney(props.value));
 </script>
 
 <template>
-  <span class="gp" v-if="money.gp">&#160;{{ money.gp }} gp</span>
-  <span class="sp" v-if="money.sp">&#160;{{ money.sp }} sp</span>
-  <span class="cp" v-if="money.cp">&#160;{{ money.cp }} cp</span>
+  <template v-if="spaces">&#160;</template>
+  <span class="money gp" v-if="money.gp">{{ money.gp }} gp</span>
+  <span class="money sp" v-if="money.sp">{{ money.sp }} sp</span>
+  <span class="money cp" v-if="money.cp">{{ money.cp }} cp</span>
+  <b class="money" v-if="value == 0">0</b>
 </template>
 
 <style scoped></style>

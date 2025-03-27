@@ -1,4 +1,5 @@
 import {defineStore} from 'pinia'
+import {cfl} from "@/utils/refs";
 
 export const useItemsStore = defineStore("ItemsStore", {
   state: (): RootState => ({
@@ -58,6 +59,7 @@ export const useItemsStore = defineStore("ItemsStore", {
     },
     findItemType() {
       return (key: string): string|undefined => {
+        if(!key) return undefined;
         return this.itemType.find(f => f.abbreviation.toLowerCase() == key.toLowerCase())?.name;
       }
     },
@@ -72,7 +74,10 @@ export const useItemsStore = defineStore("ItemsStore", {
               let t = ip.template
               while (g = a.exec(ip.template)) {
                 if (g[1] == 'prop_name_lower') {
-                  t = t.replace(g[0], ip.entries ? ip.entries[0].name : "");
+                  let name  = "";
+                  if(ip.entries) name = ip.entries[0].name;
+                  else if(ip.name) name = cfl(ip.name);
+                    t = t.replace(g[0], name);
                 }
                 else if (g[1].indexOf('item.') == 0) {
                   const k = g[1].substring(5);
@@ -90,6 +95,35 @@ export const useItemsStore = defineStore("ItemsStore", {
         }
         return undefined;
       }
+    },
+    search() {
+      return (s: any, includeSpecial: boolean = false, maxValue: number|null = null, minValue: number|null = null) => {
+        return this.itemBase
+          .filter(f => {
+            let check = true;
+
+            if(!includeSpecial && f.property?.includes("S")) return false;
+            if(minValue != null) {
+              if(!f.value) return false;
+              else if(f.value < minValue) return false;
+            }
+            if(maxValue != null) {
+              if(!f.value) return false;
+              else if(f.value > maxValue) return false;
+            }
+
+            Object.keys(s).forEach(k => {
+              if(!f[k]) check = false;
+              else if(f[k] != s[k]) check = false;
+            })
+            return check;
+          })
+          .sort((a, b) => a.name > b.name ? 1 : -1)
+          .map(f => {
+            return `${f.name}|${f.source}`;
+          })
+        ;
+      }
     }
   }
 });
@@ -97,7 +131,7 @@ export const useItemsStore = defineStore("ItemsStore", {
 export interface EquipmentType {
   key: string;
   label: string;
-  search: any
+  search: any;
 }
 
 export const equipmentType: EquipmentType[] = [
@@ -172,8 +206,17 @@ export const equipmentType: EquipmentType[] = [
       "type": "SCF",
       "scfType": "arcane"
     }
+  },
+  {
+    key: "all",
+    label: "All",
+    search: {}
   }
 ]
+
+export const findEquipmentType = (key: string) => {
+  return equipmentType.find(et => key == et.key)
+}
 
 export type RootState = {
   itemBase: ItemBase[]

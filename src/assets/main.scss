@@ -90,7 +90,7 @@ span[data-bs-original-title], label[data-bs-original-title] {
   text-align: justify !important;
 }
 
-.form-check p {
+.form-check p, .dropdown p {
   /*.small*/
   text-align: justify;
   font-size: 0.925rem;
@@ -99,6 +99,7 @@ span[data-bs-original-title], label[data-bs-original-title] {
   /*.py-1*/
   padding-bottom: .25rem !important;
   margin: 0 !important;
+  white-space: pre-line;
 }
 
 .h36 {
@@ -131,6 +132,9 @@ p.small {
   opacity: 1 !important;
 }
 
+.money+.money {
+  margin-left: .25rem;
+}
 .gp {
   color: gold;
 }
