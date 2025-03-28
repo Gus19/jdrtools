@@ -34,17 +34,8 @@ export const useItemsStore = defineStore("ItemsStore", {
   },
   getters: {
     isLoad: (state) => state.itemBase.length > 0 && state.itemProperty.length > 0 && state.itemType.length > 0,
-    /*getClass() {
-      return (name: string): Class|null => {
-        if(!name) return null;
-        let cl = this.classes.find((c:Class) => c.name === name);
-        if(!cl) return null;
-        return cl;
-      }
-    },*/
     findByKey() {
       return (key: string): ItemBase|undefined => {
-        // console.log('items:findByKey', key);
         const split = key.split('|');
         if(split.length != 2) {
           return;
@@ -66,38 +57,48 @@ export const useItemsStore = defineStore("ItemsStore", {
     findItemProperties() {
       return (item: ItemBase): string|undefined => {
         const p = item.property;
-        if(p) {
-          return this.itemProperty.filter(ip => p.includes(ip.abbreviation)).map(ip => {
-            try {
-              const a = /{{(.*?)}}/g;
-              let g;
-              let t = ip.template
-              while (g = a.exec(ip.template)) {
-                if (g[1] == 'prop_name_lower') {
-                  let name  = "";
-                  if(ip.entries) name = ip.entries[0].name;
-                  else if(ip.name) name = cfl(ip.name);
-                    t = t.replace(g[0], name);
-                }
-                else if (g[1].indexOf('item.') == 0) {
-                  const k = g[1].substring(5);
-                  const r = item[k];
-                  t = t.replace(g[0], r);
-                }
-              }
-              return t;
-            }
-            catch (e) {
-              console.error(e);
-              return "Error";
-            }
-          }).join(', ');
+        let ret = [];
+        if(item.age) {
+          ret.push(cfl(item.age));
         }
-        return undefined;
+        if(item.firearm) {
+          ret.push('Firearm');
+        }
+        if(p) {
+          ret.push(
+            ...this.itemProperty.filter(ip => p.includes(ip.abbreviation.split('|')[0])).map(ip => {
+              try {
+                const a = /{{(.*?)}}/g;
+                let g;
+                let t = ip.template
+                while (g = a.exec(ip.template)) {
+                  if (g[1] == 'prop_name_lower') {
+                    let name  = "";
+                    if(ip.entries) name = ip.entries[0].name;
+                    else if(ip.name) name = cfl(ip.name);
+                      t = t.replace(g[0], name);
+                  }
+                  else if (g[1].indexOf('item.') == 0) {
+                    const k = g[1].substring(5);
+                    const r = item[k];
+                    t = t.replace(g[0], r);
+                  }
+                }
+                return t;
+              }
+              catch (e) {
+                console.error(e);
+                return "Error";
+              }
+            })
+          );
+        }
+        if(ret.length == 0) return undefined;
+        return ret.join(', ');
       }
     },
     search() {
-      return (s: any, includeSpecial: boolean = false, maxValue: number|null = null, minValue: number|null = null) => {
+      return (s: any, includeSpecial: boolean = false, maxValue: number|null = null, minValue: number|null = 0) => {
         return this.itemBase
           .filter(f => {
             let check = true;
@@ -184,6 +185,13 @@ export const equipmentType: EquipmentType[] = [
     }
   },
   {
+    key: "toolArtisan",
+    label: "artisan's tools",
+    search: {
+      "type": "AT"
+    }
+  },
+  {
     key: "focusSpellcastingHoly",
     label: "holy symbol",
     search: {
@@ -212,6 +220,87 @@ export const equipmentType: EquipmentType[] = [
     label: "All",
     search: {}
   }
+]
+
+export const equipmentProf: any[] = [
+  // Armors
+  {
+    key: "light",
+    parent: "armor",
+    search: {
+      "armor": true,
+      "typa": "LA"
+    }
+  },
+  {
+    key: "medium",
+    parent: "armor",
+    search: {
+      "armor": true,
+      "typa": "MA"
+    }
+  },
+  {
+    key: "heavy",
+    parent: "armor",
+    search: {
+      "armor": true,
+      "typa": "HA"
+    }
+  },
+  {
+    key: "shield",
+    parent: "armor",
+    search: {
+      "typa": "S"
+    }
+  },
+  // Weapons
+  {
+    key: "simple",
+    parent: "weapon",
+    search: {
+      "weapon": true,
+      "weaponCategory": "simple"
+    }
+  },
+  {
+    key: "martial",
+    parent: "weapon",
+    search: {
+      "weapon": true,
+      "weaponCategory": "martial"
+    }
+  },
+  // // Simple weapons
+  // {
+  //   key: "club",
+  //   parent: "simple",
+  //   search: {
+  //     "weapon": true,
+  //     "weaponCategory": "simple",
+  //     "club": true
+  //   }
+  // },
+  // {
+  //   key: "dagger",
+  //   parent: "simple",
+  //   search: {
+  //     "weapon": true,
+  //     "weaponCategory": "simple",
+  //     "dagger": true
+  //   }
+  // },
+  // {
+  //   key: "handaxe",
+  //   parent: "simple",
+  //   search: {
+  //     "weapon": true,
+  //     "weaponCategory": "simple",
+  //     "axe": true
+  //   }
+  // },
+
 ]
 
 export const findEquipmentType = (key: string) => {

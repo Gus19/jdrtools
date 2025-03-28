@@ -69,6 +69,7 @@ export const useRacesStore = defineStore("RacesStore", {
         r.name == n
         && !('_copy' in r)
         && r.source != "XPHB"
+        && `${r.name}|${r.source}` != `Hobgoblin|VGM`
       ).sort((a:any,b:any) => a.name > b.name ? 1 : 0) : null
     },
     getSubraceByName: (state) => {

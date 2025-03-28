@@ -86,6 +86,15 @@ export const useFeatsStore = defineStore("FeatsStore", {
       return (name: string): Feat|undefined => {
         return this.feats.find(f => f.name == name);
       }
+    },
+    findByBG() {
+      return (o: any): Feat[] => {
+        let names: string[] = [];
+        o.forEach((f:any) => {
+          Object.keys(f).forEach(k => names.push(k.split('|')[0].toLowerCase()));
+        })
+        return this.feats.filter(f => names.includes(f.name.toLowerCase()));
+      }
     }
   }
 });

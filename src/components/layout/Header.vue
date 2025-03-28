@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const dev: boolean = import.meta.env.DEV;
+const env = import.meta.env;
 </script>
 
 <template>
@@ -28,6 +29,21 @@ const dev: boolean = import.meta.env.DEV;
                   Changelog
                 </router-link>
               </li>
+              <li class="nav-item flex-grow-1">
+              </li>
+              <li class="nav-item" v-if="env.VITE_KOFI">
+                <a class="nav-link" :href="env.VITE_KOFI" target="_blank">
+                  <img src="https://storage.ko-fi.com/cdn/cup-border.png" height="20px" alt="Support me on Ko-Fi" />
+                  Support me on Ko-Fi
+                </a>
+              </li>
+              <li class="nav-item" v-if="env.VITE_GITHUB">
+                <a class="nav-link" :href="env.VITE_GITHUB" target="_blank">
+                  <i class="fa-brands fa-github"></i>
+                  Open an issue
+                </a>
+              </li>
+
             </ul>
           </div>
         </div>

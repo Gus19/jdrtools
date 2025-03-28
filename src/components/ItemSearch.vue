@@ -45,7 +45,7 @@ import {computed, ref, watch} from "vue";
     });
   });
   watch(show, (nv) => {
-    if(nv == false) {
+    if(!nv) {
       search.value = "";
     }
   });

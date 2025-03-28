@@ -25,7 +25,11 @@
         txt.push(props.item.quantity);
       }
       if(it.equipmentType) {
-        txt.push(cfl(findEquipmentType(it.equipmentType)?.label || "Error"));
+        let fet = findEquipmentType(it.equipmentType);
+        txt.push(cfl(fet?.label || "Error"));
+        if(!fet) {
+          console.error("Missing equipmentType", it.equipmentType);
+        }
       }
       else if(it.displayName) {
         txt.push(cfl(it.displayName));
@@ -126,6 +130,7 @@
   <template v-else>
     <span>
       {{ name }}<Money v-if="value" :value="value" spaces />
+<!--      <i class="fa-solid fa-triangle-exclamation text-warning ps-2" v-if="itemBase && (itemBase.type == 'HA' || itemBase.type == 'MA')" v-tooltip title="Without proficiency" data-bs-placement="right" />-->
     </span>
   </template>
   <p ref="info" v-if="itemBase" :class="tooltip ? 'd-none' : ''">

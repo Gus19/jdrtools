@@ -6,7 +6,7 @@
   import {useRacesStore} from "@/stores/races";
   import {useBackgroundsStore,classBackground} from "@/stores/backgrounds";
   import {useFeatsStore} from "@/stores/feats";
-  import {useItemsStore} from "@/stores/items";
+  import {equipmentProf, useItemsStore} from "@/stores/items";
   import type {RaceBuilder} from "@/stores/races";
   import {
     Abilities,
@@ -36,7 +36,7 @@
     inlineTool,
     spellSlotsPact,
     rollFormula,
-    inlineEntries, Damages
+    inlineEntries, Damages, cfl
   } from "@/utils/refs";
   import AccordionItem from "@/components/AccordionItem.vue";
   import CharacterInfo from "@/components/CharacterInfo.vue";
@@ -119,6 +119,7 @@
   const toggleStartingEquipment = () => {
     if(!manualStep.value.valid) {
       // TODO calcul all equipements
+      // TODO if change startingequipment, invalid the step
       // character.value.equipment = []
     }
     else {
@@ -238,6 +239,22 @@
           });
           if (!racialFeatValid) return;
         }
+
+        const hasBgFeat = bg.value && bg.value.feats;
+        if (hasBgFeat) {
+          const bgFeatName = character.value.feats.find((f: any) => f.level == 1 && f.origin == 'background' && f.name != null)?.name;
+          let bgFeatValid = false;
+          if (bgFeatName) {
+            const feat = feats.value.find((f: any) => f.name == bgFeatName);
+            if(feat) bgFeatValid = true;
+          }
+          ss.push({
+            name: 'bgFeat',
+            valid: bgFeatValid
+          });
+          if (!bgFeatValid) return;
+        }
+        
       }
       else {
         f = true;
@@ -349,6 +366,10 @@
         if(as && as.length > 0) {
           j4 = true;
           as.forEach((asv:any) => {
+            if(as.optionChoice != null && as.option == null) {
+              j4 = false;
+              return;
+            }
             asv.spells.forEach((asp:any) => {
               // const selected = character.value.spells.filter((s:any) => s.origin == asv.origin && s.level == level && s.spellslot == asp.spellslot).length;
               if(asp.selected != asp.count) j4 = false;
@@ -372,7 +393,7 @@
         let k1 = true;
         const se = character.value.startingEquipment;
         if(se.option == 'gold') {
-          if(se.manuals.find((m:any) => m.key == null)) k1 = false;
+          if(se.manuals.find((m:any) => m == null || m.key == null)) k1 = false;
           if(se.gp == null || se.rest < 0) k1 = false;
         }
         else {
@@ -527,6 +548,8 @@
       expertises: [],
       languages: [],
       tools: [],
+      weapon: [],
+      armor: [],
       vulnerable: [],
       resist: [],
       immune: [],
@@ -536,27 +559,15 @@
       },
       darkvision: null,
       size: '',
-      spells: [
-        // {name: null, level: 0 à 9, from: race, subrace, class, subclass, origin: le name, }
-        // {
-        //   "name": "Vicious Mockery",
-        //   "origin": "class",
-        //   "level": 1,
-        //   "spellSlot": 0,
-        //   "choose": true
-        // }
-      ],
-      // spellSlots: [
-      //   // {1:0}
-      // ],
-      feats: [
-        // name / from
-      ],
+      spells: [],
+      feats: [],
       startingEquipment: {
         option: 'default',
         background: {},
         class: {},
-        // rest: 1
+        manuals: []
+        //rest: 1,
+        //gp: 0,
       },
       equipment: [],
       money: {
@@ -650,7 +661,6 @@
   }
 
   const saveStorage = function() {
-    // if(import.meta.env.DEV) console.log('saveStorage');
     localStorage.setItem(storagekey, JSON.stringify(character.value));
     calcAllChooses();
     calculStep();
@@ -788,7 +798,6 @@
                     if("string" != typeof s) return s;
                     let g;
                     while (g = a.exec(s)) {
-                      // console.log(g, e._variables[g[1]]);
                       s = s.replace(g[0], e._variables[g[1]]);
                     }
                     return s;
@@ -913,6 +922,8 @@
     if(opt.languageProficiencies !== undefined) resetLanguages('race');
     // if(opt.toolsProficiencies !== undefined) resetTools('race');
     if(opt.additionalSpells !== undefined) resetSpells('race');
+    if(opt.weaponProficiencies !== undefined) resetEquipmentProf('weapon', 'race');
+    if(opt.armorProficiencies !== undefined) resetEquipmentProf('armor', 'race');
     calcDatasRace(false);
     return;
   }
@@ -980,6 +991,25 @@
     }
   }
 
+  const addDefaultEquipmentProf = (key: string, origin: string, profs: any) => {
+    if(profs) {
+      let tp;
+      if(Array.isArray(profs)) {
+        tp = profs;
+      }
+      else {
+        tp = Object.keys(profs)
+      }
+      tp.forEach((k: any) => {
+        let sk;
+        if("string" == typeof k) sk = S(k).split('|')[0];
+        else if(k.proficiency) sk = k.proficiency;
+        else return;
+        addSkillProf(key, origin, sk, false);
+      });
+    }
+  }
+
   const calcDatasRace = (reset: boolean = true) => {
     if(reset) {
       resetSkills('race');
@@ -987,6 +1017,8 @@
       resetTools('race');
       resetSpells('race');
       resetFeat('race');
+      resetEquipmentProf('weapon', 'race');
+      resetEquipmentProf('armor', 'race');
       if(computedRace.value) {
         addDefaultSkills('race', computedRace.value.skillProficiencies);
         addDefaultLanguage('race', computedRace.value.languageProficiencies);
@@ -1046,6 +1078,12 @@
         //&& !character.value.resist.find((r:string) => r == a)
         if("string" == typeof a) character.value.resist.push(a);
       })
+    }
+    if(d.weaponProficiencies) {
+      addDefaultEquipmentProf('weapon', 'race', d.weaponProficiencies[0]);
+    }
+    if(d.armorProficiencies) {
+      addDefaultEquipmentProf('armor', 'race', d.armorProficiencies[0]);
     }
     // if(d.entries.find((e:any) => e.name === 'Fey Ancestry') && !character.value.resist.includes('charmed')) character.value.resist = [...character.value.resist, 'charmed'];
   }
@@ -1146,6 +1184,8 @@
       resetLanguages('class');
       resetTools('class');
       resetSpells('class');
+      resetEquipmentProf('weapon', 'class');
+      resetEquipmentProf('armor', 'class');
       resetSpells('race'); // just in case
       // character.value.startingEquipment.class = {};
       changeStartingEquipment();
@@ -1156,14 +1196,10 @@
       if(i === 0) {
         character.value.save = cl.proficiency;
         character.value.spellcasting = cl.spellcastingAbility ? [cl.spellcastingAbility] : [];
-        // if(cl.startingProficiencies.toolProficiencies) {
-        //   const tp = cl.startingProficiencies.toolProficiencies[0];
-        //   Object.keys(tp).filter((k: string) => ToolsKey.includes(k)).forEach((k: string) => {
-        //     addSkillProf('tools', 'class', k, false);
-        //   });
-        // }
         if(cl.startingProficiencies) {
           addDefaultTools('class', cl.startingProficiencies.toolProficiencies)
+          addDefaultEquipmentProf('weapon', 'class', cl.startingProficiencies.weapons);
+          addDefaultEquipmentProf('armor', 'class', cl.startingProficiencies.armor);
         }
       }
     });
@@ -1181,9 +1217,13 @@
       resetLanguages('background');
       resetTools('background');
       resetSpells('background');
+      resetEquipmentProf('weapon', 'background');
+      resetEquipmentProf('armor', 'background');
       addDefaultSkills('background', bg.value.skillProficiencies);
       addDefaultLanguage('background', bg.value.languageProficiencies);
       addDefaultTools('background', bg.value.toolProficiencies);
+      if(bg.value.weaponProficiencies) addDefaultEquipmentProf('weapon', 'background', bg.value.weaponProficiencies[0]);
+      // no armorProficiencies
       character.value.startingEquipment.background = {};
     }
   }
@@ -1223,6 +1263,7 @@
     ch.additionalSpells = [];
     ch.startingEquipment = [];
     ch.startingEquipmentManual = [];
+    ch.weapon = [];
 
     const lc = lastClass.value;
 
@@ -1285,22 +1326,24 @@
             if(j == "_") {
               character.value.startingEquipment[startingEquipment.origin][i] = j;
             }
-            else {
-              let seo = se[j]
-              seo.forEach((item:any) => {
-                if(item.equipmentType) {
-                  for (let k = 1; k <= (item.quantity || 1); k++) {
-                    if(character.value.startingEquipment[startingEquipment.origin][i] == j) {
-                      ch.startingEquipmentManual[c] = item.equipmentType;
-                    }
-                    else {
-                      character.value.startingEquipment.manuals[i] = null;
-                    }
-                    c++;
+
+            let seo = se[j]
+            seo.forEach((item:any) => {
+              if(item.equipmentType) {
+                for (let k = 1; k <= (item.quantity || 1); k++) {
+                  if(character.value.startingEquipment[startingEquipment.origin][i] == j) {
+                    ch.startingEquipmentManual[c] = {
+                      equipmentType: item.equipmentType,
+                      origin: startingEquipment.origin
+                    };
                   }
+                  else if(character.value.startingEquipment.manuals && character.value.startingEquipment.manuals[c]) {
+                    character.value.startingEquipment.manuals[c] = null;
+                  }
+                  c++;
                 }
-              })
-            }
+              }
+            })
           });
         })
       })
@@ -1613,7 +1656,6 @@
         // let innate = c.innate._;
       }
       if(c.expanded && (spellSlotsPactInfo.value != null || spellSlotsInfo.value != null)) {
-        // console.log('add expanded spells', c.expanded, spellSlotsPactInfo.value, spellSlotsInfo.value);
         Object.keys(c.expanded).forEach(kn => {
           if(spellSlotsInfo.value) {
             if(spellSlotsInfo.value[kn] <= 0) return;
@@ -1630,7 +1672,7 @@
           spells.push({
             spellslot: spellslot,
             count: spellslots[spellslot],
-            selected: character.value.spells.filter((s:any) => s.origin == origin && s.level == character.value.level && s.spellslot == spellslot).length,
+            selected: character.value.spells.filter((s:any) => s.origin == origin && s.originName == originName && s.level == character.value.level && s.spellslot == spellslot).length,
             from: from[spellslot]
           });
         }
@@ -1645,6 +1687,7 @@
     let item = null;
     if(origin == 'feat') {
       item = character.value.feats.find((s:any) => s.name == originName);
+      character.value.spells = character.value.spells.filter((s:any) => !(s.origin == origin && s.originName == originName));
     }
     else {
       console.error('changeOption', 'origin not supported', origin);
@@ -1714,6 +1757,8 @@
     resetLanguages('feat');
     resetTools('feat');
     resetSpells('feat');
+    resetEquipmentProf('weapon', 'feat');
+    resetEquipmentProf('armor', 'feat');
   }
 
   const classes = computed(() => classesStore.getDefaults);
@@ -2124,6 +2169,9 @@
     addDefaultSkills('feat', feat.skillProficiencies);
     addDefaultLanguage('feat', feat.languageProficiencies);
     addDefaultTools('feat', feat.toolProficiencies);
+
+    if(feat.weaponProficiencies) addDefaultEquipmentProf('weapon', 'feat', feat.weaponProficiencies[0]);
+    if(feat.armorProficiencies) addDefaultEquipmentProf('armor', 'feat', feat.armorProficiencies[0]);
   }
   const isFeatsCheck = (origin: string, name: string) => {
     const level = character.value.level;
@@ -2218,22 +2266,30 @@
     }
   });
 
-  const changeSpell = (e: any, spellSlot: number, prepared:boolean = true, origin:string = "class") => {
+  const changeSpell = (e: any, spellSlot: number, prepared:boolean = true, origin:string = "class", originName:string|null = null) => {
     if (!e.target.value) return;
     const name = e.target.value;
     const spells = character.value.spells;
     if(e.target.checked) {
-      addSpell(name, spellSlot, true, prepared, origin);
+      addSpell(name, spellSlot, true, prepared, origin, originName);
     }
     else {
       character.value.spells = spells.filter((s:any) => !(s.name == name && s.choose));
     }
   }
-  const addSpell = (name: string, spellSlot: number, choose: boolean = true, prepared:boolean = true, origin:string = "class") => {
+  const addSpell = (name: string, spellSlot: number, choose: boolean = true, prepared:boolean = true, origin:string = "class", originName:string|null = null) => {
     if(character.value.spells.find((f:any) => f.name == name) == undefined) {
+      if(origin == 'class' && originName == null) {
+        originName = lastClass.value.name;
+      }
+      if(!['race','background'].includes(name) && originName == null) {
+        throw new Error("Empty originName");
+      }
+
       character.value.spells.push({
         name: name,
         origin: origin,
+        originName: originName,
         level: character.value.level,
         spellslot: spellSlot,
         choose: choose,
@@ -2254,26 +2310,27 @@
   const isSpellPrepared = (name: string) => {
     return character.value.spells.find((f:any) => f.name == name && f.prepared) !== undefined;
   }
-  const isSpellDisabled = (name: string, origin: string = "class") => {
-    return character.value.spells.find((f:any) => f.name == name && (!f.choose || f.origin != origin)) !== undefined;
+  const isSpellDisabled = (name: string, origin: string = "class", originName: string|null = null) => {
+    return character.value.spells.find((f:any) => f.name == name && (!f.choose || f.origin != origin || (originName != null && f.originName != originName))) !== undefined;
   }
 
   const changeStartingEquipment = (e :any = null) => {
     const se = character.value.startingEquipment;
     se.gp = null;
     se.class = {};
-    se.manuals = [],
+    se.manuals = !se.manuals ? [] : se.manuals.filter((sem: any) => sem != null && sem.origin != 'class');
     se.option = e ? e.target.value : 'default';
     if(se.option == 'gold') {
-      addManualItem(0, null);
+      newManuelItem();
     }
   }
-  const addManualItem = (i: number, item: string|null, quantity: number = 1) => {
+  const addManualItem = (i: number, item: string|null, quantity: number = 1, origin: string = '') => {
     const se = character.value.startingEquipment;
     if(!se.manuals) se.manuals = [];
     se.manuals[i] = {
       key: item,
-      quantity: quantity
+      quantity: quantity,
+      origin: origin
     };
     calculGoldManual();
   };
@@ -2293,7 +2350,12 @@
   const removeItem = (i: number) => {
     const me = character.value.startingEquipment.manuals;
     me.splice(i, 1);
+    chooses.value.startingEquipmentManual.splice(i, 1);
     calculGoldManual();
+  }
+  const newManuelItem = () => {
+    const se = character.value.startingEquipment.manuals;
+    addManualItem(se.length, null, 1, 'class');
   }
   const rollStartingGold = () => {
     if(!computedLastClass.value) return;
@@ -2312,8 +2374,22 @@
         }
       });
     }
-
   }
+
+  const resetEquipmentProf = (key: string, origin: string) => {
+    character.value[key] = character.value[key].filter((sk:any) => sk.origin != origin && sk.level == character.value.level);
+  }
+  const itemKeyToValue = (key:string) => {
+    return key.split('|')[0].toLowerCase();
+  }
+  const itemsProf = computed(() => {
+    if(!character.value) return null;
+    return {
+      armor: character.value.armor,
+      weapon: character.value.weapon,
+      tools: character.value.tools
+    }
+  });
 </script>
 
 <template>
@@ -2333,9 +2409,8 @@
         <button class="btn btn-secondary" @click="logJson">logJson</button>
         <button class="btn btn-secondary" @click="json = computedRace">computedRace</button>
         <button class="btn btn-secondary" @click="json = computedRaceOptions">computedRaceOptions</button>
-        <button class="btn btn-secondary" @click="json = chooses">chooses</button>
-        <button class="btn btn-secondary" @click="json = chooses.startingEquipment">ch.startingEquipment</button>
-        <button class="btn btn-secondary" @click="json = chooses.startingEquipmentManual">ch.startingEquipmentManual</button>
+        <button class="btn btn-secondary" @click="json = chooses.additionalSpells">chooses</button>
+        <button class="btn btn-secondary" @click="json = itemsProf">itemsProf</button>
       </div>
     </template>
 
@@ -2424,6 +2499,7 @@
               <small class="fst-italic">* Version or Subrace available</small>
             </template>
           </AccordionItem>
+
           <AccordionItem name="version" :steps="steps" :step="step" @click="changeStep">
             <template v-slot:header-label>Version</template>
             <template v-slot:header-value>{{ character.race.version || CHOOSE }}</template>
@@ -2437,6 +2513,7 @@
               </template>
             </template>
           </AccordionItem>
+
           <AccordionItem name="subrace" :steps="steps" :step="step" @click="changeStep">
             <template v-slot:header-label>Subrace</template>
             <template v-slot:header-value>{{ character.subrace.name || CHOOSE }}</template>
@@ -2491,6 +2568,7 @@
               </small>
             </template>
           </AccordionItem>
+
           <AccordionItem name="background" :steps="steps" :step="step" @click="changeStep">
             <template v-slot:header-label>Background</template>
             <template v-slot:header-value>{{ character.background || CHOOSE }}</template>
@@ -2511,6 +2589,7 @@
               </div>
             </template>
           </AccordionItem>
+
           <AccordionItem name="abilities" :steps="steps" :step="step" @click="changeStep">
             <template v-slot:header-label>Abilities</template>
             <template v-slot:body>
@@ -2595,6 +2674,20 @@
                 <FeatInfo :feat="o" :selected="isFeatsCheck('race', o.name)" :open="showAllFeats"
                           :ability-selected="character.abilities.improvments.find((ip:any) => ip.origin=='feat' && ip.level==1)?.ability"
                           @improve="(ability) => improveAbility(ability, 'feat')" />
+              </div>
+            </template>
+          </AccordionItem>
+
+          <AccordionItem name="bgFeat" :steps="steps" :step="step" @click="changeStep">
+            <template v-slot:header-label>Background Feat</template>
+            <template v-slot:header-value>{{ character.feats.find((f:any) => f.level == 1 && f.origin == 'background')?.name }}</template>
+            <template v-slot:body>
+              <div v-if="bg" v-for="o in featsStore.findByBG(bg.feats)" class="form-check pb-1" :key="o.name">
+                <input class="form-check-input" type="radio" :value="o.name"
+                       :checked="isFeatsCheck('background', o.name)"
+                       @click="changeFeats($event, 'background')"
+                />
+                <FeatInfo :feat="o" :selected="isFeatsCheck('background', o.name)" />
               </div>
             </template>
           </AccordionItem>
@@ -2778,6 +2871,39 @@
                   </div>
                 </div>
               </template>
+
+              <!-- TODO : Display all if only choose or weapon simple/martial on prof -->
+              <template v-if="chooses.weapon.length > 0 || dev">
+                <p class="fw-bold m-0">Equipment</p>
+                <div class="d-flex">
+                  <div class="flex-1" v-for="cl in ['armor']" :key="cl">
+                    <p class="fst-italic m-0">{{ cfl(cl) }}</p>
+                    <div v-for="l in equipmentProf.filter(ep => ep.parent == cl)" class="form-check pb-1" :key="l.key">
+                      <input class="form-check-input" type="checkbox" :value="l" @click="changeProf(cl, l.key)"
+                             :checked="isOtherProfCheck(cl, l.key)"
+                             :disabled="isOtherProfDisabled(cl, l.key)" />
+                      <label class="form-check-label">{{cfl(l.key) }}</label>
+                    </div>
+                  </div>
+                  <template v-for="cl in ['weapon']" :key="cl">
+                    <div v-for="l in equipmentProf.filter(ep => ep.parent == cl)" class="flex-1 form-check pb-1" :key="l.key">
+                      <input class="form-check-input" type="checkbox" :value="l.key" @click="changeProf(cl, l.key)"
+                             :checked="isOtherProfCheck(cl, l.key)"
+                             :disabled="isOtherProfDisabled(cl, l.key)" />
+                      <label class="form-check-label fst-italic">{{cfl(l.key) }} {{ cl }}</label>
+                      <div v-if="l.parent == 'weapon'" v-for="sl in itemsStore.search(l.search) " class="form-check pb-1" :key="sl">
+                        <input class="form-check-input" type="checkbox" :value="itemKeyToValue(sl)" @click="changeProf(cl, itemKeyToValue(sl))"
+                               :checked="isOtherProfCheck(cl, itemKeyToValue(sl))" :indeterminate="isOtherProfCheck(cl, l.key)"
+                               :disabled="isOtherProfDisabled(cl, itemKeyToValue(sl))" />
+                        <label class="form-check-label">
+                          <ItemInfo :item="sl" />
+                        </label>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </template>
+
             </template>
           </AccordionItem>
 
@@ -2843,6 +2969,7 @@
               </template>
             </template>
           </AccordionItem>
+
           <AccordionItem name="spellsPrepared" :steps="steps" :step="step" @click="changeStep">
             <template v-slot:header-label>Spells Prepared</template>
             <template v-slot:header-value>{{chooses.prepared.selected}}/{{chooses.prepared.known}}</template>
@@ -2906,9 +3033,9 @@
                   </p>
                   <div v-for="spell in filterOptions('additional', asp.from)" class="form-check pb-1">
                     <input class="form-check-input" type="checkbox" :value="spell.name"
-                           @click="changeSpell($event, asp.spellslot, true, as.origin)"
+                           @click="changeSpell($event, asp.spellslot, true, as.origin, as.originName)"
                            :checked="isSpellCheck(spell.name)"
-                           :disabled="isSpellDisabled(spell.name, as.origin)"
+                           :disabled="isSpellDisabled(spell.name, as.origin, as.originName)"
                     />
                     <SpellInfo :spell="spell" :open="showAllSpells" />
                   </div>
@@ -2942,14 +3069,14 @@
                   </div>
                   <template v-if="character.startingEquipment.gp">
                     <template v-for="(m,i) in character.startingEquipment.manuals" :key="m">
-                      <ItemSearch type="all" :label="false"
-                                  :current="m" @select="(item, q) => addManualItem(i, item, q)"
+                      <ItemSearch v-if="m.origin == 'class'" type="all" :label="false"
+                                  :current="m" @select="(item, q) => addManualItem(i, item, q, 'class')"
                                   :has-delete="true" @delete="() => removeItem(i)"
                                   :has-quantity="true" @quantity="(q) => changeItemQuantity(i, q)"
                                   :min-value="0" :max-value="character.startingEquipment.gp * 100" />
                     </template>
                     <div class="d-flex align-items-center justify-content-between mt-2">
-                      <button type="button" class="btn btn-sm btn-outline-success" @click="() => addManualItem(character.startingEquipment.manuals.length, null)">
+                      <button type="button" class="btn btn-sm btn-outline-success" @click="newManuelItem">
                         <i class="fa fa-solid fa-plus-circle" />
                         Add new item
                       </button>
@@ -2976,12 +3103,12 @@
                 </template>
               </template>
 
-              <template v-if="chooses.startingEquipmentManual.length > 0">
+              <template v-if="chooses.startingEquipmentManual.filter((sem:any) => sem != null).length > 0">
                 <p class="m-0 mt-1">
                   <label class="fw-bold">{{ CHOOSE }}</label>
                 </p>
                 <template v-for="(sem,i) in chooses.startingEquipmentManual" :key="i">
-                  <ItemSearch v-if="sem" :type="sem" :current="character.startingEquipment.manuals[i]" @select="(item) => addManualItem(i, item)" :min-value="0" />
+                  <ItemSearch v-if="sem && sem.equipmentType" :type="sem.equipmentType" :current="character.startingEquipment.manuals[i]" @select="(item) => addManualItem(i, item, 1, sem.origin)" :min-value="0" />
                 </template>
               </template>
 
@@ -3012,7 +3139,6 @@
             </template>
             {{ character.equipment }}
           </AccordionItem>
-
         </div>
       </div>
       <div class="col-lg-6 mt-2 character-info">
