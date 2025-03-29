@@ -208,10 +208,6 @@ export const useClassesStore = defineStore("ClassesStore", {
         return f;
       }
     },
-    // test() {
-    //   return (a: number): number | undefined => this.classFeatures.length * a; // call store.test(x)
-    //   // return this.classFeatures.length * 2; // call store.test
-    // },
     getSubclassesInfo() {
       return (a: string): any[] => this.subclasses.filter((c:any) => c.className == a).map((c:any) => {
         let info = this.subclassFeatures.find((d:any) => c.className == a && d.subclassShortName == c.shortName)?.entries[0];

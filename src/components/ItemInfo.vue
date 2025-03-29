@@ -6,7 +6,8 @@
   const itemsStore = useItemsStore();
   const props = defineProps({
     item: {type: [String, Object], required: true},
-    tooltip: {type: Boolean, default: true}
+    tooltip: {type: Boolean, default: true},
+    profs: {type: Object, required: false}
   });
 
   const info = ref<HTMLInputElement | null>(null);
@@ -67,7 +68,7 @@
 
   const titleTxt = computed(() => {
     if(!itemBase.value) return undefined;
-    let it = itemBase.value;
+    const it = itemBase.value;
     const d = [];
     if(it.weapon && it.weaponCategory) {
       d.push(`${cfl(it.weaponCategory)} ${itemsStore.findItemType(it.type)}`);
@@ -98,18 +99,6 @@
       let list = it.entries?.find(e => e.type == 'list');
       if(list) d.push(S(list.items.join(', ')));
     }
-
-    // if(it.value) {
-    //   const m = calculMoney(it.value);
-    //   const w = it.weight;
-    //   const sm = [];
-    //   if(m.gp) sm.push(`${m.gp} gp`);
-    //   if(m.sp) sm.push(`${m.sp} sp`);
-    //   if(m.cp) sm.push(`${m.cp} cp`);
-    //   if(w) sm.push(`${w} lb.`);
-    //   d.push(sm.join(', '));
-    // }
-
     return d.join('\n');
   });
 
@@ -119,6 +108,36 @@
     }
     return;
   })
+
+  const hasProf = computed(() => {
+    if(!itemBase.value) return true;
+    if(!props.profs) return true;
+
+    const pr = props.profs
+    const it = itemBase.value;
+
+    if(it.armor) {
+      let prof = pr.armor.find((p:any) => itemsStore.findItemType(it.type)?.toLowerCase().includes(p.name.toLowerCase()));
+      // console.log({name: name.value, prof: prof !== undefined});
+      return prof !== undefined;
+    }
+    if(it.weapon) {
+      let prof = pr.weapon.find((p:any) => p.name == it.weaponCategory || p.name.toLowerCase() == name.value.toLowerCase());
+      // console.log({name: name.value, prof: prof !== undefined});
+      return prof !== undefined;
+    }
+    if(['T', 'AT', 'INS', 'GS'].includes(it.type)) {
+      let prof = pr.tools.find((p:any) => p.name.toLowerCase() == name.value.toLowerCase());
+      return prof !== undefined;
+    }
+    // if(['SHP','VEH'].includes(it.type)) {
+    //   let prof = pr.tools.find((p:any) => itemsStore.findItemType(it.type)?.toLowerCase().includes(p.name.toLowerCase()));
+    //   return prof !== undefined;
+    // }
+
+    return true;
+  })
+
 </script>
 
 <template>
@@ -130,9 +149,9 @@
   <template v-else>
     <span>
       {{ name }}<Money v-if="value" :value="value" spaces />
-<!--      <i class="fa-solid fa-triangle-exclamation text-warning ps-2" v-if="itemBase && (itemBase.type == 'HA' || itemBase.type == 'MA')" v-tooltip title="Without proficiency" data-bs-placement="right" />-->
     </span>
   </template>
+  <i class="fa-solid fa-triangle-exclamation text-warning ps-2" v-if="!hasProf" v-tooltip title="Without proficiency" data-bs-placement="right" />
   <p ref="info" v-if="itemBase" :class="tooltip ? 'd-none' : ''">
     {{ titleTxt }}
     <template v-if="titleTxt && (itemBase.value || itemBase.weight)">{{ `\n` }}</template>

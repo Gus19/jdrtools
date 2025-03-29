@@ -11,7 +11,8 @@ import {computed, ref, watch} from "vue";
     hasQuantity: {type: Boolean, default: false},
     hasDelete: {type: Boolean, default: false},
     maxValue: {type: Number, required: false},
-    minValue: {type: Number, required: false}
+    minValue: {type: Number, required: false},
+    profs: {type: Object, required: false}
   });
   const emits = defineEmits([
     'select',
@@ -63,7 +64,7 @@ import {computed, ref, watch} from "vue";
     </button>
     <input v-if="hasQuantity" type="number" class="form-control form-control-sm ms-2" min="1" step="1" v-model="quantity" style="width: 60px;" @change="emits('quantity', quantity)" />
     <div class="flex-grow-1 mx-2">
-      <ItemInfo v-if="current && current.key" :item="current.key" :tooltip="true" />
+      <ItemInfo v-if="current && current.key" :item="current.key" :tooltip="true" :profs="profs" />
     </div>
     <button v-if="hasDelete" type="button" class="btn btn-sm btn-outline-danger" @click="emits('delete')">
       <i class="fa fa-solid fa-trash-alt" />
@@ -80,7 +81,7 @@ import {computed, ref, watch} from "vue";
               <div v-for="it in items" class="form-check pb-1" :key="it" ref="itemRefs">
                 <input class="form-check-input" type="radio" :value="it" v-model="newItem" />
                 <label class="form-check-label w-100" @click="newItem = it">
-                  <ItemInfo :item="it" :tooltip="false" />
+                  <ItemInfo :item="it" :tooltip="false" :profs="profs" />
                 </label>
               </div>
             </div>

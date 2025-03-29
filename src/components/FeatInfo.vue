@@ -37,8 +37,7 @@
       <div v-else>
         <div class="btn-group btn-group-sm pb-1">
           <button v-for="c in feat.ability[0].choose.from" :key="c" class="btn" :class="c == abilitySelected ? 'btn-primary' : 'btn-outline-secondary'"
-                  @click="emits('improve', c)"
-          >
+                  @click="emits('improve', c)">
             {{ c.toUpperCase() }} +1
           </button>
         </div>
@@ -47,6 +46,7 @@
   </div>
 
   <slot></slot>
+
   <div v-if="open">
     <template v-for="(e,i) in feat.entries" :key="i">
       <template v-if="e.type == 'list'">
