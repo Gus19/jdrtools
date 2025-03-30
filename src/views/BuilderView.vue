@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import {onMounted, computed, ref, watch, cloneVNode} from "vue";
+  import {onMounted, computed, ref, watch} from "vue";
   import { uuid } from 'vue-uuid';
   import JsonEditor from 'vue3-ts-jsoneditor';
   import {useSpellsStore} from "@/stores/spells";
@@ -82,7 +82,6 @@
     search.value[name] = e.target.value;
   }
   const showAllSpells = ref(false);
-  const showAllFeats = ref(false);
 
   const step = ref<string>('');
   const steps = ref<any[]>([]);
@@ -431,10 +430,6 @@
           valid: l
         });
       }
-
-    }
-    catch (e) {
-      console.error(e);
     }
     finally {
       steps.value = ss;
@@ -601,10 +596,6 @@
     }
   }
 
-  const error = ref<any>({
-    show: false,
-    message: null
-  });
   const upload = ref<any>({
     show: false,
     character: null,
@@ -1666,7 +1657,6 @@
             }
           }
         });
-        // let innate = c.innate._;
       }
       if(c.expanded && (spellSlotsPactInfo.value != null || spellSlotsInfo.value != null)) {
         Object.keys(c.expanded).forEach(kn => {
@@ -1927,9 +1917,6 @@
   const filterOptions = (name: string, from: any[]) => {
     if(!from) return [];
     const s = !search.value[name] ? "" : search.value[name].toLowerCase();
-    const hasAbilities = search.value[name+'-Abilities'] ?? false;
-    const hasSpells = search.value[name+'-Spells'] ?? false;
-
     const hasConcentration = search.value[name+'-Concentration'] ?? false;
     const hasRitual = search.value[name+'-Ritual'] ?? false;
 
@@ -1941,10 +1928,6 @@
         (f.entries && (JSON.stringify(f.entries)).toLowerCase().includes(s)) ||
         (f.prerequisite && f.prerequisite.join(' ').toLowerCase().includes(s))
       )
-      &&
-      (!hasAbilities || f.hasAbility)
-      &&
-      (!hasSpells || f.hasSpells)
       &&
       (!hasConcentration || f.duration[0].concentration)
       &&
@@ -2433,24 +2416,9 @@
         <button class="btn btn-secondary" @click="json = computedRace">computedRace</button>
         <button class="btn btn-secondary" @click="json = computedRaceOptions">computedRaceOptions</button>
         <button class="btn btn-secondary" @click="json = chooses">chooses</button>
-        <button class="btn btn-secondary" @click="json = itemsProf">itemsProf</button>
-        <button class="btn btn-secondary" @click="json = lastClass">lastClass</button>
       </div>
     </template>
 
-    <div class="modal fade modal-lg" :class="error.show ? 'show': ''" :style="error.show ? 'display: block' : ''">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-body text-center">
-            <p>There is an error ... Please check the JSON or open a <a href="https://github.com/Gus19/jdrtools/issues" target="_blank">GitHub issue</a></p>
-            <p v-if="error.message">
-              <code>{{ error.message }}</code>
-            </p>
-            <button type="button" class="btn btn-secondary" @click="error.show = false">OK</button>
-          </div>
-        </div>
-      </div>
-    </div>
     <div class="modal fade modal-lg" :class="upload.show ? 'show': ''" :style="upload.show ? 'display: block' : ''">
       <div class="modal-dialog">
         <div class="modal-content">
@@ -2465,9 +2433,15 @@
                 :main-menu-bar="false"
                 class="my-editor text-start"
             />
-            <div class="btn-group-sm mt-2">
-              <button type="button" class="btn btn-outline-secondary" @click="upload.show = false">Close</button>
-              <button type="button" class="btn btn-success ms-2" @click="uploadCharacter" :disabled="!upload.character">Upload</button>
+            <div class="btn-group-sm mw mt-2">
+              <button type="button" class="btn btn-outline-secondary" @click="upload.show = false">
+                <i class="fa-solid fa-xmark" />
+                Close
+              </button>
+              <button type="button" class="btn btn-success ms-2" @click="uploadCharacter" :disabled="!upload.character">
+                <i class="fa-solid fa-file-arrow-up" />
+                Confirm
+              </button>
             </div>
           </div>
         </div>
@@ -2481,24 +2455,42 @@
             <p class="m-0 pb-1">URL of your token</p>
             <p v-if="token.error" class="text-danger m-0 pb-1">{{ token.error }}</p>
             <input type="text" class="form-control" v-model="token.url" />
-            <div class="btn-group-sm mt-2">
-              <button type="button" class="btn btn-outline-secondary" @click="token.show = false">Close</button>
-              <button type="button" class="btn btn-success ms-2" @click="changeToken">Change</button>
+            <div class="btn-group-sm mw mt-2">
+              <button type="button" class="btn btn-outline-secondary" @click="token.show = false">
+                <i class="fa-solid fa-xmark" />
+                Close
+              </button>
+              <button type="button" class="btn btn-success ms-2" @click="changeToken">
+                <i class="fa-solid fa-cloud-arrow-down" />
+                Change
+              </button>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <div v-if="error.show || upload.show || token.show" class="modal-backdrop fade show"></div>
+    <div v-if="upload.show || token.show" class="modal-backdrop fade show"></div>
 
     <div class="row">
       <div class="col-12">
         <div class="btn-group btn-group-sm d-flex align-items-center">
-          <button type="button" class="btn btn-danger" @click="reset">Reset</button>
-          <button type="button" class="btn btn-info" @click="save" :disabled="!character.name">Save</button>
-          <button type="button" class="btn btn-secondary" @click="openUpload">Import</button>
-          <button type="button" class="btn btn-success" @click="convert">Convert</button>
+          <button type="button" class="btn btn-danger" @click="reset">
+            <i class="fa-regular fa-trash-can" />
+            Reset
+          </button>
+          <button type="button" class="btn btn-info" @click="save" :disabled="!character.name">
+            <i class="fa-solid fa-download" />
+            Save
+          </button>
+          <button type="button" class="btn btn-secondary" @click="openUpload">
+            <i class="fa-solid fa-file-arrow-up" />
+            Import
+          </button>
+          <button type="button" class="btn btn-success" @click="convert">
+            <i class="fa-solid fa-gears" />
+            Convert
+          </button>
         </div>
       </div>
       <div class="col-lg-6 mt-2">

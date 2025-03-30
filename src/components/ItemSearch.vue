@@ -86,9 +86,15 @@ import {computed, ref, watch} from "vue";
               </div>
             </div>
 
-            <div class="btn-group-sm mt-2 text-center">
-              <button type="button" class="btn btn-outline-secondary" @click="show= false;">Close</button>
-              <button type="button" class="btn btn-success ms-2" :disabled="!newItem" @click="selectNewItem">Select</button>
+            <div class="btn-group-sm mw mt-2 text-center">
+              <button type="button" class="btn btn-outline-secondary" @click="show= false;">
+                <i class="fa-solid fa-xmark" />
+                Close
+              </button>
+              <button type="button" class="btn btn-success ms-2" :disabled="!newItem" @click="selectNewItem">
+                <i class="fa-solid fa-check"></i>
+                Select
+              </button>
             </div>
           </div>
         </div>

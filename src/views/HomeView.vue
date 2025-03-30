@@ -3,8 +3,7 @@
   import download from 'downloadjs'
   import JsonEditor from 'vue3-ts-jsoneditor';
   import {useSpellsStore} from "@/stores/spells";
-  import type {EntriesHigherLevel,Duration,Time} from "@/stores/spells";
-  import {Alignments, Schools, Sizes, Skills, S, messageSpell} from "@/utils/refs";
+  import {Alignments, Sizes, Skills, S} from "@/utils/refs";
   import type {Skill, Property} from "@/utils/refs";
 
   onMounted(() => {
@@ -70,28 +69,18 @@
   }
 
   const handleTableplop = () => {
-    try {
-      jsonTableplop.value = '';
-      character.value.appearances = [];
-      character.value.properties = [];
-      parents.value = [];
-      data.value = JSON.parse(jsonsource.value);
-      build();
-      jsonTableplop.value = JSON.stringify(character.value, null, 2);
-    }
-    catch (error) {
-      show.value = true;
-      errorConvert.value = error;
-      console.error(error);
-    }
+    jsonTableplop.value = '';
+    character.value.appearances = [];
+    character.value.properties = [];
+    parents.value = [];
+    data.value = JSON.parse(jsonsource.value);
+    build();
+    jsonTableplop.value = JSON.stringify(character.value, null, 2);
   }
-
-  const errorConvert = ref<any>(null);
 
   const btnDisabled = computed(() => {
     if(!jsonTableplop) return true;
-    if(jsonTableplop.value.length === 0) return true;
-    return false;
+    return jsonTableplop.value.length === 0;
   });
 
   const handleCopy = () => {
@@ -1025,42 +1014,29 @@
 
   const spellsStore = useSpellsStore();
   const spells = computed(() => spellsStore.spells);
-  const show = ref(false);
 </script>
 
 <template>
-  <!-- Modal -->
-  <div class="modal fade modal-lg" :class="show ? 'show': ''" :style="show ? 'display: block' : ''">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-body text-center">
-          <p>There is an error ... Please check the JSON or open a <a href="https://github.com/Gus19/jdrtools/issues" target="_blank">GitHub issue</a></p>
-          <p>
-            <code>{{ errorConvert }}</code>
-          </p>
-          <button type="button" class="btn btn-secondary" @click="show = false">OK</button>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div v-if="show" class="modal-backdrop fade show"></div>
-
   <div class="row">
     <div class="col-6 d-flex justify-content-between align-items-center">
       <label class="fw-bold">Source</label>
-      <button class="btn btn-sm btn-secondary" @click="handleFormat">
+      <button class="btn btn-sm mw btn-secondary" :disabled="!jsonsource" @click="handleFormat">
+        <i class="fa-solid fa-align-left" />
         Format
       </button>
     </div>
     <div class="col-6 d-flex justify-content-between align-items-center">
-      <div class="btn-group">
+      <div class="btn-group mw">
         <button class="btn btn-sm btn-success" @click="handleTableplop" :disabled="spells.length === 0 || !jsonsource">
+          <i class="fa-solid fa-gears" />
           Convert
         </button>
         <button class="btn btn-sm btn-secondary" @click="handleCopy" :disabled="btnDisabled">
+          <i class="fa-regular fa-clipboard" />
           Copy
         </button>
         <button class="btn btn-sm btn-info" @click="downloadJson" :disabled="btnDisabled">
+          <i class="fa-solid fa-download" />
           Download
         </button>
       </div>

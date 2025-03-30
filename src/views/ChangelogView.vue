@@ -6,13 +6,13 @@ import Changelog from "@/components/Changelog.vue";
   <h2>Changelog</h2>
   <Changelog>
     <template v-slot:version>1.0.7</template>
-    <template v-slot:date>19/02/2024</template>
+    <template v-slot:date>19/02/2025</template>
     <li>Error with the appearance on Tableplop</li>
   </Changelog>
 
   <Changelog>
     <template v-slot:version>1.0.6</template>
-    <template v-slot:date>10/02/2024</template>
+    <template v-slot:date>10/02/2025</template>
     <li>Error on loading spells</li>
   </Changelog>
 
