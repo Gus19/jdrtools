@@ -5,14 +5,14 @@ import {computed, ref, watch} from "vue";
   import ItemInfo from "@/components/ItemInfo.vue";
   const props = defineProps({
     type: {type: String, required: true},
-    includeSpecial: {type: Boolean, default: false},
     current: {type: Object, required: false},
     label: {type: Boolean, default: true},
     hasQuantity: {type: Boolean, default: false},
     hasDelete: {type: Boolean, default: false},
     maxValue: {type: Number, required: false},
     minValue: {type: Number, required: false},
-    profs: {type: Object, required: false}
+    profs: {type: Object, required: false},
+    disabled: Boolean
   });
   const emits = defineEmits([
     'select',
@@ -22,11 +22,13 @@ import {computed, ref, watch} from "vue";
 
   const itemsStore = useItemsStore();
   const et = computed(() => {
-    return findEquipmentType(props.type);
+    const r = findEquipmentType(props.type);
+    if(!r) throw new Error(`${props.type} invalid`);
+    return r
   });
   const items = computed(() => {
     if(!et.value || !show.value) return null;
-    return itemsStore.search(et.value.search, props.includeSpecial, props.maxValue, props.minValue);
+    return itemsStore.search(et.value.search, props.maxValue, props.minValue);
   })
 
   const search = ref("");
@@ -59,22 +61,23 @@ import {computed, ref, watch} from "vue";
 <template>
   <div class="item-search" v-if="et">
     <label v-if="label" class="form-label">{{ cfl(et.label) }}</label>
-    <button type="button" class="btn btn-sm btn-primary" @click="show = true">
+    <button v-if="!disabled" type="button" class="btn btn-sm btn-primary me-2" @click="show = true">
       <i class="fa fa-solid fa-search" />
     </button>
-    <input v-if="hasQuantity" type="number" class="form-control form-control-sm ms-2" min="1" step="1" v-model="quantity" style="width: 60px;" @change="emits('quantity', quantity)" />
+    <input v-if="hasQuantity" type="number" class="form-control form-control-sm" min="1" step="1"
+           v-model="quantity" style="width: 60px;" @change="emits('quantity', quantity)" :disabled="disabled" />
     <div class="flex-grow-1 mx-2">
       <ItemInfo v-if="current && current.key" :item="current.key" :tooltip="true" :profs="profs" />
     </div>
-    <button v-if="hasDelete" type="button" class="btn btn-sm btn-outline-danger" @click="emits('delete')">
+    <button v-if="hasDelete && !disabled" type="button" class="btn btn-sm btn-outline-danger" @click="emits('delete')">
       <i class="fa fa-solid fa-trash-alt" />
     </button>
 
-    <div class="modal fade modal-lg" :class="show ? 'show': ''" :style="show ? 'display: block' : ''">
+    <div v-if="show" class="modal fade modal-lg show d-block">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-body">
-            <p class="m-0 pb-1 text-center">{{ type != 'all' ? cfl(et.label) : 'Choose an item' }}</p>
+            <p class="m-0 pb-1 text-center">{{ type != 'all' ? cfl(et.label) : 'Choose an item' }} ({{ items?.length }})</p>
             <input type="text" class="form-control form-control-sm mb-1" placeholder="Search" v-model="search" />
 
             <div class="overflow">
@@ -103,7 +106,6 @@ import {computed, ref, watch} from "vue";
     <div v-if="show" class="modal-backdrop fade show"></div>
 
   </div>
-
 </template>
 
 <style scoped>

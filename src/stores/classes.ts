@@ -27,15 +27,8 @@ export const useClassesStore = defineStore("ClassesStore", {
     error: false
   }),
   actions: {
-    // initState(data: any) {
-    //   this.classes = data.class;
-    //   this.subclasses = data.subclass;
-    //   this.classFeatures = data.classFeature;
-    //   this.subclassFeatures = data.subclassFeature;
-    // },
     async initClasses() {
       if(this.classes.length > 0) {
-        // console.log("Classes already loaded !")
         return;
       }
       const local1 = [];
@@ -74,9 +67,6 @@ export const useClassesStore = defineStore("ClassesStore", {
       catch (e) {
         console.error(e);
         this.error = true;
-      }
-      finally {
-        // console.log("Classes loaded !!");
       }
     }
   },
@@ -202,6 +192,7 @@ export const useClassesStore = defineStore("ClassesStore", {
             });
           }
           if(subclassfeature) {
+            // TODO : features in another part
             // same push but from state.subclassFeatures
           }
         });

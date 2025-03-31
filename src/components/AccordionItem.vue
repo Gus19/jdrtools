@@ -13,9 +13,10 @@
     </h2>
     <div class="accordion-collapse collapse" :class="step === name && 'show'">
       <div class="accordion-body">
-        <slot name="body"></slot>
+        <fieldset :disabled="disabled">
+          <slot name="body"></slot>
+        </fieldset>
         <slot name="buttons">
-
           <button v-if="manualStep" type="button" class="mt-2 btn btn-sm btn-outline-primary w-100" @click="emits('toggleManualStep')">
             <i class="fa-regular me-1" :class="!manualStep.valid ? 'fa-circle-check' : 'fa-circle-xmark'" />
             Mark as <template v-if="!manualStep.valid">valid</template><template v-else>invalid</template>
@@ -33,6 +34,7 @@ const props = defineProps({
   step: { type: String, required: true },
   steps: {type: Array, required: true},
   manualSteps: {type: Array as PropType<any>, required: false},
+  disabled: Boolean
 })
 const emits = defineEmits([
   'click',

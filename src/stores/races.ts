@@ -11,13 +11,11 @@ export const useRacesStore = defineStore("RacesStore", {
   actions: {
     async initStore() {
       if (this.racessource != null) {
-        // console.log("Races already loaded !");
         return;
       }
       try {
         const response = await fetch(`${import.meta.env.VITE_BASEURL}/data/races.json`);
         const data = await response.json();
-        // this.racessource = data;
         this.initsource(data);
       }
       catch (e) {
@@ -25,7 +23,6 @@ export const useRacesStore = defineStore("RacesStore", {
         this.error = true
       }
       finally {
-        // console.log("Races loaded !!");
         this.initBuilder();
       }
     },

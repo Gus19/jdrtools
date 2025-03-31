@@ -8,7 +8,6 @@ export const useFeatsStore = defineStore("FeatsStore", {
   actions: {
     async initFeats() {
       if (this.feats.length > 0) {
-        // console.log("Feats already loaded !")
         return;
       }
       try {
@@ -19,9 +18,6 @@ export const useFeatsStore = defineStore("FeatsStore", {
       catch (e) {
         console.error(e);
         this.error = true;
-      }
-      finally {
-        // console.log("Feats loaded !!");
       }
     }
   },

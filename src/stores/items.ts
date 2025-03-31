@@ -11,7 +11,6 @@ export const useItemsStore = defineStore("ItemsStore", {
   actions: {
     async initItems() {
       if (this.itemBase.length > 0) {
-        // console.log("Items already loaded !")
         return;
       }
       try {
@@ -23,8 +22,23 @@ export const useItemsStore = defineStore("ItemsStore", {
 
         const response2 = await fetch(`${import.meta.env.VITE_BASEURL}/data/items.json`);
         const data2 = await response2.json();
-        this.itemBase.push(...data2.item.filter((i:any) => i.rarity == 'none'));
-        // this.itemBase.push(...data2.itemGroup.filter((i:any) => i.rarity == 'none'));
+        this.itemBase.push(...data2.item);
+
+        this.itemBase.forEach((i:ItemBase) => {
+          i.key = `${i.name.toLowerCase()}|${i.source.toLowerCase()}`;
+          if(i.type == "S") i.armor = true
+          if(['T', 'AT', 'INS', 'GS'].includes(i.type)) i.tool = true;
+          if(i.weaponCategory && !i.weapon) i.weapon = true;
+        });
+
+        // this.itemBase = this.itemBase.filter((i:ItemBase) => !i.armor && !i.weapon && !i.tool || i.rarity == "none");
+        this.itemBase = this.itemBase.filter((i:ItemBase) =>
+          (i.armor || i.weapon || i.tool || ["A","AF|DMG","EXP|DMG","FD","G","P","RD|DMG","RG|DMG","SCF","WD|DMG"].includes(i.type))
+          &&
+          (!i.wondrous)
+          &&
+          (!i.property?.includes("S"))
+        );
       }
       catch (e) {
         console.error(e);
@@ -36,6 +50,7 @@ export const useItemsStore = defineStore("ItemsStore", {
     isLoad: (state) => state.itemBase.length > 0 && state.itemProperty.length > 0 && state.itemType.length > 0,
     findByKey() {
       return (key: string): ItemBase|undefined => {
+        if(!key || key.length == 0) return undefined;
         const split = key.split('|');
         if(split.length != 2) {
           return;
@@ -51,7 +66,8 @@ export const useItemsStore = defineStore("ItemsStore", {
     findItemType() {
       return (key: string): string|undefined => {
         if(!key) return undefined;
-        return this.itemType.find(f => f.abbreviation.toLowerCase() == key.toLowerCase())?.name;
+        let s = key.toLowerCase().split('|');
+        return this.itemType.find(f => f.abbreviation.toLowerCase() == s[0] && (s.length == 1 || f.source.toLowerCase() == s[1]))?.name;
       }
     },
     findItemProperties() {
@@ -98,12 +114,11 @@ export const useItemsStore = defineStore("ItemsStore", {
       }
     },
     search() {
-      return (s: any, includeSpecial: boolean = false, maxValue: number|null = null, minValue: number|null = 0) => {
+      return (s: any, maxValue: number|null = null, minValue: number|null = 0) => {
         return this.itemBase
           .filter(f => {
             let check = true;
 
-            if(!includeSpecial && f.property?.includes("S")) return false;
             if(minValue != null) {
               if(!f.value) return false;
               else if(f.value < minValue) return false;
@@ -117,13 +132,29 @@ export const useItemsStore = defineStore("ItemsStore", {
               if(!f[k]) check = false;
               else if(f[k] != s[k]) check = false;
             })
+
             return check;
           })
           .sort((a, b) => a.name > b.name ? 1 : -1)
           .map(f => {
-            return `${f.name}|${f.source}`;
+            return f.key;
           })
         ;
+      }
+    },
+    getTypeByKey() {
+      return (key: string): string|undefined => {
+        const it = this.findByKey(key);
+        if(!it) return undefined;
+        if(it.armor) return "armor";
+        if(it.weapon) return "weapon";
+        if(it.tool) return "tool";
+        return "other";
+      }
+    },
+    test() {
+      return () => {
+        return this.itemBase;
       }
     }
   }
@@ -141,7 +172,8 @@ export const equipmentType: EquipmentType[] = [
     label: "simple weapon",
     search: {
       "weapon": true,
-      "weaponCategory": "simple"
+      "weaponCategory": "simple",
+      "rarity": "none"
     }
   },
   {
@@ -149,7 +181,8 @@ export const equipmentType: EquipmentType[] = [
     label: "martial weapon",
     search: {
       "weapon": true,
-      "weaponCategory": "martial"
+      "weaponCategory": "martial",
+      "rarity": "none"
     }
   },
   {
@@ -158,7 +191,8 @@ export const equipmentType: EquipmentType[] = [
     search: {
       "weapon": true,
       "weaponCategory": "simple",
-      "type": "M"
+      "type": "M",
+      "rarity": "none"
     }
   },
   {
@@ -167,28 +201,32 @@ export const equipmentType: EquipmentType[] = [
     search: {
       "weapon": true,
       "weaponCategory": "martial",
-      "type": "M"
+      "type": "M",
+      "rarity": "none"
     }
   },
   {
     key: "instrumentMusical",
     label: "musical instrument",
     search: {
-      "type": "INS"
+      "type": "INS",
+      "rarity": "none"
     }
   },
   {
     key: "setGaming",
     label: "gaming set",
     search: {
-      "type": "GS"
+      "type": "GS",
+      "rarity": "none"
     }
   },
   {
     key: "toolArtisan",
     label: "artisan's tools",
     search: {
-      "type": "AT"
+      "type": "AT",
+      "rarity": "none"
     }
   },
   {
@@ -196,7 +234,8 @@ export const equipmentType: EquipmentType[] = [
     label: "holy symbol",
     search: {
       "type": "SCF",
-      "scfType": "holy"
+      "scfType": "holy",
+      "rarity": "none"
     }
   },
   {
@@ -204,7 +243,8 @@ export const equipmentType: EquipmentType[] = [
     label: "druidic focus",
     search: {
       "type": "SCF",
-      "scfType": "druid"
+      "scfType": "druid",
+      "rarity": "none"
     }
   },
   {
@@ -212,13 +252,42 @@ export const equipmentType: EquipmentType[] = [
     label: "arcane focus",
     search: {
       "type": "SCF",
-      "scfType": "arcane"
+      "scfType": "arcane",
+      "rarity": "none"
     }
   },
   {
     key: "all",
     label: "All",
-    search: {}
+    search: {
+    }
+  },
+  {
+    key: "armor",
+    label: "Armors",
+    search: {
+      armor: true
+    }
+  },
+  {
+    key: "weapon",
+    label: "Weapons",
+    search: {
+      weapon: true
+    }
+  },
+  {
+    key: "tool",
+    label: "Tools",
+    search: {
+      tool: true
+    }
+  },
+  {
+    key: "other",
+    label: "Bagpack",
+    search: {
+    }
   }
 ]
 
@@ -229,7 +298,7 @@ export const equipmentProf: any[] = [
     parent: "armor",
     search: {
       "armor": true,
-      "typa": "LA"
+      "type": "LA"
     }
   },
   {
@@ -237,7 +306,7 @@ export const equipmentProf: any[] = [
     parent: "armor",
     search: {
       "armor": true,
-      "typa": "MA"
+      "type": "MA"
     }
   },
   {
@@ -245,14 +314,14 @@ export const equipmentProf: any[] = [
     parent: "armor",
     search: {
       "armor": true,
-      "typa": "HA"
+      "type": "HA"
     }
   },
   {
     key: "shield",
     parent: "armor",
     search: {
-      "typa": "S"
+      "type": "S"
     }
   },
   // Weapons
@@ -261,7 +330,8 @@ export const equipmentProf: any[] = [
     parent: "weapon",
     search: {
       "weapon": true,
-      "weaponCategory": "simple"
+      "weaponCategory": "simple",
+      "rarity": "none"
     }
   },
   {
@@ -269,38 +339,10 @@ export const equipmentProf: any[] = [
     parent: "weapon",
     search: {
       "weapon": true,
-      "weaponCategory": "martial"
+      "weaponCategory": "martial",
+      "rarity": "none"
     }
   },
-  // // Simple weapons
-  // {
-  //   key: "club",
-  //   parent: "simple",
-  //   search: {
-  //     "weapon": true,
-  //     "weaponCategory": "simple",
-  //     "club": true
-  //   }
-  // },
-  // {
-  //   key: "dagger",
-  //   parent: "simple",
-  //   search: {
-  //     "weapon": true,
-  //     "weaponCategory": "simple",
-  //     "dagger": true
-  //   }
-  // },
-  // {
-  //   key: "handaxe",
-  //   parent: "simple",
-  //   search: {
-  //     "weapon": true,
-  //     "weaponCategory": "simple",
-  //     "axe": true
-  //   }
-  // },
-
 ]
 
 export const findEquipmentType = (key: string) => {
@@ -316,6 +358,7 @@ export type RootState = {
 
 export interface ItemBase {
   [key: string]: any | undefined,
+  key: string,
   name: string
   source: string
   page: number
@@ -365,7 +408,8 @@ export interface ItemBase {
   net?: boolean
   rapier?: boolean
   bulletSling?: boolean
-  staff?: boolean
+  staff?: boolean,
+  tool?: boolean
 }
 
 export interface PackContent {

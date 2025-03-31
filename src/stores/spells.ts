@@ -27,7 +27,6 @@ export const useSpellsStore = defineStore("SpellsStore", {
       this.sources = [];
       const response = await fetch(`${import.meta.env.VITE_BASEURL}/data/spells/sources.json`);
       const data = await response.json();
-      // console.log({data});
       let test: SpellClasses[] = [];
       Object.keys(data).forEach(k =>
         Object.keys(data[k]).forEach((j) => {
@@ -48,7 +47,6 @@ export const useSpellsStore = defineStore("SpellsStore", {
     },
     async initSpells() {
       if(this.spells.length > 0) {
-        // console.log("Spells already loaded !")
         return;
       }
       const localSpells = [];
@@ -70,9 +68,6 @@ export const useSpellsStore = defineStore("SpellsStore", {
       catch (e) {
         console.error(e);
         this.error = true;
-      }
-      finally {
-        // console.log("Spells loaded !!");
       }
     }
   },

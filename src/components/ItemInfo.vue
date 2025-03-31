@@ -99,6 +99,10 @@
       let list = it.entries?.find(e => e.type == 'list');
       if(list) d.push(S(list.items.join(', ')));
     }
+    // else if(d.length == 1 && it.entries) {
+    //   d.push(S(it.entries.find((e:any) => "string" == typeof e)));
+    // }
+
     return d.join('\n');
   });
 
@@ -118,15 +122,13 @@
 
     if(it.armor) {
       let prof = pr.armor.find((p:any) => itemsStore.findItemType(it.type)?.toLowerCase().includes(p.name.toLowerCase()));
-      // console.log({name: name.value, prof: prof !== undefined});
       return prof !== undefined;
     }
     if(it.weapon) {
       let prof = pr.weapon.find((p:any) => p.name == it.weaponCategory || p.name.toLowerCase() == name.value.toLowerCase());
-      // console.log({name: name.value, prof: prof !== undefined});
       return prof !== undefined;
     }
-    if(['T', 'AT', 'INS', 'GS'].includes(it.type)) {
+    if(it.tool) {
       let prof = pr.tools.find((p:any) => p.name.toLowerCase() == name.value.toLowerCase());
       return prof !== undefined;
     }
@@ -134,10 +136,8 @@
     //   let prof = pr.tools.find((p:any) => itemsStore.findItemType(it.type)?.toLowerCase().includes(p.name.toLowerCase()));
     //   return prof !== undefined;
     // }
-
     return true;
   })
-
 </script>
 
 <template>

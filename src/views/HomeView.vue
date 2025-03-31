@@ -786,8 +786,6 @@
     let spell = null;
     if(spells.value !== null) {
       spell = spells.value.find(s => s.name.toLowerCase() === name.toLowerCase());
-      // if(name.toLowerCase() === "shield")
-      //   console.log(JSON.stringify(spell, null, 2));
     }
     return {
       name: name,

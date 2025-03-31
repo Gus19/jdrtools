@@ -8,7 +8,6 @@ export const useBackgroundsStore = defineStore("BackgroundsStore", {
   actions: {
     async initBackgrounds() {
       if (this.backgrounds.length > 0) {
-        // console.log("Backgrounds already loaded !")
         return;
       }
       try {
@@ -19,9 +18,6 @@ export const useBackgroundsStore = defineStore("BackgroundsStore", {
       catch (e) {
         console.error(e);
         this.error = true;
-      }
-      finally {
-        // console.log("Backgrounds loaded !!");
       }
     }
   },

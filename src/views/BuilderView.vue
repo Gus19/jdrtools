@@ -6,7 +6,7 @@
   import {useRacesStore} from "@/stores/races";
   import {useBackgroundsStore,classBackground} from "@/stores/backgrounds";
   import {useFeatsStore} from "@/stores/feats";
-  import {equipmentProf, useItemsStore} from "@/stores/items";
+  import {equipmentProf, equipmentType, type ItemBase, useItemsStore} from "@/stores/items";
   import type {RaceBuilder} from "@/stores/races";
   import {
     Abilities,
@@ -36,7 +36,7 @@
     inlineTool,
     spellSlotsPact,
     rollFormula,
-    inlineEntries, Damages, cfl, CHOOSE
+    inlineEntries, Damages, cfl, CHOOSE, calculMoney
   } from "@/utils/refs";
   import AccordionItem from "@/components/AccordionItem.vue";
   import CharacterInfo from "@/components/CharacterInfo.vue";
@@ -109,22 +109,74 @@
   }
   const isManualValid = (s: string) => {
     if(!character.value) return
-    return getManualStep(s).valid || false;
+    return getManualStep(s)?.valid || false;
   }
   const toggleManualStep = () => {
     manualStep.value.valid = !manualStep.value.valid;
     calculStep();
   }
+  const disabledSE = computed(() => isManualValid('startingEquipment'));
   const toggleStartingEquipment = () => {
-    if(!manualStep.value.valid) {
-      // TODO calcul all equipements
-      // TODO if change startingequipment, invalid the step
-      // character.value.equipment = []
-    }
-    else {
-      character.value.equipment = [];
-    }
     toggleManualStep();
+    character.value.equipment.items = character.value.equipment.items.filter((it:any) => it.custom)
+    character.value.equipment.weight = 0;
+    character.value.equipment.others.text = "";
+    character.value.equipment.others.weight = 0;
+    if(manualStep.value.valid) {
+      const se = character.value.startingEquipment;
+
+      character.value.money = calculMoney(se.rest || 0);
+      let others: string[] = [];
+
+      ['background', 'class'].forEach((k:any) => {
+        Object.keys(se[k]).forEach(i => {
+          let o = se[k][i];
+          chooses.value.startingEquipment.find((f:any) => f.origin == k).values[i][o].forEach((it:any) => {
+            if("string" == typeof it) {
+              character.value.equipment.items.push({
+                key: it,
+                quantity: 1,
+                type: itemsStore.getTypeByKey(it),
+                custom: false
+              });
+            }
+            else if(it.item) {
+              character.value.equipment.items.push({
+                key: it.item,
+                quantity: it.quantity || 1,
+                type: itemsStore.getTypeByKey(it.item),
+                custom: false
+              });
+              if(it.containsValue) {
+                let money = calculMoney(it.containsValue);
+                character.value.money.gp += money.gp;
+                character.value.money.sp += money.sp;
+                character.value.money.cp += money.cp;
+              }
+            }
+            else {
+              if(it.displayName) {
+                others.push(cfl(it.displayName));
+              }
+              else if(it.special) {
+                others.push(cfl(it.special));
+              }
+            }
+          });
+        })
+      });
+
+      character.value.equipment.others.text = others.join(', ');
+
+      se.manuals.forEach((m: any) => {
+        character.value.equipment.items.push({
+          key: m.key,
+          quantity: m.quantity,
+          type: itemsStore.getTypeByKey(m.key),
+          custom: false
+        });
+      });
+    }
   }
   const manualStep = computed(() => character.value && character.value.manualSteps.find((s:any) => s.step == step.value));
 
@@ -253,7 +305,7 @@
           });
           if (!bgFeatValid) return;
         }
-        
+
       }
       else {
         f = true;
@@ -564,7 +616,14 @@
         //rest: 1,
         //gp: 0,
       },
-      equipment: [],
+      equipment: {
+        items: [],
+        weight: 0,
+        others: {
+          text: null,
+          weight: 0
+        }
+      },
       money: {
         gp: 0,
         sp: 0,
@@ -1220,6 +1279,10 @@
       if(bg.value.weaponProficiencies) addDefaultEquipmentProf('weapon', 'background', bg.value.weaponProficiencies[0]);
       // no armorProficiencies
       character.value.startingEquipment.background = {};
+      const msv = character.value.manualSteps.find((ms:any) => ms.step == 'startingEquipment');
+      if(msv) {
+        msv.valid = false;
+      }
     }
   }
   const resetSkills = (origin: string) => {
@@ -1884,12 +1947,6 @@
   watch(() => [modInt.value,modWis.value,modCha.value], (newValue) => {
     if (newValue) calculSpellcasterLevel();
   });
-  watch(modDex, (nv) => {
-    if(nv) {
-      // calcAC();
-      character.value.ac = 10 + nv;
-    }
-  });
 
   const addOtherClass = () => {
     const nc = {
@@ -2323,6 +2380,7 @@
   const changeStartingEquipment = (e :any = null) => {
     const se = character.value.startingEquipment;
     se.gp = null;
+    se.rest = null;
     se.class = {};
     se.manuals = !se.manuals ? [] : se.manuals.filter((sem: any) => sem != null && sem.origin != 'class');
     se.option = e ? e.target.value : 'default';
@@ -2396,6 +2454,62 @@
       tools: character.value.tools
     }
   });
+  const newManualEquipment = (type: string) => {
+    const se = character.value.equipment.items;
+    se[se.length] = {
+      key: null,
+      quantity: 1,
+      type: type,
+      custom: true
+    };
+  }
+  const deleteBagpack = (ce: any) => {
+    let se = character.value.equipment.items;
+    character.value.equipment.items = se.filter((it:any) => it != ce);
+  }
+  watch(() => character.value && character.value.equipment.items, (nv) => {
+    if(nv) {
+      character.value.equipment.weight = 0;
+      character.value.equipment.items.forEach((e: any, i: number) => {
+        const it = itemsStore.findByKey(e.key);
+        if(it && it.weight) {
+          character.value.equipment.weight += it.weight * e.quantity;
+        }
+      })
+    }
+  }, {deep: true});
+
+  const itemsAc = computed(() => {
+    const armors = character.value.equipment.items.filter((ce:any) => ce.type == 'armor').map((ce:any) => itemsStore.findByKey(ce.key));
+    return {
+      armors: armors.filter((a:ItemBase) => a.armor && a.type != 'S'),
+      shields: armors.filter((a:ItemBase) => a.armor && a.type == 'S')
+    };
+  });
+  const calcAC = () => {
+    let armor = itemsAc.value.armors.find((a:any) => a.key == character.value.equipment.armor);
+    let shield = itemsAc.value.shields.find((a:any) => a.key == character.value.equipment.shield);
+    let ac = 10;
+    if(armor != null) {
+      if(armor.type == "LA") ac = armor.ac + modDex.value;
+      else if(armor.type == "MA") ac = armor.ac + Math.min(modDex.value,2);
+      else ac = armor.ac;
+    }
+    else {
+      ac = 10 + modDex.value;
+    }
+    if(shield != null) {
+      ac += shield.ac || 2;
+    }
+    character.value.ac = ac;
+  }
+  watch(() => character.value && [character.value.equipment.armor, character.value.equipment.shield, modDex.value], (nv) => {
+    if(nv) {
+      calcAC()
+    }
+  })
+
+
 </script>
 
 <template>
@@ -2682,31 +2796,29 @@
           <AccordionItem name="features" :steps="steps" :step="step" @click="changeStep" :manual-steps="character.manualSteps" @toggle-manual-step="toggleManualStep">
             <template v-slot:header-label>Features</template>
             <template v-slot:body>
-<!--              <template v-for="(cl,i) in character.class" :key="i">-->
-<!--                <div v-if="character.class.length > 1" class="input-group">-->
-<!--                  <select class="form-select form-select-sm flex-grow-1" @change="changeMulticlass($event, i)" :disabled="i === 0">&lt;!&ndash;v-model="cl.name"&ndash;&gt;-->
-<!--                    <option value="" :disabled="cl.name.length">{{CHOOSE}}</option>-->
-<!--                    <option v-for="c in classes" :key="c.name" :value="c.name" :selected="c.name === cl.name" :disabled="character.class.map((cl2: any) => cl2.name).includes(c.name)">{{ c.name }}</option>-->
-<!--                  </select>-->
-<!--                  <input type="number" min="1" max="20" :value="cl.level" @change="changeMulticlassLevel($event, i)" class="form-control" />-->
-<!--                  <button v-if="i > 0" type="button" class="btn btn-outline-danger" @click="removeOtherClass(i)">-->
-<!--                    <i class="fa-regular fa-trash-can"></i>-->
-<!--                  </button>-->
-<!--                  <button v-else type="button" class="btn btn-outline-secondary" @click="step = 'class'">-->
-<!--                    <i class="fa-solid fa-circle-arrow-right"></i>-->
-<!--                  </button>-->
-<!--                </div>-->
-<!--                <template v-for="(l,j) in cl.level" :key="j">-->
-<!--                  <div>{{cl.name }} {{ l }}</div>-->
-<!--                </template>-->
-<!--              </template>-->
-<!--              <button v-if="character.class[character.class.length-1].name" type="button" class="btn btn-sm btn-outline-info w-100" @click="addOtherClass">-->
-<!--                <i class="fa-solid fa-circle-plus"></i>-->
-<!--                Add an other class-->
-<!--              </button>-->
-<!--                <template v-for="(cf,i) in classFeatures" :key="i">-->
-<!--                  {{cf.lvl}}.{{cf.name}}-->
-<!--                </template>-->
+              <!--<template v-for="(cl,i) in character.class" :key="i">
+                <div v-if="character.class.length > 1" class="input-group">
+                  <select class="form-select form-select-sm flex-grow-1" @change="changeMulticlass($event, i)" :disabled="i === 0">
+                    <option value="" :disabled="cl.name.length">{{CHOOSE}}</option>
+                    <option v-for="c in classes" :key="c.name" :value="c.name" :selected="c.name === cl.name" :disabled="character.class.map((cl2: any) => cl2.name).includes(c.name)">{{ c.name }}</option>
+                  </select>
+                  <input type="number" min="1" max="20" :value="cl.level" @change="changeMulticlassLevel($event, i)" class="form-control" />
+                  <button v-if="i > 0" type="button" class="btn btn-outline-danger" @click="removeOtherClass(i)">
+                    <i class="fa-regular fa-trash-can"></i>
+                  </button>
+                  <button v-else type="button" class="btn btn-outline-secondary" @click="step = 'class'">
+                    <i class="fa-solid fa-circle-arrow-right"></i>
+                  </button>
+                </div>
+                <template v-for="(l,j) in cl.level" :key="j">
+                  <div>{{cl.name }} {{ l }}</div>
+                </template>
+              </template>
+              <button v-if="character.class[character.class.length-1].name" type="button" class="btn btn-sm btn-outline-info w-100" @click="addOtherClass">
+                <i class="fa-solid fa-circle-plus"></i>
+                Add an other class
+              </button>-->
+
               <div v-for="(cf,i) in classFeatures" :key="`${lastClass.name}-${cf.name}`" :class="`${i > 0 ? 'mt-2' : ''}`">
                 <p class="fw-bold m-0 d-flex align-items-center">
                   {{ cf.name }} <i v-if="cf.entries" class="ms-1 fa-solid fa-circle-question" :title="S(cf.entries)" v-tooltip></i>
@@ -3032,7 +3144,7 @@
             </template>
           </AccordionItem>
 
-          <AccordionItem name="startingEquipment" :steps="steps" :step="step" @click="changeStep" :manual-steps="character.manualSteps" @toggle-manual-step="toggleStartingEquipment">
+          <AccordionItem name="startingEquipment" :steps="steps" :step="step" @click="changeStep" :manual-steps="character.manualSteps" @toggle-manual-step="toggleStartingEquipment" :disabled="disabledSE">
             <template v-slot:header-label>Starting equipment</template>
             <template v-slot:body>
               <template v-for="(startingEquipment,n) in chooses.startingEquipment">
@@ -3052,11 +3164,11 @@
                   <div class="d-flex align-items-center justify-content-between pt-1 pb-2">
                     <label class="me-1 flex-grow-1">Start with {{computedLastClass && S(computedLastClass.startingEquipment.goldAlternative) }} <span class="gp">gp</span> to buy your own equipment</label>
                     <input type="number" v-model="character.startingEquipment.gp" @change="calculGoldManual" class="form-control h36" style="max-width: 100px" step="1" min="0" />
-                    <i v-if="computedLastClass" class="fa-solid fa-dice-d20 ms-1" @click="rollStartingGold"></i>
+                    <i v-if="computedLastClass && !disabledSE" class="fa-solid fa-dice-d20 ms-1" @click="rollStartingGold"></i>
                   </div>
                   <template v-if="character.startingEquipment.gp">
                     <template v-for="(m,i) in character.startingEquipment.manuals" :key="m">
-                      <ItemSearch v-if="m.origin == 'class'" type="all" :label="false" :profs="itemsProf"
+                      <ItemSearch v-if="m.origin == 'class'" type="all" :label="false" :profs="itemsProf" :disabled="disabledSE"
                                   :current="m" @select="(item, q) => addManualItem(i, item, q, 'class')"
                                   :has-delete="true" @delete="() => removeItem(i)"
                                   :has-quantity="true" @quantity="(q) => changeItemQuantity(i, q)"
@@ -3095,7 +3207,7 @@
                   <label class="fw-bold">{{ CHOOSE }}</label>
                 </p>
                 <template v-for="(sem,i) in chooses.startingEquipmentManual" :key="i">
-                  <ItemSearch v-if="sem && sem.equipmentType" :profs="itemsProf"
+                  <ItemSearch v-if="sem && sem.equipmentType" :profs="itemsProf" :disabled="disabledSE"
                               :type="sem.equipmentType" :current="character.startingEquipment.manuals[i]"
                               @select="(item) => addManualItem(i, item, 1, sem.origin)" :min-value="0" />
                 </template>
@@ -3107,26 +3219,59 @@
           <AccordionItem name="equipment" :steps="steps" :step="step" @click="changeStep" :manual-steps="character.manualSteps" @toggle-manual-step="toggleManualStep">
             <template v-slot:header-label>Equipment</template>
             <template v-slot:body>
-              <p class="text-center text-warning fw-bold m-0">In progress ...</p>
-              <!-- TODO Computed Armor Training / Weapon Proficiencies / Tool Proficiencies here ? if lvl > 1 -->
-              <p class="fw-bold m-0">Armors</p>
-              <p class="fst-italic m-0">List armor and shields Calc CA here</p>
-              <p class="fw-bold m-0">Weapons</p>
-              <p class="fst-italic m-0">List weapons</p>
-              <p class="fw-bold m-0">Tools</p>
-              <p class="fst-italic m-0">List tools</p>
               <p class="fw-bold m-0">Money</p>
               <div class="d-flex justify-content-between">
-                <div v-for="m in ['gp', 'sp', 'cp']" :key="m" class="d-flex align-items-center">
+                <div v-for="m in Object.keys(character.money)" :key="m" class="d-flex align-items-center">
                   <label class="me-1 fw-bold" :class="m">{{ m.toUpperCase() }}</label>
                   <input type="number" v-model="character.money[m]" class="form-control h36" style="max-width: 100px" step="1" min="0" />
                 </div>
               </div>
-              <p class="fw-bold m-0">Bagpack</p>
-              <p class="fst-italic m-0">All other items</p>
-              <p class="fw-bold m-0">Sum weight</p>
+
+              <template v-for="t in ['armor','weapon','tool','other']" :key="t">
+                <p class="fw-bold m-0 mt-2">{{ equipmentType.find(e => e.key == t)?.label }}</p>
+                <template v-for="ce in character.equipment.items.filter((ce:any) => ce.type == t)" :key="ce">
+                  <ItemSearch :type="t" :label="false" :profs="itemsProf"
+                              :current="ce" @select="(item) => ce.key = item"
+                              :has-delete="true" @quantity="(q) => ce.quantity = q"
+                              :has-quantity="true" @delete="() => deleteBagpack(ce)" />
+                </template>
+                <button type="button" class="btn btn-sm btn-outline-success mt-1" @click="() => newManualEquipment(t)">
+                  <i class="fa fa-solid fa-plus-circle" />
+                  Add new item
+                </button>
+
+                <p v-if="t == 'armor'" class="fw-bold m-0 mt-2 d-flex align-items-center">
+                  <label class="flex-1">Armor class</label>
+                  <select class="form-select h36 mx-1 flex-1" v-model="character.equipment.armor">
+                    <option value=""></option>
+                    <option v-for="o in itemsAc.armors" :value="o.key" :key="o.key">
+                      {{ o.name }}
+                    </option>
+                  </select>
+                  +
+                  <select class="form-select h36 mx-1 flex-1" v-model="character.equipment.shield">
+                    <option value=""></option>
+                    <option v-for="o in itemsAc.shields" :value="o.key" :key="o.key">
+                      {{ o.name }}
+                    </option>
+                  </select>
+                  =
+                  <input disabled :value="character.ac" class="form-control h36 ms-1 text-center" style="max-width: 50px" />
+                </p>
+              </template>
+
+              <textarea class="form-control w-100 mt-1" v-model="character.equipment.others.text" placeholder="Other items ..."></textarea>
+
+              <p class="fw-bold m-0 mt-2 d-flex align-items-center">
+                Weight
+                <input disabled :value="character.equipment.weight" class="form-control h36 mx-1" style="max-width: 100px" />
+                +
+                <input type="number" v-model="character.equipment.others.weight" class="form-control h36 mx-1" style="max-width: 100px" min="0" step="0.1" />
+                =
+                <input disabled :value="character.equipment.weight + character.equipment.others.weight" class="form-control h36 mx-1" style="max-width: 100px" />
+                lb.
+              </p>
             </template>
-            {{ character.equipment }}
           </AccordionItem>
         </div>
       </div>
