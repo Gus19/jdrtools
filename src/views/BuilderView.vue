@@ -322,7 +322,7 @@
           removeManualStep(s)
           let allTrue = true;
           classFeatures.value.filter((cf:any) => cf.options !== null).forEach((cf:any) => {
-            let choices = lastClass.value.features.find((ft: any) => ft.name == cf.name)?.choices.length;
+            let choices = character.value.features.find((ft: any) => ft.name == cf.name && ft.origin == 'class' && ft.originName == lastClass.value.name)?.choices.length;
             if(cf.options.count != choices) allTrue = false;
           });
           if(allTrue) g = true;
@@ -543,7 +543,6 @@
     subclass: null,
     dice: null,
     hps: [],
-    features: [],
     casterProgression: null
   }
   const defaultAb = {
@@ -583,14 +582,19 @@
         option: 'spend',
         improvments: []
       },
+      save: [],
+      spellcasting: [],
+      spellcasterlevel: 0,
+      features: [],
+      /* TODO
+          - add origin/originName/lvl
+          - add optional(bool) => no always optional, others => extract from store
+      */
       hp: {
         max: 0,
         option: 'average'
       },
       ac: 10,
-      save: [],
-      spellcasting: [],
-      spellcasterlevel: 0,
       skills: [],
       expertises: [],
       languages: [],
@@ -1171,7 +1175,7 @@
     cl.name = c.name;
     cl.subclass = null;
     cl.dice = c.hd.faces;
-    cl.features = [];
+    // cl.features = [];
     cl.casterProgression = c.casterProgression || null;
     // cl.preparedSpells = c.preparedSpells || null;
     cl.preparedSpells = {has: c.preparedSpells != undefined};
@@ -1240,6 +1244,7 @@
       resetEquipmentProf('weapon', 'class');
       resetEquipmentProf('armor', 'class');
       resetSpells('race'); // just in case
+      resetFeatures('class');
       // character.value.startingEquipment.class = {};
       changeStartingEquipment();
     }
@@ -1414,6 +1419,9 @@
         chooseAddSpells('race', computedRace.value.name, computedRace.value.additionalSpells);
       }
     }
+
+    // TODO chooseAddSpells on class & subclass
+    // TODO chooseFeatures on class & subclass & feat
 
     // Check from feats, subclass ...
     character.value.feats.filter((f:any) => f.level == level && f.name).forEach((f:any) => {
@@ -1766,6 +1774,9 @@
   const resetSpells = (origin: string) => {
     character.value.spells = character.value.spells.filter((sk:any) => sk.origin != origin && sk.level == character.value.level);
   }
+  const resetFeatures = (origin: string) => {
+    character.value.features = character.value.features.filter((sk:any) => sk.origin != origin && sk.level == character.value.level);
+  }
 
   const languagesChoices = computed(() => {
     const from = fromProfs('languages', true);
@@ -1828,6 +1839,7 @@
       resetSpells('feat');
       resetEquipmentProf('weapon', 'feat');
       resetEquipmentProf('armor', 'feat');
+      resetFeatures('feat');
     }
   }
 
@@ -2149,6 +2161,10 @@
   const computedSkillsFeat = computed(() => displayChoosesProf('skills','feat'));
   const computedToolsFeat = computed(() => displayChoosesProf('tools','feat'));
   const computedLangFeat = computed(() => displayChoosesProf('languages','feat'));
+  const computedFeatures = (origin: string, originName: string) => {
+    if(!character.value && !character.value.features) return
+    return character.value.features.filter((f:any) => f.origin == origin && f.originName == originName);
+  };
 
   const openToken = () => {
     token.value = {
@@ -2266,11 +2282,12 @@
     }
   }
 
-  const changeFeature = (e: any, feature: string, limit: number) => {
+  const changeFeature = (e: any, feature: string, limit: number, origin: string, originName: string) => {
     if (!e.target.value) return;
+    const level = character.value.level;
     const option = e.target.value;
-    const fts: any[] = lastClass.value.features;
-    const i = fts.findIndex((f:any) => f.name == feature);
+    const fts: any[] = character.value.features;
+    const i = fts.findIndex((f:any) => f.name == feature && f.origin == origin && f.originName == originName);
     let choices: string[] = [];
     if(limit == 1) {
       choices = [option];
@@ -2283,6 +2300,9 @@
     if(i == -1) {
       fts.push({
         name: feature,
+        origin: origin,
+        originName: originName,
+        level: level,
         choices: choices
       });
     }
@@ -2291,14 +2311,15 @@
     }
   }
   const isFeatureCheck = (feature: string, option: string) => {
-    const ft = lastClass.value.features.find((f:any) => f.name == feature);
-    if(ft == null) return false;
-    if(ft.choices.length == 0) return false;
-    return ft.choices.includes(option);
+    return character.value.features.find((ft:any) => ft.name == feature && ft.choices.includes(option))
   }
-  const isFeatureDisabled = (feature: string, limit: number, option: string) => {
-    if(isFeatureCheck(feature, option)) return false;
-    return limit > 1 && lastClass.value.features.find((f:any) => f.name == feature)?.choices.length >= limit;
+  const isFeatureDisabled = (feature: string, limit: number, option: string, origin: string, originName: string) => {
+    const ftc = isFeatureCheck(feature, option)
+    if(ftc) {
+      if(ftc.origin != origin && ftc.originName != originName) return true;
+      return false;
+    }
+    return limit > 1 && character.value.features.find((f:any) => f.name == feature)?.choices.length >= limit;
   }
 
   const isOtherProfCheck = (key:string, name: string) => {
@@ -2466,6 +2487,12 @@
   const deleteBagpack = (ce: any) => {
     let se = character.value.equipment.items;
     character.value.equipment.items = se.filter((it:any) => it != ce);
+    if(ce.key == character.value.equipment.armor) {
+      character.value.equipment.armor = "";
+    }
+    if(ce.key == character.value.equipment.shield) {
+      character.value.equipment.shield = "";
+    }
   }
   watch(() => character.value && character.value.equipment.items, (nv) => {
     if(nv) {
@@ -2480,7 +2507,7 @@
   }, {deep: true});
 
   const itemsAc = computed(() => {
-    const armors = character.value.equipment.items.filter((ce:any) => ce.type == 'armor').map((ce:any) => itemsStore.findByKey(ce.key));
+    const armors = character.value.equipment.items.filter((ce:any) => ce.type == 'armor' && ce.key).map((ce:any) => itemsStore.findByKey(ce.key));
     return {
       armors: armors.filter((a:ItemBase) => a.armor && a.type != 'S'),
       shields: armors.filter((a:ItemBase) => a.armor && a.type == 'S')
@@ -2530,6 +2557,10 @@
         <button class="btn btn-secondary" @click="json = computedRace">computedRace</button>
         <button class="btn btn-secondary" @click="json = computedRaceOptions">computedRaceOptions</button>
         <button class="btn btn-secondary" @click="json = chooses">chooses</button>
+        <button class="btn btn-secondary" @click="json = classesStore.getClassFeatures(lastClass.name, lastClass.level)">getClassFeatures</button>
+        <button class="btn btn-secondary" @click="json = classesStore.getSubclassFeatures(lastClass.name, lastClass.subclass, lastClass.level)">getSubclassFeatures</button>
+        <button class="btn btn-secondary" @click="json = classFeatures">classFeatures</button>
+<!--        <button class="btn btn-secondary" @click="json = character.features.filter((f:any) => f.name == 'Fighting Style').map((f:any) => [...f.choices])">test</button>-->
       </div>
     </template>
 
@@ -2796,50 +2827,30 @@
           <AccordionItem name="features" :steps="steps" :step="step" @click="changeStep" :manual-steps="character.manualSteps" @toggle-manual-step="toggleManualStep">
             <template v-slot:header-label>Features</template>
             <template v-slot:body>
-              <!--<template v-for="(cl,i) in character.class" :key="i">
-                <div v-if="character.class.length > 1" class="input-group">
-                  <select class="form-select form-select-sm flex-grow-1" @change="changeMulticlass($event, i)" :disabled="i === 0">
-                    <option value="" :disabled="cl.name.length">{{CHOOSE}}</option>
-                    <option v-for="c in classes" :key="c.name" :value="c.name" :selected="c.name === cl.name" :disabled="character.class.map((cl2: any) => cl2.name).includes(c.name)">{{ c.name }}</option>
-                  </select>
-                  <input type="number" min="1" max="20" :value="cl.level" @change="changeMulticlassLevel($event, i)" class="form-control" />
-                  <button v-if="i > 0" type="button" class="btn btn-outline-danger" @click="removeOtherClass(i)">
-                    <i class="fa-regular fa-trash-can"></i>
-                  </button>
-                  <button v-else type="button" class="btn btn-outline-secondary" @click="step = 'class'">
-                    <i class="fa-solid fa-circle-arrow-right"></i>
-                  </button>
-                </div>
-                <template v-for="(l,j) in cl.level" :key="j">
-                  <div>{{cl.name }} {{ l }}</div>
-                </template>
-              </template>
-              <button v-if="character.class[character.class.length-1].name" type="button" class="btn btn-sm btn-outline-info w-100" @click="addOtherClass">
-                <i class="fa-solid fa-circle-plus"></i>
-                Add an other class
-              </button>-->
-
               <div v-for="(cf,i) in classFeatures" :key="`${lastClass.name}-${cf.name}`" :class="`${i > 0 ? 'mt-2' : ''}`">
                 <p class="fw-bold m-0 d-flex align-items-center">
-                  {{ cf.name }} <i v-if="cf.entries" class="ms-1 fa-solid fa-circle-question" :title="S(cf.entries)" v-tooltip></i>
+                  {{ cf.name }} <i v-if="cf.entries && (cf.chooseSubclass || cf.choose && cf.options)" class="ms-1 fa-solid fa-circle-question" :title="S(cf.entries)" v-tooltip></i>
                   <input v-if="(cf.choose && cf.options) || cf.chooseSubclass" type="text" class="form-control form-control-sm ms-3" style="flex: 1" :value="search[cf.name]" @input="changeSearch($event, cf.name)" />
                 </p>
+                <div class="form-check" v-if="!(cf.entries && (cf.chooseSubclass || cf.choose && cf.options))">
+                  <p>{{ S(cf.entries) }}</p>
+                </div>
                 <template v-if="cf.chooseSubclass">
                   <div v-for="o in filterOptions(cf.name, cf.subclasses)" class="form-check" :key="o.shortName">
                     <input class="form-check-input" type="radio" :value="o.shortName" @click="changeSubclass($event)" :checked="lastClass.subclass == o.shortName">
-                    <label class="form-check-label">
+                    <label class="form-check-label" v-tooltip :title="S(o.tooltip)">
                       {{ o.shortName }}
                     </label>
-                    <p>{{ S(o.info) }}</p>
+                    <p v-for="e in o.entries"><b>{{e.name}}</b>: {{ S(e.info) }}</p>
                   </div>
                 </template>
-                <template v-if="cf.choose && cf.options">
+                <template v-if="cf.choose && cf.options"> <!-- && cf.level == lastClass.level" -->
                   <span v-if="cf.options.count>1" class="fst-italic">Choose {{cf.options.count}}</span>
                   <div v-for="o in filterOptions(cf.name, cf.options.from)" class="form-check pb-1" :key="o.name">
                     <input class="form-check-input" :type="`${cf.options.count==1?'radio':'checkbox'}`" :value="o.name"
                            :checked="isFeatureCheck(cf.name, o.name)"
-                           :disabled="isFeatureDisabled(cf.name, cf.options.count, o.name)"
-                           @click="changeFeature($event, cf.name, cf.options.count)"
+                           :disabled="isFeatureDisabled(cf.name, cf.options.count, o.name, 'class', lastClass.name)"
+                           @click="changeFeature($event, cf.name, cf.options.count, 'class', lastClass.name)"
                     >
                     <label class="form-check-label">
                       {{ o.name }}
@@ -3006,6 +3017,49 @@
             </template>
           </AccordionItem>
 
+          <AccordionItem name="additionalSpells" :steps="steps" :step="step" @click="changeStep">
+            <template v-slot:header-label>Additional Spells</template>
+            <template v-slot:body>
+              <div class="m-0 d-flex align-items-center mb-2">
+                <input type="text" class="form-control form-control-sm" style="flex: 1" :value="search['additional']" @input="changeSearch($event, 'additional')" />
+                <div class="ms-2">
+                  <input type="checkbox" class="form-check-input" value="1" v-model="search['additional-Concentration']">
+                  <label class="form-check-label ms-1">Concentration</label>
+                </div>
+                <div class="ms-2">
+                  <input type="checkbox" class="form-check-input" v-model="search['additional-Ritual']">
+                  <label class="form-check-label ms-1">Ritual</label>
+                </div>
+                <div class="ms-2">
+                  <i class="fa-regular" :class="showAllSpells ? 'fa-eye-slash' : 'fa-eye'" @click="showAllSpells = !showAllSpells" />
+                </div>
+              </div>
+
+              <template v-for="as in chooses.additionalSpells">
+                <p class="fw-bold m-0">{{ as.originName }}</p>
+                <div v-if="as.optionChoice" class="btn-group btn-group-sm mb-1 d-flex align-items-center">
+                  <button type="button" class="btn" :class="as.option == o ? 'btn-primary' : 'btn-outline-secondary'" v-for="o in as.optionChoice" :key="o" @click="changeOption(as.origin, as.originName, o)">{{o}}</button>
+                </div>
+                <template v-for="asp in as.spells">
+                  <p class="fst-italic m-0">
+                    <template v-if="asp.spellslot == 0">Cantrip</template>
+                    <template v-else>Level {{ asp.spellslot }}</template>
+                    <span class="small fst-normal"> ({{asp.selected}}/{{asp.count}})</span>
+                  </p>
+                  <div v-for="spell in filterOptions('additional', asp.from)" class="form-check pb-1">
+                    <input class="form-check-input" type="checkbox" :value="spell.name"
+                           @click="changeSpell($event, asp.spellslot, true, as.origin, as.originName)"
+                           :checked="isSpellCheck(spell.name)"
+                           :disabled="isSpellDisabled(spell.name, as.origin, as.originName)"
+                    />
+                    <SpellInfo :spell="spell" :open="showAllSpells" />
+                  </div>
+                </template>
+              </template>
+
+            </template>
+          </AccordionItem>
+
           <AccordionItem name="cantrips" :steps="steps" :step="step" @click="changeStep">
             <template v-slot:header-label>Cantrips</template>
             <template v-slot:header-value>{{chooses.cantrips.selected}}/{{chooses.cantrips.known}}</template>
@@ -3098,49 +3152,6 @@
                   <SpellInfo :spell="spell" :open="showAllSpells" />
                 </div>
               </template>
-            </template>
-          </AccordionItem>
-
-          <AccordionItem name="additionalSpells" :steps="steps" :step="step" @click="changeStep">
-            <template v-slot:header-label>Additional Spells</template>
-            <template v-slot:body>
-              <div class="m-0 d-flex align-items-center mb-2">
-                <input type="text" class="form-control form-control-sm" style="flex: 1" :value="search['additional']" @input="changeSearch($event, 'additional')" />
-                <div class="ms-2">
-                  <input type="checkbox" class="form-check-input" value="1" v-model="search['additional-Concentration']">
-                  <label class="form-check-label ms-1">Concentration</label>
-                </div>
-                <div class="ms-2">
-                  <input type="checkbox" class="form-check-input" v-model="search['additional-Ritual']">
-                  <label class="form-check-label ms-1">Ritual</label>
-                </div>
-                <div class="ms-2">
-                  <i class="fa-regular" :class="showAllSpells ? 'fa-eye-slash' : 'fa-eye'" @click="showAllSpells = !showAllSpells" />
-                </div>
-              </div>
-
-              <template v-for="as in chooses.additionalSpells">
-                <p class="fw-bold m-0">{{ as.originName }}</p>
-                <div v-if="as.optionChoice" class="btn-group btn-group-sm mb-1 d-flex align-items-center">
-                  <button type="button" class="btn" :class="as.option == o ? 'btn-primary' : 'btn-outline-secondary'" v-for="o in as.optionChoice" :key="o" @click="changeOption(as.origin, as.originName, o)">{{o}}</button>
-                </div>
-                <template v-for="asp in as.spells">
-                  <p class="fst-italic m-0">
-                    <template v-if="asp.spellslot == 0">Cantrip</template>
-                    <template v-else>Level {{ asp.spellslot }}</template>
-                    <span class="small fst-normal"> ({{asp.selected}}/{{asp.count}})</span>
-                  </p>
-                  <div v-for="spell in filterOptions('additional', asp.from)" class="form-check pb-1">
-                    <input class="form-check-input" type="checkbox" :value="spell.name"
-                           @click="changeSpell($event, asp.spellslot, true, as.origin, as.originName)"
-                           :checked="isSpellCheck(spell.name)"
-                           :disabled="isSpellDisabled(spell.name, as.origin, as.originName)"
-                    />
-                    <SpellInfo :spell="spell" :open="showAllSpells" />
-                  </div>
-                </template>
-              </template>
-
             </template>
           </AccordionItem>
 
@@ -3243,14 +3254,14 @@
                 <p v-if="t == 'armor'" class="fw-bold m-0 mt-2 d-flex align-items-center">
                   <label class="flex-1">Armor class</label>
                   <select class="form-select h36 mx-1 flex-1" v-model="character.equipment.armor">
-                    <option value=""></option>
+                    <option value="">No armor</option>
                     <option v-for="o in itemsAc.armors" :value="o.key" :key="o.key">
                       {{ o.name }}
                     </option>
                   </select>
                   +
                   <select class="form-select h36 mx-1 flex-1" v-model="character.equipment.shield">
-                    <option value=""></option>
+                    <option value="">No shield</option>
                     <option v-for="o in itemsAc.shields" :value="o.key" :key="o.key">
                       {{ o.name }}
                     </option>
@@ -3273,6 +3284,11 @@
               </p>
             </template>
           </AccordionItem>
+
+          <p v-if="step == 'final'" class="text-warning fw-bold text-center m-0 py-2">
+            Next step, lvl up ...
+          </p>
+
         </div>
       </div>
       <div class="col-lg-6 mt-2 character-info">
@@ -3304,7 +3320,7 @@
               {{character.ac}}
             </CharacterInfo>
           </div>
-          <template v-if="validAbilities">
+          <template v-if="validAbilities || character.level > 1">
             <div class="d-flex w-100">
               <div v-for="a in Abilities" class="d-flex flex-column align-items-center flex-grow-1">
                 <span>
@@ -3361,12 +3377,13 @@
             <template v-slot:label>{{ e.name }}:</template>
             {{ inlineEntries(e.entries) }}
           </CharacterInfo>
-          <div v-else>
+          <CharacterInfo v-else>
+            <template v-slot:label>Features:</template>
             <template v-for="(e,i) in computedRaceEntries" :key="e.name">
               <template v-if="i>0">, </template>
               <span :title="inlineEntries(e.entries)" v-tooltip>{{e.name}}</span>
             </template>
-          </div>
+          </CharacterInfo>
           <CharacterInfo v-if="computedSkillsRace">
             <template v-slot:label>Skill Proficiencies:</template>
             {{ computedSkillsRace }}
@@ -3404,11 +3421,26 @@
                 <template v-slot:tools v-if="computedToolsClass">
                   {{computedToolsClass}}
                 </template>
-                <CharacterInfo v-for="ft in cl.features" :key="ft.feature">
+
+                <CharacterInfo>
+                  <template v-slot:label>Class features:</template>
+                  <template v-for="(ftc,i) in classesStore.getClassFeatures(cl.name, cl.level)" :key="ftc">
+                    <template v-if="i>0">, </template>
+                    <span :title="S(ftc.entries)" v-tooltip>{{ftc.name}}</span>
+                  </template>
+                </CharacterInfo>
+                <CharacterInfo v-for="ft in computedFeatures('class', cl.name)" :key="ft.feature"><!-- todo : here features origin class/subclass & optional = true -->
                   <template v-slot:label>{{ ft.name }}:</template>
                   <template v-for="(ftc,i) in ft.choices" :key="ftc">
                     <template v-if="i>0">, </template>
                     <span :title="S(classesStore.getOptionalInfo(ftc))" v-tooltip>{{ftc}}</span>
+                  </template>
+                </CharacterInfo>
+                <CharacterInfo v-if="lastClass.subclass">
+                  <template v-slot:label>Subclass features:</template>
+                  <template v-for="(ftc,i) in classesStore.getSubclassFeatures(cl.name, cl.subclass, cl.level)" :key="ftc">
+                    <template v-if="i>0">, </template>
+                    <span :title="S(ftc.entries)" v-tooltip>{{ftc.name}}</span>
                   </template>
                 </CharacterInfo>
               </ClassInfo>
@@ -3439,15 +3471,16 @@
             </CharacterInfo>
             <template v-if="bgFeatures">
               <CharacterInfo v-if="bgStep" v-for="bgf in bgFeatures">
-                <template v-slot:label>{{ bgf.name }}:</template>
+                <template v-slot:label>{{ bgf.name.replace('Feature: ', '') }}:</template>
                 {{ DS(bgf, false) }}
               </CharacterInfo>
-              <div v-else>
+              <CharacterInfo v-else>
+                <template v-slot:label>Features:</template>
                 <template v-for="(bgf,i) in bgFeatures">
                   <template v-if="i>0">, </template>
-                  <span :title="DS(bgf, false)" v-tooltip>{{bgf.name}}</span>
+                  <span :title="DS(bgf, false)" v-tooltip>{{ bgf.name.replace('Feature: ', '') }}</span>
                 </template>
-              </div>
+              </CharacterInfo>
             </template>
           </template>
 
@@ -3456,7 +3489,16 @@
           </p>
           <template v-for="ft in character.feats" :key="ft.name">
             <FeatInfo :feat="feats.find((feat:any) => feat.name == ft.name)" :choice="false"
-                      :ability-selected="character.abilities.improvments.find((ip:any) => ip.origin=='feat' && ip.originName==ft.name && ip.level==ft.level)?.ability" />
+                      :ability-selected="character.abilities.improvments.find((ip:any) => ip.origin=='feat' && ip.originName==ft.name && ip.level==ft.level)?.ability">
+              <!-- todo : here features origin feat & optional = true -->
+              <CharacterInfo v-for="f in computedFeatures('feat', ft.name)" :key="ft">
+                <template v-slot:label>{{ f.name }}:</template>
+                <template v-for="(ftc,i) in f.choices" :key="ftc">
+                  <template v-if="i>0">, </template>
+                  <span :title="S(classesStore.getOptionalInfo(ftc))" v-tooltip>{{ftc}}</span>
+                </template>
+              </CharacterInfo>
+            </FeatInfo>
           </template>
           <CharacterInfo v-if="computedSkillsFeat">
             <template v-slot:label>Skill Proficiencies:</template>
@@ -3504,7 +3546,7 @@
             </template>
           </template>
 
-          <p class="fw-bold border-bottom text-center mb-2 mt-1 fs-1-1">Details</p>
+          <p class="fw-bold text-center mb-1 mt-1 fs-1-1">Details</p>
           <textarea class="form-control w-100" v-model="character.details" rows="10" placeholder="Describe all the details of your character ..."></textarea>
         </template>
         <template v-else>

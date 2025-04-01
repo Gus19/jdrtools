@@ -284,6 +284,7 @@ export const S = (e: any, d: boolean = true) => {
         case "status":
         case "table":
         case "deity":
+        case "variantrule":
           t = t.replace(n, e.groups.script.split(" ").slice(1).join(" ").split('|')[0]);
           break;
         case "chance":

@@ -105,117 +105,83 @@ export const useClassesStore = defineStore("ClassesStore", {
       return (name: string): number|null => {
         const cl = this.getClass(name);
         if(!cl) return null;
-
-        let lvlSubclass: any = null;
-        cl.classFeatures.every((cf:any) => {
-          if("object" == typeof cf) {
-            let split = cf.classFeature.split('|');
-            if(!lvlSubclass) lvlSubclass = split[3];
-            return false;
-          }
-          return true;
-        });
+        let lvlSubclass: any = this.classFeatures.find((c:any) => c.className == cl.name && c.name == cl.subclassTitle)?.level;
+        if(!lvlSubclass) return null;
         return parseInt(lvlSubclass);
-      }
-    },
-    getProgression() {
-      return (name: string, subclass: string|null = null): any => {
-        const cl = this.getClass(name);
-        if(!cl) return null;
-        // TODO mettre ça dans le choose ?
-        return cl.optionalfeatureProgression;
       }
     },
     getFeatures() {
       return (name: string, subclass: string, level: number): any[]|null => {
         const cl = this.getClass(name);
         if(!cl) return null;
-        // Choose into optionalfeatureProgression
-        let f: any[] = [];
-
-        cl.classFeatures.forEach((cf:any) => {
-          let d;
-          let subclassfeature: boolean = false;
-          let tochoose: boolean = false;
-          let featureType: string|null = null;
-          if("string" == typeof cf) {
-            d = cf;
-          }
-          else {
-            d = cf.classFeature
-            subclassfeature = true;
-          }
-          let chooseSubclass = subclassfeature && level == this.getLevelSubclass(name);
-          let split = d.split("|");
-          let l = split[3]; //level
-          let fn = split[0];
-          if(!level || level == l) {
-            let options: any = null; // TODO : Si progression lvl (constructor == Array), il faut que ce soit toujours dispo, choix qu'au premier lvl là
-            cl.optionalfeatureProgression && cl.optionalfeatureProgression.forEach((o:any) => {
-              if(o.name == fn && ((o.progression.constructor == Array && o.progression[l-1] != 0) || l in o.progression)) { // Array = level progression, always true
-                tochoose = true;
-                featureType = o.featureType[0];
-                if(featureType) {
-                  options = {
-                    count: o.progression.constructor == Array ? o.progression[l - 1] : o.progression[l],
-                    from: this.getChoicesByFeatureType(featureType, name, subclass, level)
-                  }
-                }
+        let f: any[] = this.getClassFeatures(name, level);
+        if(subclass) {
+          f.push(...this.getSubclassFeatures(name, subclass, level));
+        }
+        return f
+          .filter((a:any) => a.level == level /*|| a.progression?.choose*/)
+          .map((a:any) => {
+            let options: any = null;
+            if(a.progression?.choose && a.progression?.featureType) {
+              options = {
+                count: a.progression.count,
+                from: this.getChoicesByFeatureType(a.progression.featureType, name, subclass, level)
               }
-            });
-
-            let det = this.classFeatures.find((d:ClassFeature) => d.className == name && d.level == l && d.name == fn);
-            let entries: any = null;
-
-            if(det) {
-              entries = det.entries.map((de: any) => {
-                if("string" == typeof de) {
-                  if(de.indexOf("{@i") == 0) return null;
-                  if(de.indexOf(". See {@book chapter") > 0) de = de.substring(0, de.indexOf(". See {@book chapter")+1);
-                  return de;
-                }
-                else if(fn == "Spellcasting" && de.type == "entries" && de.name == "Spellcasting Ability") {
-                  return de.entries[0];
-                }
-                return null;
-              }).filter((de:any) => de !== null).join('\n');
             }
 
-            f.push({
-              name: split[0],
-              level: l,
-              entries: entries,
-              choose: tochoose,
+            return {
+              name: a.name,
+              origin: a.origin,
+              originName: a.originName,
+              level: a.level,
+              entries: a.entries,
+              choose: a.progression?.choose || false,
               options: options,
-              chooseSubclass: chooseSubclass,
-              subclasses: chooseSubclass && this.getSubclassesInfo(name)
-            });
-          }
-          if(subclassfeature) {
-            // TODO : features in another part
-            // same push but from state.subclassFeatures
-          }
-        });
-        return f;
+              chooseSubclass: a.chooseSubclass,
+              subclasses: a.chooseSubclass && this.getSubclassesInfo(name, a.level)
+            }
+          })
+          .sort((a, b) => a.level - b.level)
+        ;
       }
     },
     getSubclassesInfo() {
-      return (a: string): any[] => this.subclasses.filter((c:any) => c.className == a).map((c:any) => {
-        let info = this.subclassFeatures.find((d:any) => c.className == a && d.subclassShortName == c.shortName)?.entries[0];
-        if('string' != typeof info) {
-          info = info.entries[0];
-        }
-        return {
-          shortName: c.shortName,
-          info: info,
-        }
-      })
+      return (name: string, level: number): any[] =>
+        this.subclasses
+          .filter((c:any) => c.className == name)
+          .map((c:any) => {
+            let tooltip = this.subclassFeatures.find((d:any) => c.className == name && d.subclassShortName == c.shortName)?.entries[0];
+            if('string' != typeof tooltip) {
+              tooltip = tooltip.entries[0];
+            }
+            let fts = this.subclassFeatures.filter((d:any) => c.className == name && d.subclassShortName == c.shortName && d.level == level && d.header);
+            let infos: any = [];
+            // if(c.additionalSpells) {
+            //   infos.push({
+            //     name: 'Expanded Spells',
+            //     info: 'TODO'
+            //   });
+            // }
+            fts.forEach((ft:any) => {
+              infos.push({
+                name: ft.name,
+                info: ft.entries.filter((e:any) => "string" == typeof e && !e.startsWith("{@i")).join(' ')
+              });
+            })
+
+            return {
+              shortName: c.shortName,
+              tooltip: tooltip,
+              entries: infos,
+            }
+          })
+      ;
     },
     getOptionalInfo() {
       return (n: string): string => formatOptionalEntries(this.optionalFeatures.find((d:any) => d.name == n).entries);
     },
     getChoicesByFeatureType() {
-      return (featureType: string, name: string, subclass: string, level: number): any => {
+      return (featureType: string, name: string, subclass: string|null, level: number): any => {
         const choices: any[] = [];
         this.optionalFeatures.filter((c:any) => c.featureType.includes(featureType)).forEach((c:any) => {
           let valid = false;
@@ -289,9 +255,93 @@ export const useClassesStore = defineStore("ClassesStore", {
       return (name: string, subclass: string): Subclass|undefined => {
         return this.subclasses.find(c => c.className == name && c.shortName == subclass);
       }
+    },
+    getProgression() {
+      return (fn: string, optionalfeatureProgression: OptionalfeatureProgression[]|OptionalfeatureProgression2[]|undefined, level: number): any => {
+        if(!optionalfeatureProgression) return null;
+        // let options: any = null; // TODO : Si progression lvl (constructor == Array), il faut que ce soit toujours dispo, choix qu'au premier lvl là
+
+        let tochoose: boolean = false;
+        let featureType: string|null = null;
+        let count: number|null = null;
+
+        optionalfeatureProgression && optionalfeatureProgression.forEach((o:any) => {
+          if(o.name == fn && ((o.progression.constructor == Array && o.progression[level-1] != 0) || level in o.progression)) { // Array = level progression, always true
+            tochoose = true;
+            featureType = o.featureType[0];
+            count = o.progression.constructor == Array ? o.progression[level - 1] : o.progression[level];
+            // if(featureType) {
+            //   options = {
+            //     count: o.progression.constructor == Array ? o.progression[level - 1] : o.progression[level],
+            //     from: this.getChoicesByFeatureType(featureType, name, subclass, level)
+            //   }
+            // }
+          }
+        });
+
+        return {
+          choose: tochoose,
+          featureType: featureType,
+          count: count
+        }
+      }
+    },
+    getClassFeatures() {
+      return (name: string, level: number): any[] => {
+        const cl = this.getClass(name);
+        if(!cl) return [];
+        let chooseSubclass = level == this.getLevelSubclass(name);
+        let fts = this.classFeatures.filter((d:any) => d.className == name && d.level <= level);
+        return fts.map(ft => {
+          return {
+            name: ft.name,
+            origin: 'class',
+            originName: name,
+            level: ft.level,
+            entries: extractClassEntries(ft.name, ft),
+            progression: this.getProgression(ft.name, cl.optionalfeatureProgression, level),
+            chooseSubclass: ft.name == cl.subclassTitle && chooseSubclass
+          }
+        })
+      }
+    },
+    getSubclassFeatures() {
+      return (name: string, subclass: string, level: number): any[] => {
+        const sc = this.findSubclass(name, subclass);
+        if(!sc) return [];
+        let fts = this.subclassFeatures.filter((d:any) => name == name && d.subclassShortName == subclass && d.level <= level && d.header);
+        return fts.map(ft => {
+          return {
+            name: ft.name,
+            origin: 'subclass',
+            originName: subclass,
+            level: ft.level,
+            entries: ft.entries.filter((e: any) => "string" == typeof e && !e.startsWith("{@i")).join(' '),
+            progression: this.getProgression(ft.name, sc.optionalfeatureProgression, level),
+          }
+        })
+      }
     }
   }
 });
+
+const extractClassEntries = (fn:string, det: any): any => {
+  let entries: any = null;
+  if(det) {
+    entries = det.entries.map((de: any) => {
+      if("string" == typeof de) {
+        if(de.indexOf("{@i") == 0) return null;
+        if(de.indexOf(". See {@book chapter") > 0) de = de.substring(0, de.indexOf(". See {@book chapter")+1);
+        return de;
+      }
+      else if((fn == "Spellcasting" || fn == "Pact Magic") && de.type == "entries" && de.name == "Spellcasting Ability") {
+        return de.entries[0];
+      }
+      return null;
+    }).filter((de:any) => de !== null).join('\n');
+  }
+  return entries;
+}
 
 export type RootState = {
   classes: Class[];
