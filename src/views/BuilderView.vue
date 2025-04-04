@@ -360,14 +360,14 @@
       }
 
       let i = true;
-      if(chooses.value && (chooses.value.skills || chooses.value.expertises.length > 0)) {
+      if(chooses.value && (chooses.value.skills.length > 0 || chooses.value.expertises.length > 0)) {
         ['skills','expertises'].forEach(key => {
           chooses.value[key].forEach((ch:any) => {
             if(countProfByOrigin(key,ch.origin) != ch.count) {
               i = false; return false;
             };
           });
-        })
+        });
         ss.push({
           name: 'proficiencies',
           valid: i
@@ -2220,7 +2220,13 @@
   const computedLangFeat = computed(() => displayChoosesProf('languages','feat'));
   const computedFeatures = (origin: string, originName: string) => {
     if(!character.value && !character.value.features) return
-    return character.value.features.filter((f:any) => f.origin == origin && f.originName == originName);
+    const r = character.value.features.filter((f:any) => f.origin == origin && f.originName == originName);
+    r.forEach((f:any) => {
+      f.choices.forEach((c: string) => {
+        r.push(...character.value.features.filter((f:any) => f.origin == 'feature' && f.originName == c));
+      })
+    });
+    return r;
   };
 
   const openToken = () => {

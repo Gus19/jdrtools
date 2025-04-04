@@ -1,5 +1,5 @@
 <template>
-  <div class="accordion-item" v-if="steps.map((s:any) => s.name).includes(name)" ref="accordion">
+  <div class="accordion-item" v-if="curStep" ref="accordion">
     <h2 class="accordion-header">
       <button class="accordion-button d-flex w-100" type="button" :class="step !== name && 'collapsed'" @click="emits('click', name)"><!--@click="step = name"-->
         <em>
@@ -13,7 +13,7 @@
     </h2>
     <div class="accordion-collapse collapse" :class="step === name && 'show'">
       <div class="accordion-body">
-        <fieldset :disabled="disabled">
+        <fieldset :disabled="disabled || curStep?.disabled">
           <slot name="body"></slot>
         </fieldset>
         <slot name="buttons">
@@ -40,7 +40,7 @@ const emits = defineEmits([
   'click',
   'toggleManualStep',
 ])
-
+const curStep: any = computed(() => props.steps.find((s:any) => s.name == props.name));
 const valid = computed((): boolean => {
   const a: any = props.steps.find((s: any) => s.name === props.name);
   if(a) return a.valid
