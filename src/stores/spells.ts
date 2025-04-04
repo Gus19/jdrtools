@@ -75,10 +75,10 @@ export const useSpellsStore = defineStore("SpellsStore", {
   getters: {
     isLoad: (state) => state.spells.length > 0,
     spellsChoice() {
-      return (className: string, level: number|null = null, schools: null|string[] = null): SpellInfo[] => {
+      return (className: string|null = null, level: number|null = null, schools: null|string[] = null): SpellInfo[] => {
         const names = this.sources.filter((s:any) => s.classes.includes(className)).map((s:any) => s.name);
         return this.spellsSort(this.spells
-          .filter(s => names.includes(s.name) && (level == null || s.level == level) && (schools == null || schools.includes(s.school)))
+          .filter(s => (className == null || names.includes(s.name)) && (level == null || s.level == level) && (schools == null || schools.includes(s.school)))
         );
       }
     },

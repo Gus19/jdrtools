@@ -200,7 +200,7 @@
       let f = false;
       const level = character.value.level;
       const leveling = character.value.state == 'leveling';
-      // TODO if not leveling, only Equipment / Spells prepared / Details ?
+      // TODO if not leveling, only Equipment / Spells prepare
 
       if(level == 1) {
         const a = character.value.race.name !== null;
@@ -312,33 +312,40 @@
       }
 
       let g = false; //Features
-      if(f && classFeatures.value) {
-        let s = 'features';
-        if(classFeatures.value.find((cf:any) => cf.chooseSubclass)) {
-          removeManualStep(s)
-          g = lastClass.value.subclass;
-        }
-        else if(classFeatures.value.find((cf:any) => cf.options !== null)) {
-          removeManualStep(s)
-          let allTrue = true;
-          classFeatures.value.filter((cf:any) => cf.options !== null).forEach((cf:any) => {
-            let choices = character.value.features.find((ft: any) => ft.name == cf.name && ft.origin == 'class' && ft.originName == lastClass.value.name)?.choices.length;
-            if(cf.options.count != choices) allTrue = false;
+      if(f) {
+        if(classFeatures.value) {
+          let s = 'features';
+          let g1 = true
+          if (classFeatures.value.find((cf: any) => cf.chooseSubclass)) {
+            g1 = lastClass.value.subclass;
+          }
+          if(g1) {
+            addManualStep(s);
+            g = isManualValid(s);
+          }
+          ss.push({
+            name: 'features',
+            valid: g
           });
-          if(allTrue) g = true;
+          if (!g) return;
         }
         else {
-          addManualStep(s);
-          g = isManualValid(s);
-        };
+          g = true;
+        }
       }
 
-      if(f) {
-        ss.push({
-          name: 'features',
-          valid: g
-        });
-        if(!g) return;
+      if(chooses.value && chooses.value.features) {
+        const chs = chooses.value.features;
+        let alltrue = true;
+        chs.forEach((ch:any) => {
+          let ft = ch.selected == ch.total;
+          if(!ft) alltrue = false;
+          ss.push({
+            name: ch.name,
+            valid: ft
+          });
+        })
+        if(!alltrue) return;
       }
 
       addManualStep('hp');
@@ -393,6 +400,23 @@
 
         let j1 = true, j2 = true, j3 = true, j4 = true;
 
+        if(as && as.length > 0) {
+          j4 = true;
+          as.forEach((asv:any) => {
+            if(as.optionChoice != null && as.option == null) {
+              j4 = false;
+              return;
+            }
+            asv.spells.forEach((asp:any) => {
+              // const selected = character.value.spells.filter((s:any) => s.origin == asv.origin && s.level == level && s.spellslot == asp.spellslot).length;
+              if(asp.selected != asp.count) j4 = false;
+            });
+          });
+          ss.push({
+            name: 'additionalSpells',
+            valid: j4
+          });
+        }
         if(ch && ch.known > 0) {
           j1 = ch.known == ch.selected
           ss.push({
@@ -414,23 +438,6 @@
             valid: j3
           });
         }
-        if(as && as.length > 0) {
-          j4 = true;
-          as.forEach((asv:any) => {
-            if(as.optionChoice != null && as.option == null) {
-              j4 = false;
-              return;
-            }
-            asv.spells.forEach((asp:any) => {
-              // const selected = character.value.spells.filter((s:any) => s.origin == asv.origin && s.level == level && s.spellslot == asp.spellslot).length;
-              if(asp.selected != asp.count) j4 = false;
-            });
-          });
-          ss.push({
-            name: 'additionalSpells',
-            valid: j4
-          });
-        }
 
         if(j1 && j2 && j3 && j4) {
           j = true;
@@ -439,8 +446,8 @@
       }
       else j = true;
 
-      let k = false;
-      if(j) {
+      let k = !(level == 1);
+      if(j && level == 1) {
         let k1 = true;
         const se = character.value.startingEquipment;
         if(se.option == 'gold') {
@@ -517,18 +524,6 @@
     });
   }
 
-  // const hasNext = computed(() => steps.value.findIndex(s => s.name === step.value) < steps.value.length - 1);
-  // const hasPrev = computed(() => steps.value.findIndex(s => s.name === step.value) > 0);
-  //
-  // const nextStep = () => {
-  //   let i = steps.value.findIndex(s => s.name === step.value);
-  //   step.value = steps.value[i+1].name;
-  // }
-  // const prevStep = () => {
-  //   let i = steps.value.findIndex(s => s.name === step.value);
-  //   step.value = steps.value[i-1].name;
-  // }
-
   const lastStep = () => {
     step.value = steps.value.find(s => !s.valid)?.name || 'final';
   }
@@ -586,10 +581,6 @@
       spellcasting: [],
       spellcasterlevel: 0,
       features: [],
-      /* TODO
-          - add origin/originName/lvl
-          - add optional(bool) => no always optional, others => extract from store
-      */
       hp: {
         max: 0,
         option: 'average'
@@ -1191,6 +1182,7 @@
   const changeSubclass = (e: any) => {
     if (!e.target.value) return;
     const subclass = e.target.value;
+    resetSpells('subclass');
     lastClass.value.subclass = subclass;
     // set casterProgression if subclass has property
     const sub = classesStore.findSubclass(lastClass.value.name, subclass);
@@ -1241,6 +1233,7 @@
       resetLanguages('class');
       resetTools('class');
       resetSpells('class');
+      resetSpells('subclass');
       resetEquipmentProf('weapon', 'class');
       resetEquipmentProf('armor', 'class');
       resetSpells('race'); // just in case
@@ -1328,6 +1321,7 @@
     ch.startingEquipment = [];
     ch.startingEquipmentManual = [];
     ch.weapon = [];
+    ch.features = [];
 
     const lc = lastClass.value;
 
@@ -1420,10 +1414,22 @@
       }
     }
 
-    // TODO chooseAddSpells on class & subclass
-    // TODO chooseFeatures on class & subclass & feat
-
-    // Check from feats, subclass ...
+    if(computedLastClass.value) {
+      if(computedLastClass.value.additionalSpells) {
+        chooseAddSpells('class', computedLastClass.value.name, computedLastClass.value.additionalSpells);
+      }
+      if(computedLastClass.value.optionalfeatureProgression) {
+        chooseFeatureProgression('class', computedLastClass.value.name, computedLastClass.value.optionalfeatureProgression);
+      }
+    }
+    if(computedLastSubclass.value) {
+      if(computedLastSubclass.value.additionalSpells) {
+        chooseAddSpells('subclass', computedLastSubclass.value.shortName, computedLastSubclass.value.additionalSpells);
+      }
+      if(computedLastSubclass.value.optionalfeatureProgression) {
+        chooseFeatureProgression('subclass', lastClass.value.subclass, computedLastSubclass.value.optionalfeatureProgression);
+      }
+    }
     character.value.feats.filter((f:any) => f.level == level && f.name).forEach((f:any) => {
       const feat = featsStore.findByName(f.name);
       if(feat) {
@@ -1432,8 +1438,27 @@
         if (feat.languageProficiencies) chooseAddLanguage('feat', feat.languageProficiencies, f.name);
         if (feat.toolProficiencies) chooseAddTools('feat', feat.toolProficiencies[0], f.name);
         if (feat.additionalSpells) chooseAddSpells('feat', f.name, feat.additionalSpells, f.option);
+
+        if(feat.optionalfeatureProgression) {
+          chooseFeatureProgression('feat', feat.name, feat.optionalfeatureProgression);
+        }
       }
-    })
+    });
+    // TODO Need a reset before !
+    const featuresNames: string[] = [];
+    character.value.features.forEach((f:any) => {
+      f.choices.forEach((c:string) => {
+        const of = classesStore.optionalFeatures.find(of => of.name == c);
+        if(of) {
+          featuresNames.push(c);
+          chooseFeatureProgression('feature', c, of.optionalfeatureProgression);
+        }
+      })
+    });
+    const test = character.value.features.filter((f:any) => f.level == level && f.name && f.origin == 'feature' && !featuresNames.includes(f.originName)).map((f:any) => f.name);
+    if(test.length > 0) {
+      character.value.features = character.value.features.filter((f:any) => !test.includes(f.name));
+    }
 
     // Spells
     if(lc && (spellSlotsInfo.value || spellSlotsPactInfo.value)) {
@@ -1490,6 +1515,42 @@
       }
     }
   }
+
+  const chooseFeatureProgression = (origin: string, originName: string, optionalfeatureProgression: any) => {
+    const level = character.value.level;
+    let progression = classesStore.getProgression(optionalfeatureProgression, lastClass.value);
+    if (progression) {
+      const ch = chooses.value.features;
+      progression.forEach((p: any) => {
+        let idx = ch.findIndex((c:any) => c.name == p.name);
+        let selected = 0;
+        character.value.features.filter((f:any) => f.name == p.name && f.level == level).forEach((f:any) => {
+          selected += f.choices.length;
+        });
+        let choice = {
+          origin: origin,
+          originName: originName,
+          count: p.count
+        };
+        if(idx == -1) {
+          ch.push({
+            name: p.name,
+            featureType: p.featureType,
+            total: p.count,
+            selected: selected,
+            choices: [choice],
+            from: p.from
+          });
+        }
+        else {
+          ch[idx].selected = selected;
+          ch[idx].total += p.count;
+          ch[idx].choices.push(choice);
+        }
+      });
+    }
+  }
+
   const chooseAddSkill = (origin:string, sp: any, originName:string|null = null) => {
     if(!sp) return;
     const ch = chooses.value.skills;
@@ -1625,20 +1686,25 @@
         const split = k.choose.split("|");
         let resClass = null;
         let resLvl = null;
+        let resSchool = null
         split.forEach((s: string) => {
           const a = /([^=]*)=([^=]*)/;
           const g = a.exec(s);
           if (g && g.length == 3) {
             if (g[1] == 'class') resClass = g[2];
-            if (g[1] == 'level') resLvl = parseInt(g[2]);
+            if (g[1] == 'level') resLvl = g[2];
+            if (g[1] == 'school') resSchool = g[2].split(';');
           }
         })
-        if (resClass != null && resLvl != null) {
-          const spls = spellsStore.spellsChoice(resClass, resLvl);
+        if (resLvl != null && !isNaN(resLvl)) {
+          const spls = spellsStore.spellsChoice(resClass, resLvl, resSchool);
           from[resLvl].push(
               ...spls
           );
           spellslots[resLvl] += k.count || 1;
+        }
+        else {
+          console.error('Error extract spell choose', k.choose);
         }
       }
       else if(k.choose.from) {
@@ -1740,6 +1806,19 @@
           c.expanded[kn].forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin));
         })
       }
+      if(c.prepared && (spellSlotsPactInfo.value != null || spellSlotsInfo.value != null)) {
+        Object.keys(c.prepared).forEach(kn => {
+          if(spellSlotsInfo.value) {
+            let key = kn;
+            if(!kn.startsWith('s')) key = 's'+key;
+            if(spellSlotsInfo.value[key] <= 0) return;
+          }
+          if(spellSlotsPactInfo.value) {
+            if(spellSlotsPactInfo.value.max < parseInt(kn.substring(1))) return;
+          }
+          c.prepared[kn].forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin));
+        })
+      }
 
       Object.keys(spellslots).forEach(spellslot => {
         if(from[spellslot] && from[spellslot].length > 0) {
@@ -1754,7 +1833,9 @@
 
       o.spells = spells;
     }
-    ch.push(o);
+    if(o.spells.length > 0) {
+      ch.push(o);
+    }
   }
 
   const changeOption = (origin: string, originName: string, option: any) => {
@@ -1769,13 +1850,6 @@
     if(item) {
       item.option = option;
     }
-  }
-
-  const resetSpells = (origin: string) => {
-    character.value.spells = character.value.spells.filter((sk:any) => sk.origin != origin && sk.level == character.value.level);
-  }
-  const resetFeatures = (origin: string) => {
-    character.value.features = character.value.features.filter((sk:any) => sk.origin != origin && sk.level == character.value.level);
   }
 
   const languagesChoices = computed(() => {
@@ -1826,23 +1900,6 @@
     return ret;
   });
 
-  const resetFeat = (origin: string) => {
-    const level = character.value.level;
-    const ft = character.value.feats.find((f:any) => f.origin == origin && f.level == level);
-    if(ft) {
-      let prevName = ft.name;
-      character.value.feats = character.value.feats.filter((sk: any) => sk.origin != origin && sk.level == level);
-      character.value.abilities.improvments = character.value.abilities.improvments.filter((ip: any) => !(ip.origin == 'feat' && (ip.originName == prevName || prevName == null) && ip.level == level));
-      resetSkills('feat');
-      resetLanguages('feat');
-      resetTools('feat');
-      resetSpells('feat');
-      resetEquipmentProf('weapon', 'feat');
-      resetEquipmentProf('armor', 'feat');
-      resetFeatures('feat');
-    }
-  }
-
   const classes = computed(() => classesStore.getDefaults);
   const backgrounds = computed(() => bgStore.getDefaults);
   const feats = computed(() => featsStore.getDefaults(character.value));
@@ -1854,7 +1911,6 @@
   });
   const bgStep = computed(() => ['background'].includes(step.value));
   const equipmentStep = computed(() => ['equipment'].includes(step.value));
-  // const computedClasses = computed(() => classes.value.filter((cl:any) => character.value.class.map((x:any) => x.name).includes(cl.name)))
 
   const isSpendMode = computed(() => character.value && character.value.abilities.option === 'spend');
   const rolls = ref<any[]>([]);
@@ -1977,7 +2033,8 @@
     if(!cl.name) return null;
     return cl;
   });
-  const computedLastClass = computed(() => lastClass.value ? classes.value.find((c:Class) => c.name === lastClass.value.name) : null);
+  const computedLastClass = computed(() => lastClass.value ? classes.value.find(c => c.name === lastClass.value.name) : null);
+  const computedLastSubclass = computed(() => lastClass.value && lastClass.value.subclass ? classesStore.findSubclass(lastClass.value.name, lastClass.value.subclass) : null);
   const classFeatures = computed(() => {
     if(!lastClass.value) return null;
     let cl = lastClass.value;
@@ -2217,6 +2274,22 @@
     }
   }
 
+  const resetFeat = (origin: string) => {
+    const level = character.value.level;
+    const ft = character.value.feats.find((f:any) => f.origin == origin && f.level == level);
+    if(ft) {
+      let prevName = ft.name;
+      character.value.feats = character.value.feats.filter((sk: any) => sk.origin != origin && sk.level == level);
+      character.value.abilities.improvments = character.value.abilities.improvments.filter((ip: any) => !(ip.origin == 'feat' && (ip.originName == prevName || prevName == null) && ip.level == level));
+      resetSkills('feat');
+      resetLanguages('feat');
+      resetTools('feat');
+      resetSpells('feat');
+      resetEquipmentProf('weapon', 'feat');
+      resetEquipmentProf('armor', 'feat');
+      resetFeatures('feat');
+    }
+  }
   const changeFeats = (e: any, origin: string) => {
     // resetLanguages('feat');
     // resetTools('feat');
@@ -2251,10 +2324,7 @@
     if(feat.weaponProficiencies) addDefaultEquipmentProf('weapon', 'feat', feat.weaponProficiencies[0]);
     if(feat.armorProficiencies) addDefaultEquipmentProf('armor', 'feat', feat.armorProficiencies[0]);
   }
-  const isFeatsCheck = (origin: string, name: string) => {
-    const level = character.value.level;
-    return character.value.feats.find((f:any) => f.origin == origin && f.level == level && f.name == name) !== undefined;
-  }
+
   const improveAbility = (ability: string, origin: string, originName: string|null = null) => {
     const level = character.value.level;
     if(!character.value.abilities.improvments) character.value.abilities.improvments = [];
@@ -2282,44 +2352,74 @@
     }
   }
 
-  const changeFeature = (e: any, feature: string, limit: number, origin: string, originName: string) => {
+  const changeFeature = (e: any, feature: string) => {
     if (!e.target.value) return;
     const level = character.value.level;
     const option = e.target.value;
     const fts: any[] = character.value.features;
-    const i = fts.findIndex((f:any) => f.name == feature && f.origin == origin && f.originName == originName);
-    let choices: string[] = [];
-    if(limit == 1) {
-      choices = [option];
-    }
-    else {
-      choices = fts[i] ? [...fts[i].choices] : [];
-      if(e.target.checked) choices.push(e.target.value);
-      else choices = choices.filter((c:string) => c !== e.target.value);
-    }
-    if(i == -1) {
-      fts.push({
+
+    const choose = chooses.value.features.find((f:any) => f.name == feature);
+    choose.choices.every((choice:any) => {
+      const ft = fts.find((f:any) => f.name == feature && f.origin == choice.origin && f.originName == choice.originName && f.level == level);
+      const nt = {
         name: feature,
-        origin: origin,
-        originName: originName,
-        level: level,
-        choices: choices
-      });
-    }
-    else {
-      fts[i].choices = choices;
-    }
+        origin: choice.origin,
+        originName: choice.originName,
+        level: level
+      }
+
+      if(!e.target.checked) {
+        if(ft && ft.choices.includes(option)) {
+          let choices = ft.choices.filter((c: string) => c != option);
+          ft.choices = choices;
+          return false;
+        }
+        return true;
+      }
+      if(choose.total == 1) {
+        if(!ft) {
+          fts.push({
+            ...nt,
+            choices: [option]
+          });
+        }
+        else {
+          ft.choices = [option];
+        }
+      }
+      else {
+        if(ft && ft.choices.length >= choice.count) return true;
+        let choices = ft?.choices || [];
+        choices.push(option);
+        if(!ft) {
+          fts.push({
+            ...nt,
+            choices: choices
+          });
+        }
+        else {
+          ft.choices = choices;
+        }
+        return false;
+      }
+    });
   }
   const isFeatureCheck = (feature: string, option: string) => {
     return character.value.features.find((ft:any) => ft.name == feature && ft.choices.includes(option))
   }
-  const isFeatureDisabled = (feature: string, limit: number, option: string, origin: string, originName: string) => {
-    const ftc = isFeatureCheck(feature, option)
+  const isFeatureDisabled = (feature: string, option: string) => {
+    const ftc = isFeatureCheck(feature, option);
+    const level = character.value.level;
     if(ftc) {
-      if(ftc.origin != origin && ftc.originName != originName) return true;
+      if(ftc.level != level) return true;
       return false;
     }
-    return limit > 1 && character.value.features.find((f:any) => f.name == feature)?.choices.length >= limit;
+    const ch = chooses.value.features.find((ft:any) => ft.name == feature);
+    if(ch.total == 1) return false;
+    return ch.selected >= ch.total;
+  }
+  const resetFeatures = (origin: string) => {
+    character.value.features = character.value.features.filter((sk:any) => sk.origin != origin && sk.level == character.value.level);
   }
 
   const isOtherProfCheck = (key:string, name: string) => {
@@ -2349,7 +2449,9 @@
       })
     }
   });
-
+  const resetSpells = (origin: string) => {
+    character.value.spells = character.value.spells.filter((sk:any) => sk.origin != origin && sk.level == character.value.level);
+  }
   const changeSpell = (e: any, spellSlot: number, prepared:boolean = true, origin:string = "class", originName:string|null = null) => {
     if (!e.target.value) return;
     const name = e.target.value;
@@ -2365,6 +2467,9 @@
     if(character.value.spells.find((f:any) => f.name == name) == undefined) {
       if(origin == 'class' && originName == null) {
         originName = lastClass.value.name;
+      }
+      if(origin == 'subclass' && originName == null) {
+        originName = lastClass.value.subclass;
       }
       if(!['race','background'].includes(origin) && originName == null) {
         throw new Error(`Empty originName ${origin}`);
@@ -2535,8 +2640,6 @@
       calcAC()
     }
   })
-
-
 </script>
 
 <template>
@@ -2557,10 +2660,8 @@
         <button class="btn btn-secondary" @click="json = computedRace">computedRace</button>
         <button class="btn btn-secondary" @click="json = computedRaceOptions">computedRaceOptions</button>
         <button class="btn btn-secondary" @click="json = chooses">chooses</button>
-        <button class="btn btn-secondary" @click="json = classesStore.getClassFeatures(lastClass.name, lastClass.level)">getClassFeatures</button>
-        <button class="btn btn-secondary" @click="json = classesStore.getSubclassFeatures(lastClass.name, lastClass.subclass, lastClass.level)">getSubclassFeatures</button>
         <button class="btn btn-secondary" @click="json = classFeatures">classFeatures</button>
-<!--        <button class="btn btn-secondary" @click="json = character.features.filter((f:any) => f.name == 'Fighting Style').map((f:any) => [...f.choices])">test</button>-->
+        <button class="btn btn-secondary" @click="json = chooses.features">progression</button>
       </div>
     </template>
 
@@ -2825,18 +2926,18 @@
           </AccordionItem>
 
           <AccordionItem name="features" :steps="steps" :step="step" @click="changeStep" :manual-steps="character.manualSteps" @toggle-manual-step="toggleManualStep">
-            <template v-slot:header-label>Features</template>
+            <template v-slot:header-label>Class Features</template>
             <template v-slot:body>
               <div v-for="(cf,i) in classFeatures" :key="`${lastClass.name}-${cf.name}`" :class="`${i > 0 ? 'mt-2' : ''}`">
                 <p class="fw-bold m-0 d-flex align-items-center">
-                  {{ cf.name }} <i v-if="cf.entries && (cf.chooseSubclass || cf.choose && cf.options)" class="ms-1 fa-solid fa-circle-question" :title="S(cf.entries)" v-tooltip></i>
-                  <input v-if="(cf.choose && cf.options) || cf.chooseSubclass" type="text" class="form-control form-control-sm ms-3" style="flex: 1" :value="search[cf.name]" @input="changeSearch($event, cf.name)" />
+                  {{ cf.name }} <i v-if="cf.entries && cf.chooseSubclass" class="ms-1 fa-solid fa-circle-question" :title="S(cf.entries)" v-tooltip></i>
+                  <input v-if="cf.chooseSubclass" type="text" class="form-control form-control-sm ms-3" style="flex: 1" :value="search[cf.name]" @input="changeSearch($event, cf.name)" />
                 </p>
-                <div class="form-check" v-if="!(cf.entries && (cf.chooseSubclass || cf.choose && cf.options))">
+                <div class="form-check" v-if="!(cf.entries && cf.chooseSubclass)">
                   <p>{{ S(cf.entries) }}</p>
                 </div>
                 <template v-if="cf.chooseSubclass">
-                  <div v-for="o in filterOptions(cf.name, cf.subclasses)" class="form-check" :key="o.shortName">
+                  <div v-for="o in filterOptions(cf.name, classesStore.getSubclassesInfo(lastClass.name, cf.level))" class="form-check" :key="o.shortName">
                     <input class="form-check-input" type="radio" :value="o.shortName" @click="changeSubclass($event)" :checked="lastClass.subclass == o.shortName">
                     <label class="form-check-label" v-tooltip :title="S(o.tooltip)">
                       {{ o.shortName }}
@@ -2844,21 +2945,25 @@
                     <p v-for="e in o.entries"><b>{{e.name}}</b>: {{ S(e.info) }}</p>
                   </div>
                 </template>
-                <template v-if="cf.choose && cf.options"> <!-- && cf.level == lastClass.level" -->
-                  <span v-if="cf.options.count>1" class="fst-italic">Choose {{cf.options.count}}</span>
-                  <div v-for="o in filterOptions(cf.name, cf.options.from)" class="form-check pb-1" :key="o.name">
-                    <input class="form-check-input" :type="`${cf.options.count==1?'radio':'checkbox'}`" :value="o.name"
-                           :checked="isFeatureCheck(cf.name, o.name)"
-                           :disabled="isFeatureDisabled(cf.name, cf.options.count, o.name, 'class', lastClass.name)"
-                           @click="changeFeature($event, cf.name, cf.options.count, 'class', lastClass.name)"
-                    >
-                    <label class="form-check-label">
-                      {{ o.name }}
-                      <template v-if="o.prerequisite && o.prerequisite.length > 0"> ({{o.prerequisite.join(' or ')}})</template>
-                    </label>
-                    <p>{{ S(o.info) }}</p>
-                  </div>
-                </template>
+              </div>
+            </template>
+          </AccordionItem>
+
+          <AccordionItem v-for="ft in chooses.features" :name="ft.name" :steps="steps" :step="step" @click="changeStep" :manual-steps="character.manualSteps" @toggle-manual-step="toggleManualStep">
+            <template v-slot:header-label>{{ ft.name }}</template>
+            <template v-slot:header-value>{{ ft.selected }}/{{ ft.total }}</template>
+            <template v-slot:body>
+              <input type="text" class="form-control form-control-sm mb-2" :value="search[ft.name]" @input="changeSearch($event, ft.name)" />
+              <div v-for="o in filterOptions(ft.name, ft.from)" class="form-check pb-1" :key="o.name">
+                <input class="form-check-input" :type="`${ft.total==1?'radio':'checkbox'}`" :value="o.name"
+                       :checked="isFeatureCheck(ft.name, o.name)"
+                       :disabled="isFeatureDisabled(ft.name, o.name)"
+                       @click="changeFeature($event, ft.name)">
+                <label class="form-check-label">
+                  {{ o.name }}
+                  <template v-if="o.prerequisite && o.prerequisite.length > 0"> ({{o.prerequisite.join(' or ')}})</template>
+                </label>
+                <p>{{ S(o.info) }}</p>
               </div>
             </template>
           </AccordionItem>
@@ -3429,7 +3534,7 @@
                     <span :title="S(ftc.entries)" v-tooltip>{{ftc.name}}</span>
                   </template>
                 </CharacterInfo>
-                <CharacterInfo v-for="ft in computedFeatures('class', cl.name)" :key="ft.feature"><!-- todo : here features origin class/subclass & optional = true -->
+                <CharacterInfo v-for="ft in computedFeatures('class', cl.name)" :key="ft.feature">
                   <template v-slot:label>{{ ft.name }}:</template>
                   <template v-for="(ftc,i) in ft.choices" :key="ftc">
                     <template v-if="i>0">, </template>
@@ -3441,6 +3546,13 @@
                   <template v-for="(ftc,i) in classesStore.getSubclassFeatures(cl.name, cl.subclass, cl.level)" :key="ftc">
                     <template v-if="i>0">, </template>
                     <span :title="S(ftc.entries)" v-tooltip>{{ftc.name}}</span>
+                  </template>
+                </CharacterInfo>
+                <CharacterInfo v-if="lastClass.subclass" v-for="ft in computedFeatures('subclass', cl.name)" :key="ft.feature">
+                  <template v-slot:label>{{ ft.name }}:</template>
+                  <template v-for="(ftc,i) in ft.choices" :key="ftc">
+                    <template v-if="i>0">, </template>
+                    <span :title="S(classesStore.getOptionalInfo(ftc))" v-tooltip>{{ftc}}</span>
                   </template>
                 </CharacterInfo>
               </ClassInfo>
@@ -3490,7 +3602,6 @@
           <template v-for="ft in character.feats" :key="ft.name">
             <FeatInfo :feat="feats.find((feat:any) => feat.name == ft.name)" :choice="false"
                       :ability-selected="character.abilities.improvments.find((ip:any) => ip.origin=='feat' && ip.originName==ft.name && ip.level==ft.level)?.ability">
-              <!-- todo : here features origin feat & optional = true -->
               <CharacterInfo v-for="f in computedFeatures('feat', ft.name)" :key="ft">
                 <template v-slot:label>{{ f.name }}:</template>
                 <template v-for="(ftc,i) in f.choices" :key="ftc">

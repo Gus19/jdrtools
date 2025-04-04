@@ -120,27 +120,6 @@ export const useClassesStore = defineStore("ClassesStore", {
         }
         return f
           .filter((a:any) => a.level == level /*|| a.progression?.choose*/)
-          .map((a:any) => {
-            let options: any = null;
-            if(a.progression?.choose && a.progression?.featureType) {
-              options = {
-                count: a.progression.count,
-                from: this.getChoicesByFeatureType(a.progression.featureType, name, subclass, level)
-              }
-            }
-
-            return {
-              name: a.name,
-              origin: a.origin,
-              originName: a.originName,
-              level: a.level,
-              entries: a.entries,
-              choose: a.progression?.choose || false,
-              options: options,
-              chooseSubclass: a.chooseSubclass,
-              subclasses: a.chooseSubclass && this.getSubclassesInfo(name, a.level)
-            }
-          })
           .sort((a, b) => a.level - b.level)
         ;
       }
@@ -178,7 +157,11 @@ export const useClassesStore = defineStore("ClassesStore", {
       ;
     },
     getOptionalInfo() {
-      return (n: string): string => formatOptionalEntries(this.optionalFeatures.find((d:any) => d.name == n).entries);
+      return (n: string): string => {
+        const of = this.optionalFeatures.find((d:any) => d.name == n);
+        if(of) return formatOptionalEntries(of.entries);
+        return "";
+      }
     },
     getChoicesByFeatureType() {
       return (featureType: string, name: string, subclass: string|null, level: number): any => {
@@ -257,33 +240,33 @@ export const useClassesStore = defineStore("ClassesStore", {
       }
     },
     getProgression() {
-      return (fn: string, optionalfeatureProgression: OptionalfeatureProgression[]|OptionalfeatureProgression2[]|undefined, level: number): any => {
+      return (optionalfeatureProgression: any, lastClass: any): any => {
         if(!optionalfeatureProgression) return null;
-        // let options: any = null; // TODO : Si progression lvl (constructor == Array), il faut que ce soit toujours dispo, choix qu'au premier lvl là
 
-        let tochoose: boolean = false;
-        let featureType: string|null = null;
-        let count: number|null = null;
+        const level = lastClass.level;
+        let choose: any[] = [];
+        let featureType = "";
+        let count = 0;
 
-        optionalfeatureProgression && optionalfeatureProgression.forEach((o:any) => {
-          if(o.name == fn && ((o.progression.constructor == Array && o.progression[level-1] != 0) || level in o.progression)) { // Array = level progression, always true
-            tochoose = true;
+        optionalfeatureProgression.forEach((o:any) => {
+          if(((o.progression.constructor == Array && o.progression[level-1] != 0) || level in o.progression || '*' in o.progression)) {
             featureType = o.featureType[0];
-            count = o.progression.constructor == Array ? o.progression[level - 1] : o.progression[level];
-            // if(featureType) {
-            //   options = {
-            //     count: o.progression.constructor == Array ? o.progression[level - 1] : o.progression[level],
-            //     from: this.getChoicesByFeatureType(featureType, name, subclass, level)
-            //   }
-            // }
+            if(o.progression.constructor == Array) count = o.progression[level - 1]
+            else if(level in o.progression) count = o.progression[level]
+            else count = o.progression['*']
+            if(count > 0) {
+              choose.push({
+                name: o.name,
+                featureType: featureType,
+                count: count,
+                from: this.getChoicesByFeatureType(featureType, lastClass.name, lastClass.subclass, level)
+              });
+            }
           }
         });
+        if(choose.length == 0) return;
 
-        return {
-          choose: tochoose,
-          featureType: featureType,
-          count: count
-        }
+        return choose;
       }
     },
     getClassFeatures() {
@@ -299,7 +282,6 @@ export const useClassesStore = defineStore("ClassesStore", {
             originName: name,
             level: ft.level,
             entries: extractClassEntries(ft.name, ft),
-            progression: this.getProgression(ft.name, cl.optionalfeatureProgression, level),
             chooseSubclass: ft.name == cl.subclassTitle && chooseSubclass
           }
         })
@@ -317,7 +299,6 @@ export const useClassesStore = defineStore("ClassesStore", {
             originName: subclass,
             level: ft.level,
             entries: ft.entries.filter((e: any) => "string" == typeof e && !e.startsWith("{@i")).join(' '),
-            progression: this.getProgression(ft.name, sc.optionalfeatureProgression, level),
           }
         })
       }
@@ -343,20 +324,13 @@ const extractClassEntries = (fn:string, det: any): any => {
   return entries;
 }
 
-export type RootState = {
-  classes: Class[];
-  subclasses: Subclass[];
-  classFeatures: ClassFeature[];
-  subclassFeatures: SubclassFeature[];
-  optionalFeatures: any[];
-  error: boolean;
-};
-
-export interface Root {
-  class: Class[]
-  subclass: Subclass[]
-  classFeature: ClassFeature[]
-  subclassFeature: SubclassFeature[]
+export interface RootState {
+  classes: Class[]
+  subclasses: Subclass[]
+  classFeatures: ClassFeature[]
+  subclassFeatures: SubclassFeature[]
+  optionalFeatures: OptionalFeature[]
+  error: boolean
 }
 
 export interface Class {
@@ -369,6 +343,7 @@ export interface Class {
   spellcastingAbility?: string
   casterProgression?: string
   preparedSpells?: string
+  preparedSpellsChange?: string
   cantripProgression?: number[]
   optionalfeatureProgression?: OptionalfeatureProgression[]
   startingProficiencies: StartingProficiencies
@@ -779,4 +754,97 @@ export interface OtherSource4 {
 export interface Consumes2 {
   name: string
   amount?: number
+}
+
+export interface OptionalFeature {
+  name: string
+  source: string
+  page: number
+  srd?: boolean
+  featureType: string[]
+  prerequisite?: Prerequisite[]
+  entries: any[]
+  isClassFeatureVariant?: boolean
+  consumes?: Consumes3
+  otherSources?: OtherSource5[]
+  additionalSpells?: AdditionalSpell3[]
+  skillProficiencies?: SkillProficiency[]
+  senses?: Sense[]
+  hasFluffImages?: boolean
+  optionalfeatureProgression?: OptionalfeatureProgression3[]
+}
+
+export interface Prerequisite {
+  level?: Level
+  pact?: string
+  item?: string[]
+  spell?: string[]
+}
+
+export interface Level {
+  level: number
+  class: Class2
+  subclass?: Subclass3
+}
+
+export interface Class2 {
+  name: string
+  source?: string
+}
+
+export interface Subclass3 {
+  name: string
+  source?: string
+}
+
+export interface Consumes3 {
+  name: string
+  amountMin?: number
+  amountMax?: number
+  amount?: number
+}
+
+export interface OtherSource5 {
+  source: string
+  page: number
+}
+
+export interface AdditionalSpell3 {
+  innate?: Innate2
+  resourceName?: string
+  ability?: string
+  known?: Known3
+}
+
+export interface Innate2 {
+  _: any
+}
+
+export interface Known3 {
+  _: GeneratedType[]
+}
+
+export interface GeneratedType {
+  choose: string
+  count: number
+}
+
+export interface SkillProficiency {
+  deception: boolean
+  persuasion: boolean
+}
+
+export interface Sense {
+  darkvision?: number
+  blindsight?: number
+}
+
+export interface OptionalfeatureProgression3 {
+  name: string
+  featureType: string[]
+  progression: Progression2
+}
+
+export interface Progression2 {
+  "*": number
 }
