@@ -34,7 +34,6 @@ export const useFeatsStore = defineStore("FeatsStore", {
           let valid = false;
           let prerequisite: string[] = [];
           if(f.prerequisite) {
-            // at least one
             f.prerequisite.forEach(p => {
               let v = true
               if(p.level && !isNaN(p.level) && level < p.level) v = false;
@@ -65,7 +64,6 @@ export const useFeatsStore = defineStore("FeatsStore", {
           if(valid) {
             return {
               name: f.name,
-              // info: formatOptionalEntries(f.entries),
               prerequisite: prerequisite,
               prerequisites: f.prerequisite,
               hasAbility: f.ability !== undefined,

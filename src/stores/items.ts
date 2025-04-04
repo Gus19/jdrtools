@@ -31,7 +31,6 @@ export const useItemsStore = defineStore("ItemsStore", {
           if(i.weaponCategory && !i.weapon) i.weapon = true;
         });
 
-        // this.itemBase = this.itemBase.filter((i:ItemBase) => !i.armor && !i.weapon && !i.tool || i.rarity == "none");
         this.itemBase = this.itemBase.filter((i:ItemBase) =>
           (i.armor || i.weapon || i.tool || ["A","AF|DMG","EXP|DMG","FD","G","P","RD|DMG","RG|DMG","SCF","WD|DMG"].includes(i.type))
           &&

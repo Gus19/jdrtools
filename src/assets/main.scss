@@ -8,7 +8,6 @@
   min-height: 100vh;
 }
 main {
-  //padding-top: var(--header-height);
   min-height: calc(100vh - calc(var(--footer-height) + var(--header-height)) - 1rem);
 }
 
@@ -42,13 +41,10 @@ footer {
 }
 
 .input-group-text, .form-control, .form-select {
-  //@extend .border-secondary !optional;
   --bs-border-opacity: 1;
   border-color: rgba(var(--bs-secondary-rgb),var(--bs-border-opacity))!important;
-  //@extend .bg-secondary !optional;
   --bs-bg-opacity: 1;
   background-color: rgba(var(--bs-secondary-rgb),var(--bs-bg-opacity))!important;
-  //@extend .text-light !optional;
   --bs-text-opacity: 1;
   color: rgba(var(--bs-light-rgb),var(--bs-text-opacity))!important;
 }

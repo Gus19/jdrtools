@@ -99,9 +99,6 @@
       let list = it.entries?.find(e => e.type == 'list');
       if(list) d.push(S(list.items.join(', ')));
     }
-    // else if(d.length == 1 && it.entries) {
-    //   d.push(S(it.entries.find((e:any) => "string" == typeof e)));
-    // }
 
     return d.join('\n');
   });

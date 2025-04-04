@@ -261,9 +261,6 @@ export const S = (e: any, d: boolean = true) => {
         case"dice":
           t = t.replace(n, `{${i.split('|')[0].replace('×', '*')}}`);
           break;
-        // case"skill":
-        //   t = t.replace(n, `${i}${d ? ` {1d20 + ${i.toLowerCase()}}` : ``}`);
-        //   break;
         case"hitYourSpellAttack":
           t = t.replace(n, "{summoner-spell-attack}");
           break;
@@ -299,7 +296,6 @@ export const S = (e: any, d: boolean = true) => {
           t = t.replace(n, archetype[2]);
           break;
         default:
-          // t = t.replace(n, n.replace("{", "[UNRESOLVED|").replace("}", "|]"))
           t = t.replace("@", "");
       }
     }
@@ -466,7 +462,6 @@ export const formatOptionalEntries = (entries: any[]) => {
 
 export const inlineAbility = (ability: any[]) => {
   const s: string[] = [];
-  // const a: any = ability[0];
   ability.forEach((a:any) => {
     Object.keys(a).forEach((k: string) => {
       if (k == "choose") {
@@ -649,7 +644,6 @@ export const messageSpell = (s: SpellInfo, repeatName: boolean = true): string =
   else lines.push(`School: ${Schools[<string>s.school].name}`);
 
   if(s.time) {
-    // s.time.forEach((t: Time) => lines.push(`Casting Time: ${castingTime(t)}`))
     lines.push(`Casting Time: ${castingTime(s)}`);
   }
   if(s.range) {

@@ -154,6 +154,7 @@ export const useClassesStore = defineStore("ClassesStore", {
               entries: infos,
             }
           })
+          .sort((a, b) => a.shortName.localeCompare(b.shortName))
       ;
     },
     getOptionalInfo() {
@@ -198,7 +199,7 @@ export const useClassesStore = defineStore("ClassesStore", {
             });
           }
         })
-        return choices;
+        return choices.sort((a, b) => a.name.localeCompare(b.name));
       }
     },
     cantripProgression() {
