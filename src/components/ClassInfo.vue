@@ -7,11 +7,10 @@
     name: { type: String, required: true },
     subclass: { type: String, required: false, default: null },
     level: {type: Number, required: true},
+    spellsPrepared: {type: Number, required: false},
     isFirst: Boolean,
     validAbilities: Boolean,
-    // cantrips: {type: Number, required: false},
-    // spellsKnown: {type: Number, required: false},
-    spellsPrepared: {type: Number, required: false}
+    character: { type: Object, required: true }
   })
   const classesStore = useClassesStore();
   const classes = computed(() => classesStore.getDefaults);
@@ -19,10 +18,8 @@
   const requirements = computed(() => !props.isFirst && classesStore.getRequirements(props.name));
   const proficienciesGained = computed(() => !props.isFirst && cl.value && cl.value.multiclassing.proficienciesGained)
 
-
   const cantrips = computed(() => classesStore.cantripProgression(props.name, props.subclass, props.level));
   const spellsKnown = computed(() => classesStore.spellsKnownProgression(props.name, props.subclass, props.level));
-
 </script>
 
 <template>
@@ -76,7 +73,7 @@
     </template>
     <template v-else-if="cl.multiclassing">
       <div class="d-flex">
-        <CharacterInfo v-if="requirements">
+        <CharacterInfo v-if="requirements && level == 1">
           <template v-slot:label>Requirements:</template>
           {{ Object.keys(requirements.abilities).map((a:any) => `${a.toUpperCase()} ${requirements.abilities[a]}`).join(requirements.or ? ' or ' : ' and ') }}
         </CharacterInfo>
@@ -88,7 +85,7 @@
       <template v-if="proficienciesGained && level == 1">
         <CharacterInfo v-if="proficienciesGained.skills">
           <template v-slot:label>Skill Proficiencies:</template>
-          {{ inlineSkill(proficienciesGained.skills, true) }}
+          <slot name="skills">{{ inlineSkill(proficienciesGained.skills, true) }}</slot>
         </CharacterInfo>
         <CharacterInfo v-if="proficienciesGained.armor">
           <template v-slot:label>Armor Training:</template>
@@ -100,7 +97,7 @@
         </CharacterInfo>
         <CharacterInfo v-if="proficienciesGained.tools">
           <template v-slot:label>Tool Proficiencies:</template>
-          {{ proficienciesGained.tools.map((t:any) => S(t)).join(', ') }}
+          <slot name="tools">{{ proficienciesGained.tools.map((t:any) => S(t)).join(', ') }}</slot>
         </CharacterInfo>
       </template>
       <div class="d-flex">

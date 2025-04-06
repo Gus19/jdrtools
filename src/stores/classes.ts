@@ -119,7 +119,6 @@ export const useClassesStore = defineStore("ClassesStore", {
           f.push(...this.getSubclassFeatures(name, subclass, level));
         }
         return f
-          // .filter((a:any) => a.level == level /*|| a.progression?.choose*/)
           .sort((a, b) => a.level - b.level)
         ;
       }
