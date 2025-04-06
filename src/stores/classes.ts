@@ -24,6 +24,7 @@ export const useClassesStore = defineStore("ClassesStore", {
     classFeatures: [],
     subclassFeatures: [],
     optionalFeatures: [],
+    classProficienciesGained: [],
     error: false
   }),
   actions: {
@@ -62,6 +63,8 @@ export const useClassesStore = defineStore("ClassesStore", {
         if (data.optionalfeature) {
           this.optionalFeatures = data.optionalfeature;
         }
+
+        this.classProficienciesGained = classProficienciesGained;
 
       }
       catch (e) {
@@ -313,6 +316,17 @@ export const useClassesStore = defineStore("ClassesStore", {
           }
         })
       }
+    },
+    getProficienciesGained() {
+      return (name: string, subclass: string, level: number): any[] => {
+        return this.classProficienciesGained.filter(c => c.class == name && c.level == level && (c.subclass == null || c.subclass == subclass)).map(c => {
+          return {
+            origin: c.subclass != null ? 'subclass' : 'class',
+            originName: c.subclass != null ? c.subclass : c.class,
+            ...c
+          }
+        });
+      }
     }
   }
 });
@@ -340,7 +354,8 @@ export interface RootState {
   subclasses: Subclass[]
   classFeatures: ClassFeature[]
   subclassFeatures: SubclassFeature[]
-  optionalFeatures: OptionalFeature[]
+  optionalFeatures: OptionalFeature[],
+  classProficienciesGained: any[]
   error: boolean
 }
 
@@ -859,3 +874,26 @@ export interface OptionalfeatureProgression3 {
 export interface Progression2 {
   "*": number
 }
+
+const classProficienciesGained: any[] = [
+  {
+    class: "Bard",
+    subclass: null,
+    level: 3,
+    expertise: [
+      {
+        anyProficientSkill: 2
+      }
+    ]
+  },
+  {
+    class: "Bard",
+    subclass: "Lore",
+    level: 3,
+    skills: [
+      {
+        any: 3
+      }
+    ]
+  }
+]

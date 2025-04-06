@@ -1225,11 +1225,20 @@
     calcDatasClass(false);
     setHPAverage();
   }
-
+  const resetSubclass = () => {
+    resetSkills('subclass');
+    resetLanguages('subclass');
+    resetTools('subclass');
+    resetSpells('subclass');
+    resetEquipmentProf('weapon', 'subclass');
+    resetEquipmentProf('armor', 'subclass');
+    resetFeatures('subclass');
+  }
   const changeSubclass = (e: any) => {
     if (!e.target.value) return;
     const subclass = e.target.value;
-    resetSpells('subclass');
+    resetSubclass();
+
     lastClass.value.subclass = subclass;
     const sub = classesStore.findSubclass(lastClass.value.name, subclass);
     if(sub && sub.casterProgression) {
@@ -1278,11 +1287,11 @@
       resetLanguages('class');
       resetTools('class');
       resetSpells('class');
-      resetSpells('subclass');
       resetEquipmentProf('weapon', 'class');
       resetEquipmentProf('armor', 'class');
-      resetSpells('race'); // just in case
       resetFeatures('class');
+      resetSubclass();
+      resetSpells('race'); // just in case
       changeStartingEquipment();
     }
     character.value.class.forEach((c:any, i:number) => {
@@ -1291,7 +1300,7 @@
       if(i === 0) {
         character.value.save = cl.proficiency;
         character.value.spellcasting = cl.spellcastingAbility ? [cl.spellcastingAbility] : [];
-        if(cl.startingProficiencies) {
+        if(cl.startingProficiencies && c.level == 1) {
           addDefaultTools('class', cl.startingProficiencies.toolProficiencies, cl.name)
           addDefaultEquipmentProf('weapon', 'class', cl.startingProficiencies.weapons, cl.name);
           addDefaultEquipmentProf('armor', 'class', cl.startingProficiencies.armor, cl.name);
@@ -1301,12 +1310,22 @@
         if(cl.spellcastingAbility && !character.value.spellcasting.includes(cl.spellcastingAbility)) {
           character.value.spellcasting.push(cl.spellcastingAbility);
         }
-        if(cl.multiclassing.proficienciesGained) {
+        if(cl.multiclassing.proficienciesGained && c.level == 1) {
           addDefaultTools('class', cl.multiclassing.proficienciesGained.toolProficiencies, cl.name)
           addDefaultEquipmentProf('armor', 'class', cl.multiclassing.proficienciesGained.armor, cl.name);
           addDefaultEquipmentProf('weapon', 'class', cl.multiclassing.proficienciesGained.weapons, cl.name);
         }
-        // TODO add proficiencies gained
+      }
+
+      if(classProficienciesGained.value) {
+        classProficienciesGained.value.forEach((cpg:any) => {
+          addDefaultSkills(cpg.origin, cpg.skills, cpg.originName);
+          addDefaultTools(cpg.origin, cpg.tools, cpg.originName)
+          addDefaultLanguage(cpg.origin, cpg.languages, cpg.originName)
+          addDefaultEquipmentProf('armor', cpg.origin, cpg.armors, cpg.originName);
+          addDefaultEquipmentProf('weapon', cpg.origin, cpg.weapons, cpg.originName);
+          // if (cpg.expertise) addDefaultExpertise(cpg.origin, cpg.expertise, cpg.originName);
+        });
       }
     });
   }
@@ -1496,6 +1515,18 @@
         chooseFeatureProgression('subclass', lastClass.value.subclass, computedLastSubclass.value.optionalfeatureProgression);
       }
     }
+
+    // if (feat.skillProficiencies) chooseAddSkill('feat', feat.skillProficiencies[0], f.name);
+    // if (feat.expertise) chooseAddExpertise('feat', feat.expertise[0], f.name);
+    if(classProficienciesGained.value) {
+      classProficienciesGained.value.forEach((cpg:any) => {
+        if(cpg.skills) chooseAddSkill(cpg.origin, cpg.skills[0], cpg.originName);
+        if(cpg.expertise) chooseAddExpertise(cpg.origin, cpg.expertise[0], cpg.originName);
+        if(cpg.languages) chooseAddLanguage(cpg.origin, cpg.languages[0], cpg.originName);
+        if(cpg.tools) chooseAddLanguage(cpg.origin, cpg.tools[0], cpg.originName);
+      });
+    }
+
     character.value.feats.filter((f:any) => f.level == level && f.name).forEach((f:any) => {
       const feat = featsStore.findByName(f.name);
       if(feat) {
@@ -2088,6 +2119,7 @@
     let cl = lastClass.value;
     return classesStore.getFeatures(cl.name, cl.subclass, cl.level);
   });
+  const classProficienciesGained = computed(() => lastClass.value && classesStore.getProficienciesGained(lastClass.value.name, lastClass.value.subclass, lastClass.value.level));
   const filterOptions = (name: string, from: any[]) => {
     if(!from) return [];
     const s = !search.value[name] ? "" : search.value[name].toLowerCase();
@@ -2775,7 +2807,7 @@
         <button class="btn btn-secondary" @click="logJson">logJson</button>
         <button class="btn btn-secondary" @click="json = steps">steps</button>
         <button class="btn btn-secondary" @click="json = chooses">chooses</button>
-        <button class="btn btn-secondary" @click="json = computedSpells">computedSpells</button>
+        <button class="btn btn-secondary" @click="json = classProficienciesGained">classProficienciesGained</button>
       </div>
     </template>
 
