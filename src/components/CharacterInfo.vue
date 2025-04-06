@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-grow-1" style="white-space: pre-line">
+  <div class="flex-grow-1" :class="flex ? 'd-flex' : ''" style="white-space: pre-line">
     <label class="me-1 fw-bold fst-italic">
       <slot name="label"></slot>
     </label>
@@ -8,6 +8,9 @@
 </template>
 
 <script setup lang="ts">
+  const props = defineProps({
+    flex: Boolean
+  })
 </script>
 
 <style scoped>

@@ -18,13 +18,20 @@
   });
   const title = ref<any>(null);
 
+  const qty = computed(() => {
+    if(typeof props.item == "object") {
+      const it = props.item;
+      if (it.quantity) {
+        return props.item.quantity + ' '
+      }
+    }
+    return '';
+  })
+
   const name = computed(() => {
     if(typeof props.item == "object") {
       let txt = [];
       const it = props.item;
-      if(it.quantity) {
-        txt.push(props.item.quantity);
-      }
       if(it.equipmentType) {
         let fet = findEquipmentType(it.equipmentType);
         txt.push(cfl(fet?.label || "Error"));
@@ -140,12 +147,12 @@
 <template>
   <template v-if="tooltip && title">
     <span :title="title" v-tooltip data-bs-placement="right">
-      {{ name }}<Money v-if="value" :value="value" spaces />
+      {{ qty }}{{ name }}<Money v-if="value" :value="value" spaces />
     </span>
   </template>
   <template v-else>
     <span>
-      {{ name }}<Money v-if="value" :value="value" spaces />
+      {{ qty }}{{ name }}<Money v-if="value" :value="value" spaces />
     </span>
   </template>
   <i class="fa-solid fa-triangle-exclamation text-warning ps-2" v-if="!hasProf" v-tooltip title="Without proficiency" data-bs-placement="right" />
@@ -153,7 +160,7 @@
     {{ titleTxt }}
     <template v-if="titleTxt && (itemBase.value || itemBase.weight)">{{ `\n` }}</template>
     <Money v-if="itemBase.value" :value="itemBase.value" />
-    <template v-if="itemBase.value && itemBase.weight">, </template>
+    <template v-if="itemBase.value && itemBase.weight">,&#160;</template>
     <b v-if="itemBase.weight">{{ itemBase.weight }} lb.</b>
   </p>
 </template>

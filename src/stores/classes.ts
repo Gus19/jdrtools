@@ -115,11 +115,11 @@ export const useClassesStore = defineStore("ClassesStore", {
         const cl = this.getClass(name);
         if(!cl) return null;
         let f: any[] = this.getClassFeatures(name, level);
-        if(subclass) {
+        if(subclass && level != this.getLevelSubclass(name)) {
           f.push(...this.getSubclassFeatures(name, subclass, level));
         }
         return f
-          .filter((a:any) => a.level == level /*|| a.progression?.choose*/)
+          // .filter((a:any) => a.level == level /*|| a.progression?.choose*/)
           .sort((a, b) => a.level - b.level)
         ;
       }
@@ -243,26 +243,37 @@ export const useClassesStore = defineStore("ClassesStore", {
     getProgression() {
       return (optionalfeatureProgression: any, lastClass: any): any => {
         if(!optionalfeatureProgression) return null;
+        // console.log(JSON.stringify(optionalfeatureProgression));
 
         const level = lastClass.level;
         let choose: any[] = [];
-        let featureType = "";
-        let count = 0;
 
         optionalfeatureProgression.forEach((o:any) => {
-          if(((o.progression.constructor == Array && o.progression[level-1] != 0) || level in o.progression || '*' in o.progression)) {
-            featureType = o.featureType[0];
-            if(o.progression.constructor == Array) count = o.progression[level - 1]
-            else if(level in o.progression) count = o.progression[level]
-            else count = o.progression['*']
-            if(count > 0) {
-              choose.push({
-                name: o.name,
-                featureType: featureType,
-                count: count,
-                from: this.getChoicesByFeatureType(featureType, lastClass.name, lastClass.subclass, level)
-              });
+          let count = 0;
+          let featureType = o.featureType[0];
+          if(o.progression.constructor == Array) count = o.progression[level - 1]
+          else if('*' in o.progression) count = o.progression['*']
+          else {
+            if (level in o.progression) count = o.progression[level]
+            else {
+              // TODO : change if improve ability score
+              let keys = Object.keys(o.progression);
+              if(keys.length > 1) {
+                keys.every(key => {
+                  if(parseInt(key) <= level) count = o.progression[key];
+                  else return false;
+                })
+              }
             }
+          }
+
+          if(count > 0) {
+            choose.push({
+              name: o.name,
+              featureType: featureType,
+              count: count,
+              from: this.getChoicesByFeatureType(featureType, lastClass.name, lastClass.subclass, level)
+            });
           }
         });
         if(choose.length == 0) return;
@@ -275,7 +286,7 @@ export const useClassesStore = defineStore("ClassesStore", {
         const cl = this.getClass(name);
         if(!cl) return [];
         let chooseSubclass = level == this.getLevelSubclass(name);
-        let fts = this.classFeatures.filter((d:any) => d.className == name && d.level <= level);
+        let fts = this.classFeatures.filter((d:any) => d.className == name && d.level == level);
         return fts.map(ft => {
           return {
             name: ft.name,
@@ -292,7 +303,7 @@ export const useClassesStore = defineStore("ClassesStore", {
       return (name: string, subclass: string, level: number): any[] => {
         const sc = this.findSubclass(name, subclass);
         if(!sc) return [];
-        let fts = this.subclassFeatures.filter((d:any) => name == name && d.subclassShortName == subclass && d.level <= level && d.header);
+        let fts = this.subclassFeatures.filter((d:any) => name == name && d.subclassShortName == subclass && d.level == level && d.header);
         return fts.map(ft => {
           return {
             name: ft.name,

@@ -83,7 +83,7 @@
              :checked="isFeatsCheck(origin, o.name)"
              @click="emits('change', $event, origin)" />
       <FeatInfo :feat="o" :selected="isFeatsCheck(origin, o.name)" :open="showAllFeats"
-                :ability-selected="character.abilities.improvments.find((ip:any) => ip.origin=='feat' && ip.level==1)?.ability"
+                :ability-selected="character.abilities.improvments.find((ip:any) => ip.origin == 'feat' && ip.level == character.level)?.ability"
                 @improve="(ability) => emits('improve', ability, 'feat', o.name)"
       />
     </div>

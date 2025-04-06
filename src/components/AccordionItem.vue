@@ -52,12 +52,17 @@ watch(() => props.step, (next, prev) => {
     accordion.value.scrollIntoView({block: "start", inline: "nearest", behavior: "smooth"});
   }
 });
+watch(() => accordion.value, (next, prev) => {
+  if(next != prev && next != null && props.step == props.name) {
+    next.scrollIntoView({block: "start", inline: "nearest", behavior: "smooth"});
+  }
+});
 const manualStep = computed(() => props.manualSteps && props.manualSteps.find((s:any) => s.step == props.step));
 </script>
 
 <style scoped>
   em {
-    width: 156px;
+    width: 160px;
   }
   .accordion-button, .accordion-body {
     padding: .5rem !important;

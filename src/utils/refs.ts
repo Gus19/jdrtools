@@ -1,4 +1,4 @@
-import type {Duration, EntriesHigherLevel, SpellInfo, Time} from "@/stores/spells";
+import type {Duration, EntriesHigherLevel, SpellInfo} from "@/stores/spells";
 import type {Feat} from "@/stores/feats";
 
 export const CHOOSE = "Choose";

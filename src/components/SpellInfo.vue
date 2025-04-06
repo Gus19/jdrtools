@@ -49,7 +49,7 @@
     <div class="d-flex">
       <p class="flex-1"> Components:
         <template v-for="(c,i) in components" :key="c">
-          <template v-if="i>0">, </template>
+          <template v-if="i>0">,&#160;</template>
           <span v-if="c == 'M'" :title="spell.components.m" v-tooltip>{{ c }}</span>
           <span v-else>{{ c }}</span>
         </template>
