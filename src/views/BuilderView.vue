@@ -1557,8 +1557,6 @@
         if (feat.languageProficiencies) chooseAddLanguage('feat', feat.languageProficiencies, f.name);
         if (feat.toolProficiencies) chooseAddTools('feat', feat.toolProficiencies[0], f.name);
         if (feat.additionalSpells) chooseAddSpells('feat', f.name, feat.additionalSpells, f.option);
-        console.log(feat.additionalSpells);
-
         if(feat.optionalfeatureProgression) {
           chooseFeatureProgression('feat', feat.name, feat.optionalfeatureProgression);
         }
@@ -1878,7 +1876,7 @@
 
       if(c.known) {
         Object.keys(c.known).forEach(kn => {
-          if(kn == "_" || kn == character.value.level) {
+          if(kn == "_" || kn <= character.value.level) {
             if(c.known[kn].rest) {
               Object.keys(c.known[kn].rest).forEach((o: any) => {
                 c.known[kn].rest[o].forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin, originName));
