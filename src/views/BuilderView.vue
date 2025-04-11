@@ -6,6 +6,7 @@
   import {useRacesStore} from "@/stores/races";
   import {useBackgroundsStore,classBackground} from "@/stores/backgrounds";
   import {useFeatsStore} from "@/stores/feats";
+  import {useTableplop} from "@/stores/tableplop";
   import {equipmentProf, equipmentType, type ItemBase, useItemsStore} from "@/stores/items";
   import type {RaceBuilder} from "@/stores/races";
   import {
@@ -36,7 +37,7 @@
     inlineTool,
     spellSlotsPact,
     rollFormula,
-    inlineEntries, Damages, cfl, CHOOSE, calculMoney
+    inlineEntries, Damages, cfl, CHOOSE, calculMoney, type Ability, Alignments, messageSpell, damageByKey
   } from "@/utils/refs";
   import AccordionItem from "@/components/AccordionItem.vue";
   import CharacterInfo from "@/components/CharacterInfo.vue";
@@ -128,58 +129,77 @@
       const se = character.value.startingEquipment;
 
       character.value.money = calculMoney(se.rest || 0);
-      let others: string[] = [];
+      const others: string[] = [];
 
       ['background', 'class'].forEach((k:any) => {
         Object.keys(se[k]).forEach(i => {
           let o = se[k][i];
           chooses.value.startingEquipment.find((f:any) => f.origin == k).values[i][o].forEach((it:any) => {
-            if("string" == typeof it) {
-              character.value.equipment.items.push({
-                key: it,
-                quantity: 1,
-                type: itemsStore.getTypeByKey(it),
-                custom: false
-              });
-            }
-            else if(it.item) {
-              character.value.equipment.items.push({
-                key: it.item,
-                quantity: it.quantity || 1,
-                type: itemsStore.getTypeByKey(it.item),
-                custom: false
-              });
-              if(it.containsValue) {
-                let money = calculMoney(it.containsValue);
-                character.value.money.gp += money.gp;
-                character.value.money.sp += money.sp;
-                character.value.money.cp += money.cp;
-              }
-            }
-            else {
-              if(it.displayName) {
-                others.push(cfl(it.displayName));
-              }
-              else if(it.special) {
-                others.push(cfl(it.special));
-              }
-            }
+            addStartingEquipment(it, others);
           });
         })
       });
 
-      character.value.equipment.others.text = others.join(', ');
-
       se.manuals.forEach((m: any) => {
-        character.value.equipment.items.push({
-          key: m.key,
-          quantity: m.quantity,
-          type: itemsStore.getTypeByKey(m.key),
-          custom: false
+        if(m) {
+          addEquipment(m.key, m.quantity || 1, others);
+        }
+      });
+
+      character.value.equipment.others.text = others.join(', ');
+    }
+  }
+  const addStartingEquipment = (it:any, others: any[]) => {
+    if("string" == typeof it) {
+      addEquipment(it, 1, others);
+    }
+    else if(it.item) {
+      if(it.containsValue) {
+        let money = calculMoney(it.containsValue);
+        character.value.money.gp += money.gp;
+        character.value.money.sp += money.sp;
+        character.value.money.cp += money.cp;
+      }
+      addEquipment(it.item, it.quantity || 1, others);
+    }
+    else {
+      if(it.displayName) {
+        others.push(cfl(it.displayName));
+      }
+      else if(it.special) {
+        others.push(cfl(it.special));
+      }
+    }
+  }
+  const addEquipment = (key: string, quantity: number, others: any[], custom: boolean = false) => {
+    const eqs = character.value.equipment.items;
+    const eq = eqs.find((e:any) => e.key == key);
+
+    if(!custom) {
+      const item = itemsStore.findByKey(key);
+      if(item && item.packContents) {
+        item.packContents.forEach((p:any) => {
+          addStartingEquipment(p, others);
         });
+        return;
+      }
+    }
+    if(eq) {
+      eq.quantity += quantity;
+    }
+    else {
+      eqs.push({
+        key: key,
+        quantity: quantity,
+        type: itemsStore.getTypeByKey(key),
+        custom: custom
       });
     }
   }
+  const maxWeight = computed(() => {
+    if(!character.value) return null;
+    return character.value.abilities.str.total * 15;
+  })
   const manualStep = computed(() => character.value && character.value.manualSteps.find((s:any) => s.step == step.value));
 
   const changeStep = (name: string) => {
@@ -450,9 +470,8 @@
         let j1 = true, j2 = true, j3 = true, j4 = true;
 
         if(as && as.length > 0) {
-          j4 = true;
           as.forEach((asv:any) => {
-            if(as.optionChoice != null && as.option == null) {
+            if(asv.optionChoice != null && asv.option == null) {
               j4 = false;
               return;
             }
@@ -736,9 +755,6 @@
     upload.value.show = false;
     calculStep();
     lastStep();
-  }
-  const convert = () => {
-    alert('In progress ...')
   }
 
   const defaultChoose = {
@@ -1233,6 +1249,7 @@
     resetEquipmentProf('weapon', 'subclass');
     resetEquipmentProf('armor', 'subclass');
     resetFeatures('subclass');
+    lastClass.value.option = null;
   }
   const changeSubclass = (e: any) => {
     if (!e.target.value) return;
@@ -1294,12 +1311,15 @@
       resetSpells('race'); // just in case
       changeStartingEquipment();
     }
+    character.value.spellcasting = [];
     character.value.class.forEach((c:any, i:number) => {
       const cl = classes.value.find(c1 => c1.name === c.name);
       if(!cl) return;
-      if(i === 0) {
+      if(i == 0) {
         character.value.save = cl.proficiency;
-        character.value.spellcasting = cl.spellcastingAbility ? [cl.spellcastingAbility] : [];
+        if(c.spellcastingAbility) {
+          character.value.spellcasting.push(c.spellcastingAbility);
+        }
         if(cl.startingProficiencies && c.level == 1) {
           addDefaultTools('class', cl.startingProficiencies.toolProficiencies, cl.name)
           addDefaultEquipmentProf('weapon', 'class', cl.startingProficiencies.weapons, cl.name);
@@ -1307,8 +1327,8 @@
         }
       }
       else {
-        if(cl.spellcastingAbility && !character.value.spellcasting.includes(cl.spellcastingAbility)) {
-          character.value.spellcasting.push(cl.spellcastingAbility);
+        if(c.spellcastingAbility && !character.value.spellcasting.includes(c.spellcastingAbility)) {
+          character.value.spellcasting.push(c.spellcastingAbility);
         }
         if(cl.multiclassing.proficienciesGained && c.level == 1) {
           addDefaultTools('class', cl.multiclassing.proficienciesGained.toolProficiencies, cl.name)
@@ -1509,10 +1529,12 @@
     }
     if(computedLastSubclass.value) {
       if(computedLastSubclass.value.additionalSpells) {
-        chooseAddSpells('subclass', computedLastSubclass.value.shortName, computedLastSubclass.value.additionalSpells);
+        let option = null;
+        if(lastClass.value.option) option = lastClass.value.option;
+        chooseAddSpells('subclass', computedLastSubclass.value.shortName, computedLastSubclass.value.additionalSpells, option);
       }
       if(computedLastSubclass.value.optionalfeatureProgression) {
-        chooseFeatureProgression('subclass', lastClass.value.subclass, computedLastSubclass.value.optionalfeatureProgression);
+        chooseFeatureProgression('subclass', lastClass.value.subclass, computedLastSubclass.value.optionalfeatureProgression, );
       }
     }
 
@@ -1523,7 +1545,7 @@
         if(cpg.skills) chooseAddSkill(cpg.origin, cpg.skills[0], cpg.originName);
         if(cpg.expertise) chooseAddExpertise(cpg.origin, cpg.expertise[0], cpg.originName);
         if(cpg.languages) chooseAddLanguage(cpg.origin, cpg.languages[0], cpg.originName);
-        if(cpg.tools) chooseAddLanguage(cpg.origin, cpg.tools[0], cpg.originName);
+        if(cpg.tools) chooseAddTools(cpg.origin, cpg.tools[0], cpg.originName);
       });
     }
 
@@ -1535,6 +1557,7 @@
         if (feat.languageProficiencies) chooseAddLanguage('feat', feat.languageProficiencies, f.name);
         if (feat.toolProficiencies) chooseAddTools('feat', feat.toolProficiencies[0], f.name);
         if (feat.additionalSpells) chooseAddSpells('feat', f.name, feat.additionalSpells, f.option);
+        console.log(feat.additionalSpells);
 
         if(feat.optionalfeatureProgression) {
           chooseFeatureProgression('feat', feat.name, feat.optionalfeatureProgression);
@@ -1563,47 +1586,62 @@
 
       let max = null;
       if(spellSlotsInfo.value) max = spellSlotsInfo.value.max;
-      if(spellSlotsPactInfo.value) max = spellSlotsPactInfo.value.max;
+      if(spellSlotsPactInfo.value) max = Math.max(max, spellSlotsPactInfo.value.max);
+      let fc = lastClass.value.name;
+      let origin = "class";
+      let originName = lc.name;
+      if(['Fighter','Rogue'].includes(lastClass.value.name)) {
+        fc = 'Wizard';
+        origin = "subclass";
+        originName = lastClass.value.subclass;
+      }
 
       if (cantrip) {
-        const selected = character.value.spells.filter((s: any) => s.origin == "class" && s.originName == lc.name && s.spellslot == 0 && s.choose).length;
+        const selected = character.value.spells.filter((s: any) => s.origin == origin && s.originName == originName && s.spellslot == 0 && s.choose).length;
         ch.cantrips = {
           known: cantrip,
           selected: selected,
-          from: spellsStore.spellsChoice(lastClass.value.name, 0)
+          origin: origin,
+          originName: originName,
+          from: spellsStore.spellsChoice(fc, 0)
         };
       }
       if(max) {
         if (known > 0) {
-          const selected = character.value.spells.filter((s: any) => s.origin == "class" && s.originName == lc.name && s.spellslot > 0 && s.choose).length;
+          const selected = character.value.spells.filter((s: any) => s.origin == origin && s.originName == originName && s.spellslot > 0 && s.choose).length;
           ch.spells = {
             known: known,
             selected: selected,
             maxlevel: max,
             prepared: lc.preparedSpells.count && lc.preparedSpells.count > 0 ? false : true,
+            origin: origin,
+            originName: originName,
             from: {}
           }
           for (let l = 1; l <= max; l++) {
-            ch.spells.from[l] = spellsStore.spellsChoice(lastClass.value.name, l);
+            ch.spells.from[l] = spellsStore.spellsChoice(fc, l);
           }
         }
         if (lc.preparedSpells.count && lc.preparedSpells.count > 0) {
-          const selected = character.value.spells.filter((s: any) => s.origin == "class" && s.originName == lc.name && s.spellslot > 0 && s.choose && s.prepared).length;
+          const selected = character.value.spells.filter((s: any) => s.origin == origin && s.originName == originName && s.spellslot > 0 && s.choose && s.prepared).length;
           ch.prepared = {
             known: lc.preparedSpells.count,
             selected: selected,
             maxlevel: max,
             onlyPrepared: false,
+            origin: origin,
+            originName: originName,
             from: {}
           }
           if (known == -1) {
             for (let l = 1; l <= max; l++) {
-              ch.prepared.from[l] = spellsStore.spellsChoice(lastClass.value.name, l);
+              ch.prepared.from[l] = spellsStore.spellsChoice(fc, l);
             }
-          } else if (known > 0) {
+          }
+          else if (known > 0) {
             ch.prepared.onlyPrepared = true;
             for (let l = 1; l <= max; l++) {
-              const spellsChooses = character.value.spells.filter((s: any) => s.origin == "class" && s.originName == lc.name && s.spellslot == l && s.choose).map((s: any) => s.name);
+              const spellsChooses = character.value.spells.filter((s: any) => s.origin == origin && s.originName == originName && s.spellslot == l && s.choose).map((s: any) => s.name);
               ch.prepared.from[l] = spellsStore.spellsChoiceFromList(spellsChooses);
             }
           }
@@ -1757,7 +1795,7 @@
     character.value.tools = character.value.tools.filter((sk:any) => !(sk.origin == origin && sk.level == character.value.level));
   }
 
-  const extractSpellslotsFrom = (k: any, spellslots: any, from: any, origin: string, originName: string) => {
+  const extractSpellslotsFrom = (k: any, spellslots: any, from: any, origin: string, originName: string, limit: string|null = null, limitNumber: string|null = null) => {
     if ("string" == typeof k) {
       const n = k.indexOf('#') == -1 ? k : k.substring(0, k.indexOf('#'));
       const s = spellsStore.findByName(n);
@@ -1765,6 +1803,7 @@
         from[s.level].push(s);
         spellslots[s.level]++;
         addSpell(s.name, s.level, false, true, origin, originName);
+        addSpellLimit(s.name, origin, originName, limit, limitNumber);
       }
     }
     else if (k.choose) {
@@ -1862,19 +1901,19 @@
               innate.forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin, originName));
             }
             if (innate.will) {
-              innate.will.forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin, originName));
+              innate.will.forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin, originName, "will"));
             }
             if (innate.ritual) {
-              innate.ritual.forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin, originName));
+              innate.ritual.forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin, originName, "ritual"));
             }
             if (innate.daily) {
               Object.keys(innate.daily).forEach((o: any) => {
-                innate.daily[o].forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin, originName));
+                innate.daily[o].forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin, originName, "daily", o));
               })
             }
             if (innate.rest) {
               Object.keys(innate.rest).forEach((o: any) => {
-                innate.rest[o].forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin, originName));
+                innate.rest[o].forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin, originName, "rest", o));
               })
             }
           }
@@ -1882,11 +1921,16 @@
       }
       if(c.expanded && (spellSlotsPactInfo.value != null || spellSlotsInfo.value != null)) {
         Object.keys(c.expanded).forEach(kn => {
-          if(spellSlotsInfo.value) {
-            if(spellSlotsInfo.value[kn] <= 0) return;
+          if(!kn.startsWith('s')) {
+            // something here ?
           }
-          if(spellSlotsPactInfo.value) {
-            if(spellSlotsPactInfo.value.max < parseInt(kn.substring(1))) return;
+          else {
+            if (spellSlotsInfo.value) {
+              if (spellSlotsInfo.value[kn] <= 0) return;
+            }
+            if (spellSlotsPactInfo.value) {
+              if (spellSlotsPactInfo.value.max < parseInt(kn.substring(1))) return;
+            }
           }
           c.expanded[kn].forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin, originName));
         })
@@ -1912,7 +1956,7 @@
 
       o.spells = spells;
     }
-    if(o.spells.length > 0) {
+    if(o.spells.length > 0 || as.length > 1) {
       ch.push(o);
     }
   }
@@ -1921,6 +1965,10 @@
     let item = null;
     if(origin == 'feat') {
       item = character.value.feats.find((s:any) => s.name == originName);
+      character.value.spells = character.value.spells.filter((s:any) => !(s.origin == origin && s.originName == originName));
+    }
+    else if(origin == 'subclass') {
+      item = character.value.class.find((s:any) => s.subclass == originName);
       character.value.spells = character.value.spells.filter((s:any) => !(s.origin == origin && s.originName == originName));
     }
     else {
@@ -2000,7 +2048,6 @@
     return bg.value.entries.filter((be:any) => be.type == "entries" && be.data && be.data.isFeature);
   });
   const bgStep = computed(() => ['background'].includes(step.value));
-  const equipmentStep = computed(() => ['equipment'].includes(step.value));
 
   const isSpendMode = computed(() => character.value && character.value.abilities.option === 'spend');
   const rolls = ref<any[]>([]);
@@ -2197,6 +2244,7 @@
     }
     return from;
   }
+  const jackofAllTrades = computed(() => character.value && character.value.class.find((cl:any) => cl.name == 'Bard' && cl.level >= 2) != null);
   const calculSkills = computed(() => Skills.map(s => {
     const level = character.value.level;
     const skill = character.value.skills.find((c:any) => c.name == s.name);
@@ -2223,7 +2271,7 @@
       expDisabled: expDisabled,
       profSelected: profSelected,
       expSelected: expSelected,
-      mod: fn(mod(s.attribute.substring(0,3)) + (profSelected?prof.value:0) + (expSelected?prof.value:0) )
+      mod: fn(mod(s.attribute.substring(0,3)) + (!profSelected && jackofAllTrades.value ? Math.round(prof.value / 2) : 0) + (profSelected?prof.value:0) + (expSelected?prof.value:0) )
     }
   }))
   const changeProf = (key:string, name:string) => {
@@ -2290,10 +2338,10 @@
   const computedSkillsFeat = computed(() => displayChoosesProf('skills','feat'));
   const computedToolsFeat = computed(() => displayChoosesProf('tools','feat'));
   const computedLangFeat = computed(() => displayChoosesProf('languages','feat'));
-  const computedFeatures = (origin: string, originName: string) => {
+  const computedFeatures = (origin: string|null = null, originName: string|null = null) => {
     if(!character.value && !character.value.features) return
-    const r = character.value.features.filter((f:any) => f.origin == origin && f.originName == originName);
-    r.forEach((f:any) => {
+    const r = character.value.features.filter((f:any) => (f.origin == origin || origin == null) && (f.originName == originName || originName == null));
+    origin != null && r.forEach((f:any) => {
       f.choices.forEach((c: string) => {
         r.push(...character.value.features.filter((f:any) => f.origin == 'feature' && f.originName == c));
       })
@@ -2516,8 +2564,9 @@
 
   const spellSlotsInfo = computed(() => spellSlots(character.value.spellcasterlevel));
   const spellSlotsPactInfo = computed(() => {
-    if(lastClass.value && lastClass.value.casterProgression == "pact") {
-      return spellSlotsPact(lastClass.value.level);
+    let pact = character.value.class.find((c:any) => c.casterProgression == "pact");
+    if(pact) {
+      return spellSlotsPact(pact.level);
     }
   });
 
@@ -2564,17 +2613,17 @@
     }
   }
   const addSpell = (name: string, spellSlot: number, choose: boolean = true, prepared:boolean = true, origin:string = "class", originName:string|null = null) => {
-    if(character.value.spells.find((f:any) => f.name == name) == undefined) {
-      if(origin == 'class' && originName == null) {
-        originName = lastClass.value.name;
-      }
-      if(origin == 'subclass' && originName == null) {
-        originName = lastClass.value.subclass;
-      }
-      if(!['race','background'].includes(origin) && originName == null) {
-        throw new Error(`Empty originName ${origin}`);
-      }
-
+    if(origin == 'class' && originName == null) {
+      originName = lastClass.value.name;
+    }
+    if(origin == 'subclass' && originName == null) {
+      originName = lastClass.value.subclass;
+    }
+    if(!['race','background'].includes(origin) && originName == null) {
+      throw new Error(`Empty originName ${origin}`);
+    }
+    const sp = character.value.spells.find((f:any) => f.name == name);
+    if(sp == undefined) {
       character.value.spells.push({
         name: name,
         origin: origin,
@@ -2584,6 +2633,35 @@
         choose: choose,
         prepared: prepared
       })
+    }
+    else if(sp.choose != choose) {
+      sp.origin = origin;
+      sp.originName = originName;
+      sp.choose = choose;
+      sp.prepared = prepared;
+    }
+  }
+  const addSpellLimit = (name: string, origin:string, originName:string, limit: string|null = null, limitNumber:string|null = null) => {
+    if(limit) {
+      if(!character.value.spellsLimit) character.value.spellsLimit = [];
+
+      const spl = character.value.spellsLimit.find((s:any) => s.name == name);
+      const o = {
+        name: name,
+        origin: origin,
+        originName: originName,
+        limit: limit,
+        limitNumber:limitNumber
+      };
+      if(!spl) {
+        character.value.spellsLimit.push(o)
+      }
+      else {
+        spl.origin = origin;
+        spl.originName = originName;
+        spl.limit = limit;
+        spl.limitNumber = limitNumber;
+      }
     }
   }
 
@@ -2788,6 +2866,710 @@
     if(improveAbilityCheck(origin, key, value)) return false;
     return sumImproveAbility(origin) >= 2;
   }
+
+  const tableplop = useTableplop();
+  const jsonTableplop = ref('');
+
+  const Character = "Character", Throws = "Throws", Actions = "Actions", Spells = "Spells", Equipment = "Equipment", Features = "Features";
+
+  const handleTableplop = () => {
+    jsonTableplop.value = '';
+    tableplop.resetData();
+
+    const char = character.value;
+    tableplop.character.name = char.name || 'NoName';
+    if(char.appearance) {
+      tableplop.character.appearances.push(char.appearance);
+    }
+
+    // addSections()
+    const sections = [Character, Throws, Actions];
+    if(char.spells.length > 0) sections.push(Spells);
+    sections.push(Equipment);
+    sections.push(Features);
+
+    sections.forEach(s => {
+      const id = tableplop.addParent(s);
+      tableplop.addProperty({
+        id: id,
+        type: "tab-section",
+        value: s
+      });
+    });
+
+    // Character
+    const parentId = tableplop.getParent(Character);
+    addAbilities(parentId);
+    const [sectionId, section2Id] = tableplop.addHorizontalSection(parentId, "infos");
+    addInfos(sectionId);
+    addSenses(section2Id);
+    addProfs(section2Id);
+    addAppearance(parentId);
+    addDetails(parentId);
+
+    // Throws
+    const throwsId = tableplop.getParent(Throws);
+    tableplop.addProperty({
+      parentId: throwsId,
+      type: "number",
+      name: "initiative",
+      value: 0,
+      message: "!r initiative = 1d20 + initiative",
+      formula: "dex"
+    });
+    addSavingThrows(throwsId);
+    addSkills(throwsId);
+    // Actions
+    addActions();
+    // Spells
+    addSpells();
+    // Equipment
+    const equipmentId = tableplop.getParent(Equipment);
+    addMoney(equipmentId);
+    addBagpack(equipmentId);
+    // Features
+    addFeatures();
+
+    jsonTableplop.value = JSON.stringify(tableplop.character, null, 2);
+    download(jsonTableplop.value, tableplop.character.name + "_tableplop_import.json", "application/json");
+    if(dev) json.value = tableplop.character;
+  }
+
+  const makeScore = (a:Ability, parentId:number) => {
+    const e = a.name;
+    const t = a.key, v = character.value.abilities[t].total;
+    const scoreId = tableplop.addParent(e);
+
+    tableplop.addProperty({
+      id: scoreId,
+      parentId: parentId,
+      type: "ability",
+      name: e,
+      message: `${e} check: {1d20 + ${e}}`,
+      formula: `floor ((${e}-score - 10) / 2)`,
+    });
+    tableplop.addProperty({
+      parentId: scoreId,
+      type: "number",
+      name: e + "-score",
+      value: v
+    });
+  }
+
+  const addAbilities = (parentId:number) => {
+    const name = "Abilities"
+    const id = tableplop.addParent(name);
+    tableplop.addProperty({
+      id: id,
+      type: "title-section",
+      value: name,
+      parentId: parentId
+    });
+
+    for (const a of Abilities) {
+      makeScore(a, id);
+    }
+
+    const hpid = tableplop.addParent("hit-points");
+    const e = character.value.hp.max;
+    tableplop.addProperty({
+      id: hpid,
+      parentId: id,
+      type: "health",
+      name: "hit-points",
+      value: e
+    });
+    tableplop.addProperty({
+      parentId: hpid,
+      type: "number",
+      name: "hit-points-maximum",
+      value: e
+    });
+    tableplop.addProperty({
+      parentId: hpid,
+      type: "number",
+      name: "hit-points-temporary",
+      value: ""
+    });
+  }
+
+  const addInfos = (sectionId: number) => {
+    const char = character.value;
+    const name = "Infos"
+    const id = tableplop.addParent(name);
+    tableplop.addProperty({
+      id: id,
+      type: "title-section",
+      value: name,
+      parentId: sectionId
+    });
+    tableplop.addProperty({
+      parentId: id,
+      type: "number",
+      name: "proficiency",
+      value: prof.value
+    })
+    // makeAC(id);
+    let e = char.ac || 10 + modDex.value;
+    let f = "10 + dex"
+    if(char.equipment.armor) {
+      let armor = itemsAc.value.armors.find((a:any) => a.key == char.equipment.armor);
+      if(armor != null) {
+        if(armor.type == "LA") f = `${armor.ac} + dex`;
+        else if(armor.type == "MA") f = `${armor.ac} + min(dex,2)`;
+        else f = `${armor.ac}`;
+      }
+    }
+    tableplop.addProperty({
+      parentId: id,
+      type: "number",
+      name: "armor-class",
+      value: e,
+      formula: `${f} + (armor-shield?2:0)`
+    });
+    tableplop.addProperty({
+      parentId: id,
+      type: "checkbox",
+      name: "armor-shield",
+      value: char.equipment.shield && char.equipment.shield.length > 0 ? true : false,
+    });
+
+    // makeSpeed(id);
+    Object.keys(char.speed).forEach((s: string) => {
+      const a = `${s}-speed`;
+      tableplop.addProperty({
+        parentId: id,
+        type: "number",
+        name: a,
+        value: char.speed[s]
+      })
+    });
+
+    if(char.size) {
+      tableplop.addProperty({
+        parentId: id,
+        type: "text",
+        name: "size",
+        value: Sizes[char.size]
+      });
+    }
+
+    tableplop.addProperty({
+      parentId: id,
+      type: "text",
+      name: "race",
+      value: `${char.race.name}${char.subrace ? ` ${char.subrace.name}` : ``}`
+    });
+    tableplop.addProperty({
+      parentId: id,
+      type: "text",
+      name: "background",
+      value: `${char.background}`
+    });
+
+    if(char.class.length == 1) {
+      let cl = char.class[0];
+      tableplop.addProperty({
+        parentId: id,
+        type: "text",
+        name: "class",
+        value: `${cl.name}${cl.subclass ? ` (${cl.subclass})` : ``}`
+      });
+    }
+    else {
+      char.class.forEach((cl: any, i:number) => {
+        tableplop.addProperty({
+          parentId: id,
+          type: "text",
+          name: `class-${i+1}`,
+          value: `${cl.name}${cl.subclass ? ` (${cl.subclass})` : ``}`
+        });
+      })
+    }
+    tableplop.addProperty({
+      parentId: id,
+      type: "number",
+      name: "level",
+      value: char.level
+    });
+    tableplop.addProperty({
+      parentId: id,
+      type: "number",
+      name: "experience",
+      value: 0
+    });
+
+    ['vulnerable', 'resist', 'immune', 'conditionImmune'].forEach(k => {
+      if(character.value[k].length > 0) {
+        tableplop.addProperty({
+          parentId: id,
+          type: "text",
+          name: `${k}`,
+          value: character.value[k].map((v: any) => v.name).join(', '),
+        });
+      }
+    });
+
+  }
+
+  const addSenses = (sectionId: number) => {
+    const name = "Senses"
+    const parentId = tableplop.addParent(name);
+    tableplop.addProperty({
+      id: parentId,
+      type: "title-section",
+      value: name,
+      parentId: sectionId
+    });
+    tableplop.addProperty({
+      parentId: parentId,
+      type: "text",
+      name: "dark-vision",
+      value: character.value.darkvision
+    })
+    tableplop.addProperty({
+      parentId: parentId,
+      type: "number",
+      name: "passive-perception",
+      formula: "10 + perception"
+    });
+    tableplop.addProperty({
+      parentId: parentId,
+      type: "number",
+      name: "passive-stealth",
+      formula: "10 + stealth"
+    });
+  }
+
+  const addProfs = (sectionId: number) => {
+    const name = "Profs"
+    const parentId = tableplop.addParent(name);
+    tableplop.addProperty({
+      id: parentId,
+      type: "title-section",
+      value: name,
+      parentId: sectionId
+    });
+
+    ['armor', 'weapon', 'tools', 'languages'].forEach(k => {
+      tableplop.addProperty({
+        parentId: parentId,
+        type: "text",
+        name: `${k}`,
+        value: character.value[k].map((v:any) => v.name).join(', '),
+      });
+    })
+  }
+
+  const addAppearance = (parentId: number) => {
+    const name = "appearance"
+    const id = tableplop.addParent(name);
+    const appearances: any[] = [];
+    if(tableplop.character.appearances.length > 0) {
+      appearances.push({
+        url: tableplop.character.appearances[0],
+        location: tableplop.character.appearances[0],
+        iconSrc: tableplop.character.appearances[0]
+      })
+    }
+
+    tableplop.addProperty({
+      id: id,
+      type: "appearance",
+      parentId: parentId,
+      data: {
+        appearances: appearances
+      }
+    });
+  }
+
+  const addDetails = (parentId: number) => {
+    const name = "Details"
+    const id = tableplop.addParent(name);
+    tableplop.addProperty({
+      id: id,
+      type: "title-section",
+      value: name,
+      parentId: parentId
+    });
+
+    let d = "";
+    if(character.value.details) d = character.value.details?.replaceAll('\n', '<br>');
+    tableplop.addProperty({
+      type: "paragraph",
+      value: `<p>${d}</p>`,
+      parentId: id
+    });
+  }
+
+  const addSavingThrows = (parentId: number) => {
+    const name = "Saving Throws"
+    const id = tableplop.addParent(name);
+    tableplop.addProperty({
+      id: id,
+      type: "title-section",
+      value: name,
+      parentId: parentId
+    });
+
+    for (const a of Abilities) {
+      const e = a.name;
+      const name = `${e}-save`;
+      const stid = tableplop.addParent(name);
+      tableplop.addProperty({
+        id: stid,
+        parentId: id,
+        type: "saving-throw",
+        name: name,
+        message: `${a.key.toUpperCase()} save: {1d20 + ${e}-save}`,
+        formula: `${e} + (${name}-proficiency ? proficiency : 0)`,
+      });
+      tableplop.addProperty({
+        parentId: stid,
+        type: "checkbox",
+        name: name + "-proficiency",
+        value: character.value.save.includes(a.key)
+      })
+    }
+  }
+  const addSkills = (parentId: number) => {
+    const name = "Skills"
+    const id = tableplop.addParent(name);
+    tableplop.addProperty({
+      id: id,
+      type: "title-section",
+      value: name,
+      parentId: parentId
+    });
+
+    for (const s of Skills) {
+      const skid = tableplop.addParent(s.name);
+      tableplop.addProperty({
+        id: skid,
+        parentId: id,
+        type: "skill",
+        name: s.name,
+        data: {
+          subtitle: s.attribute.substring(0, 3)
+        },
+        message: `${s.name} check: {1d20 + ${s.name}}`,
+        formula: `${s.attribute} + (${s.name}-proficiency ? proficiency : jack-of-all-trades ? (floor (proficiency / 2)) : 0) + (${s.name}-expertise ? proficiency : 0)`,
+      });
+      tableplop.addProperty({
+        parentId: skid,
+        type: "checkbox",
+        name: s.name + "-proficiency",
+        value: character.value.skills.find((sk:any) => sk.name == s.name) != null
+      });
+      tableplop.addProperty({
+        parentId: skid,
+        type: "checkbox",
+        name: s.name + "-expertise",
+        value: character.value.expertises.find((sk:any) => sk.name == s.name) != null
+      });
+    }
+
+    tableplop.addProperty({
+      parentId: id,
+      type: "checkbox",
+      name: "jack-of-all-trades",
+      value: jackofAllTrades.value
+    })
+  }
+
+  const addActions = () => {
+    const char = character.value;
+    const parentId = tableplop.getParent(Actions);
+
+    const nw = "Weapons";
+    const wid = tableplop.addParent(nw);
+    tableplop.addProperty({
+      id: wid,
+      type: "title-section",
+      value: nw,
+      parentId: parentId
+    });
+    char.equipment.items.filter((ce:any) => ce.type == 'weapon').forEach((ce:any) => {
+      let o = itemsStore.messageByKey(ce.key);
+      if(o) {
+        tableplop.addMessage({
+          parentId: wid,
+          ...o
+        });
+      }
+    })
+
+    char.class.forEach((cl:any) => {
+      const clname = `actions-${cl.name}`;
+      const clid = tableplop.addParent(clname);
+      tableplop.addProperty({
+        id: clid,
+        type: "title-section",
+        value: cl.name,
+        parentId: parentId
+      });
+      tableplop.addProperty({
+        type: "paragraph",
+        value: "In progress ...",
+        parentId: clid
+      })
+    });
+
+    const cfs = computedFeatures();
+    if(cfs) {
+      cfs.forEach((cf: any) => {
+        const clname = `actions-${cf.name}`;
+        let clid = tableplop.getParent(clname);
+        if(clid == 0) {
+          clid = tableplop.addParent(clname);
+          tableplop.addProperty({
+            id: clid,
+            type: "title-section",
+            value: cf.name,
+            parentId: parentId
+          });
+        }
+        cf.choices.forEach((choice:any) => {
+          tableplop.addMessage({
+            parentId: clid,
+            name: choice,
+            message: S(classesStore.getOptionalInfo(choice))
+          });
+        })
+      });
+    }
+    const nr = "Rest";
+    const rid = tableplop.addParent(nr);
+    tableplop.addProperty({
+      id: rid,
+      type: "title-section",
+      value: nr,
+      parentId: parentId
+    });
+    tableplop.addCheckboxes(rid, 'rest-hd', 'Hit Dice', char.level, false);
+    tableplop.addMessage({
+      parentId: rid,
+      name: 'Short rest',
+      message: `Short rest : {d${char.class[0].dice} + constitution}`,
+    });
+  }
+
+  const addSpells = () => {
+    const char = character.value;
+    if(char.spells.length == 0) return;
+    const parentId = tableplop.getParent(Spells);
+
+    if(spellSlotsPactInfo.value) {
+      tableplop.addCheckboxes(parentId, `spell-slots-pact`, `Spell slots from pact magic lvl${spellSlotsPactInfo.value.max}`, spellSlotsPactInfo.value.slot, false);
+    }
+    if(spellSlotsInfo.value) {
+      for (var i = 1; i <= spellSlotsInfo.value.max; i++) {
+        tableplop.addCheckboxes(parentId, `spell-slots-${i}`, `Spell slots lvl${i}`, spellSlotsInfo.value[`s${i}`], false);
+      }
+    }
+
+    computedSpells.value.forEach((cs:any) => {
+      const spid = tableplop.addParent(`spell-${cs.spellslot}`);
+      tableplop.addProperty({
+        id: spid,
+        type: "title-section",
+        value: parseInt(cs.spellslot) == 0 ? `Cantrip` : `Level ${cs.spellslot}`,
+        parentId: parentId
+      });
+      cs.origins.forEach((o:any) => {
+        o.spells.forEach((s:any) => {
+          const spell = spellsStore.findByName(s.name);
+          if(!spell) return;
+
+          let ltxt = "";
+          const l = char.spellsLimit && char.spellsLimit.find((l:any) => l.name == s.name);
+          if(l) {
+            if(l.limitNumber) {
+              const split = l.limitNumber.split('');
+              // const each = split.length == 2 && split[1] == "e";
+              const nb = parseInt(split[0]);
+              tableplop.addCheckboxes(spid, `${l.name}-limit`, `${l.name}/${cfl(l.limit)}`, nb, false);
+            }
+            else {
+              if(l.limit == "will") ltxt = " (At will)";
+              if(l.limit == "ritual") ltxt = " (Ritual only)";
+            }
+          }
+
+          tableplop.addMessage({
+            name: `${s.name}${ltxt}`,
+            message: S(messageSpell(spell)),
+            parentId: spid
+          });
+        })
+      })
+    })
+  }
+
+  const addMoney = (parentId: number) => {
+    const money = character.value.money;
+    const name = "Money";
+    const id = tableplop.addParent(name);
+    tableplop.addProperty({
+      id: id,
+      type: "title-section",
+      value: name,
+      parentId: parentId
+    });
+    tableplop.addProperty({
+      type: "number",
+      name: "Gold (gp)",
+      value: money.gp,
+      parentId: id
+    });
+    tableplop.addProperty({
+      type: "number",
+      name: "Silver (sp)",
+      value: money.sp,
+      parentId: id
+    });
+    tableplop.addProperty({
+      type: "number",
+      name: "Copper (cp)",
+      value: money.cp,
+      parentId: id
+    });
+    tableplop.addProperty({
+      type: "paragraph",
+      value: "Standard change : 1 gp = 10 sp = 100 cp",
+      parentId: id
+    })
+  }
+
+  const addBagpack = (parentId: number) => {
+    const e = character.value.equipment;
+    const id = tableplop.addParent('Bagpack');
+    tableplop.addProperty({
+      id: id,
+      type: "title-section",
+      value: "Equipment",
+      parentId: parentId
+    });
+
+    tableplop.addProperty({
+      type: "number",
+      name: "Carrying (lb.)",
+      parentId: id,
+      formula: "strength-score * 15"
+    });
+
+    let p = "";
+    ['armor','weapon','tool','other'].forEach(t => {
+      p += `<h3>${equipmentType.find(e => e.key == t)?.label}</h3>`;
+      p += `<p>`;
+      p += e.items.filter((ce:any) => ce.type == t).map((ce:any) => {
+        const item = itemsStore.findByKey(ce.key);
+        const comp = [];
+        if(item) {
+          if(item.value) {
+            const money = calculMoney(item.value)
+            if (money.gp) comp.push(`${money.gp} gp`);
+            if (money.sp) comp.push(`${money.sp} sp`);
+            if (money.cp) comp.push(`${money.cp} cp`);
+          }
+          if(item.weight) {
+            comp.push(`${item?.weight} lb.`);
+          }
+        }
+        return `${ce.quantity} ${item?.name || ce.key}${comp.length > 0 ? ` (${comp.join(' / ')})` : ''}`;
+      }).join('<br>');
+      if(t == 'other' && e.others.text) {
+        p += `<br>${e.others.text}`;
+      }
+      p += `<p>`;
+    });
+
+    p += `<p><b>Weight: </b> ${e.weight} + ${e.others.weight} = <b>${e.weight + e.others.weight} lb.</b></p>`;
+
+    tableplop.addProperty({
+      type: "paragraph",
+      value: p,
+      parentId: id
+    })
+  }
+
+  const addFeatures = () => {
+    const char = character.value;
+    const parentId = tableplop.getParent(Features);
+
+    if(computedRaceEntries.value.length > 0) {
+      let name = `${ char.race.name }${ char.subrace ? ` ${char.subrace.name} ` : ``}`;
+      const id = tableplop.addParent(name);
+      tableplop.addProperty({
+        id: id,
+        type: "title-section",
+        value: name,
+        parentId: parentId
+      });
+      let p = computedRaceEntries.value.map((e:any) => `<p><b>${e.name}</b>: ${inlineEntries(e.entries)}</p>`).join('');
+      tableplop.addProperty({
+        type: "paragraph",
+        value: p.replaceAll('\n', '<br>'),
+        parentId: id
+      });
+    }
+    if(bgFeatures.value) {
+      let name = `${ char.background }`;
+      const id = tableplop.addParent(name);
+      tableplop.addProperty({
+        id: id,
+        type: "title-section",
+        value: name,
+        parentId: parentId
+      });
+      let p: any = bgFeatures.value.map((bgf:any) => `<p><b>${bgf.name.replace('Feature: ', '')}</b>: ${inlineEntries(bgf.entries)}</p>`).join('');
+      tableplop.addProperty({
+        type: "paragraph",
+        value: p.replaceAll('\n', '<br>'),
+        parentId: id
+      });
+    }
+    if(char.feats.length > 0) {
+      let name = `Feats`;
+      const id = tableplop.addParent(name);
+      tableplop.addProperty({
+        id: id,
+        type: "title-section",
+        value: name,
+        parentId: parentId
+      });
+      let p: any = char.feats.map((f:any) => `<h3>${f.name}${f.option ? ` : ${f.option}` : ``}</h3><p>${inlineEntries(feats.value.find((feat:any) => feat.name == f.name)?.entries)}</p>`).join('');
+      tableplop.addProperty({
+        type: "paragraph",
+        value: p.replaceAll('\n', '<br>'),
+        parentId: id
+      });
+    }
+
+    char.class.forEach((cl:any) => {
+      let name = `${ cl.name }${ cl.subclass ? ` (${cl.subclass}${cl.option ? ` ${cl.option}`: ``})` : ``}`;
+      const id = tableplop.addParent(name);
+      tableplop.addProperty({
+        id: id,
+        type: "title-section",
+        value: name,
+        parentId: parentId
+      });
+      for (let i = 1; i <= cl.level; i++) {
+        const features = classesStore.getFeatures(cl.name, cl.subclass, i);
+        let p: any = `<h3>Level ${i}</h3>`;
+        features && features.forEach((cf:any) => {
+          p += `<p><b>${cf.name}</b>: ${S(cf.entries)}</p>`
+        })
+        tableplop.addProperty({
+          type: "paragraph",
+          value: p.replaceAll('\n', '<br>'),
+          parentId: id
+        });
+      }
+    })
+
+  }
 </script>
 
 <template>
@@ -2879,7 +3661,7 @@
             <i class="fa-solid fa-file-arrow-up" />
             Import
           </button>
-          <button type="button" class="btn btn-success" @click="convert">
+          <button type="button" class="btn btn-success" @click="handleTableplop">
             <i class="fa-solid fa-gears" />
             Convert
           </button>
@@ -3184,32 +3966,6 @@
               </div>
 
               <template v-if="character.hp.option">
-                <!-- Roll HP for all levels -->
-                <!--<template v-for="(cl,i) in character.class" :key="i">
-                  <div class="d-flex justify-content-center align-items-center my-2 text-center">
-                    <label class="w-25 fw-bold">{{ cl.name }}</label>
-                    <label class="w-25 fw-bold">d{{cl.dice}}</label>
-                    <label class="w-25 fw-bold">CON</label>
-                    <span class="w-25 fw-bold">Total</span>
-                  </div>
-                  <div v-for="(l,j) in cl.level" :key="j" class="d-flex justify-content-center align-items-center my-2 text-center">
-                    <label class="w-25">{{ l }}</label>
-                    <div class="w-25 d-flex justify-content-center justify-content-evenly align-items-center">
-                      <input type="number" class="form-control ability" :value="cl.hps[j]" @change="changeHP($event, i, j)" min="1" :max="cl.dice" :disabled="character.hp.option === 'average' || (i===0 && l===1)">
-                      <i v-if="!(character.hp.option === 'average' || (i===0 && l===1))" class="fa-solid fa-dice-d20" @click="cl.hps[j] = roll(cl.dice)"></i>
-                      <i v-else-if="character.hp.option === 'free'" class="fa-solid fa-dice-d20 invisible"></i>
-                    </div>
-                    <div class="bonus w-25">
-                      {{ fn(modCon) }}
-                    </div>
-                    <span class="total w-25 fw-bold">
-                      {{ Math.max(cl.hps[j] + modCon, 1) }}
-                    </span>
-                  </div>
-                </template>
-                <p class="text-center m-0 py-1">HP Max: <span class="fw-bold">{{ character.hp.max }}</span></p>-->
-
-                <!-- Current lvl only -->
                 <div class="d-flex justify-content-center align-items-center my-2 text-center">
                   <label class="w-25 fw-bold">{{ lastClass.name }}</label>
                   <label class="w-25 fw-bold">d{{lastClass.dice}}</label>
@@ -3250,6 +4006,7 @@
                 </div>
                 <span class="w-25 text-start">{{ s.mod }}</span>
               </div>
+              <p class="m-0 fw-bold text-center" v-if="jackofAllTrades">Jack of All Trades</p>
             </template>
           </AccordionItem>
 
@@ -3385,9 +4142,9 @@
               <template v-for="l in [0]">
                 <div v-for="spell in filterOptions('cantrip', chooses.cantrips.from)" class="form-check pb-1">
                   <input class="form-check-input" type="checkbox" :value="spell.name"
-                         @click="changeSpell($event, l)"
+                         @click="changeSpell($event, l, true, chooses.cantrips.origin, chooses.cantrips.originName)"
                          :checked="isSpellCheck(spell.name)"
-                         :disabled="isSpellDisabled(spell.name)"
+                         :disabled="isSpellDisabled(spell.name, chooses.cantrips.origin, chooses.cantrips.originName)"
                   />
                   <SpellInfo :spell="spell" :open="showAllSpells" />
                 </div>
@@ -3417,9 +4174,9 @@
                 <p class="fst-italic m-0">Level {{ l }}</p>
                 <div v-for="spell in filterOptions('spell', chooses.spells.from[l])" class="form-check pb-1">
                   <input class="form-check-input" type="checkbox" :value="spell.name"
-                         @click="changeSpell($event, l, chooses.spells.prepared)"
+                         @click="changeSpell($event, l, chooses.spells.prepared, chooses.spells.origin, chooses.spells.originName)"
                          :checked="isSpellCheck(spell.name)"
-                         :disabled="isSpellDisabled(spell.name)"
+                         :disabled="isSpellDisabled(spell.name, chooses.spells.origin, chooses.spells.originName)"
                   />
                   <SpellInfo :spell="spell" :open="showAllSpells" />
                 </div>
@@ -3449,9 +4206,9 @@
                 <p class="fst-italic m-0">Level {{ l }}</p>
                 <div v-for="spell in filterOptions('prepared', chooses.prepared.from[l])" class="form-check pb-1">
                   <input class="form-check-input" type="checkbox" :value="spell.name"
-                         @click="chooses.prepared.onlyPrepared ? changeSpellPrepared($event) : changeSpell($event, l)"
+                         @click="chooses.prepared.onlyPrepared ? changeSpellPrepared($event) : changeSpell($event, l, true, chooses.prepared.origin, chooses.prepared.originName)"
                          :checked="isSpellPrepared(spell.name)"
-                         :disabled="isSpellDisabled(spell.name)"
+                         :disabled="isSpellDisabled(spell.name, chooses.prepared.origin, chooses.prepared.originName)"
                   />
                   <SpellInfo :spell="spell" :open="showAllSpells" />
                 </div>
@@ -3578,12 +4335,17 @@
               <textarea class="form-control w-100 mt-1" v-model="character.equipment.others.text" placeholder="Other items ..."></textarea>
 
               <p class="fw-bold m-0 mt-2 d-flex align-items-center">
-                Weight
+                <label class="flex-grow-1">Weight</label>
                 <input disabled :value="character.equipment.weight" class="form-control h36 mx-1" style="max-width: 100px" />
                 +
                 <input type="number" v-model="character.equipment.others.weight" class="form-control h36 mx-1" style="max-width: 100px" min="0" step="0.1" />
                 =
                 <input disabled :value="character.equipment.weight + character.equipment.others.weight" class="form-control h36 mx-1" style="max-width: 100px" />
+                lb.
+              </p>
+              <p class="fw-bold m-0 mt-2 d-flex align-items-center">
+                <label class="flex-grow-1 text-end">Carrying</label>
+                <input disabled :value="maxWeight" class="form-control h36 mx-1" style="max-width: 100px" />
                 lb.
               </p>
             </template>
@@ -3798,13 +4560,13 @@
             <template v-if="bgFeatures">
               <CharacterInfo v-if="bgStep" v-for="bgf in bgFeatures">
                 <template v-slot:label>{{ bgf.name.replace('Feature: ', '') }}:</template>
-                {{ DS(bgf, false) }}
+                {{ inlineEntries(bgf.entries) }}
               </CharacterInfo>
               <CharacterInfo v-else>
                 <template v-slot:label>Features:</template>
                 <template v-for="(bgf,i) in bgFeatures">
                   <template v-if="i>0">,&#160;</template>
-                  <span :title="DS(bgf, false)" v-tooltip>{{ bgf.name.replace('Feature: ', '') }}</span>
+                  <span :title="inlineEntries(bgf.entries)" v-tooltip>{{ bgf.name.replace('Feature: ', '') }}</span>
                 </template>
               </CharacterInfo>
             </template>
@@ -3878,7 +4640,7 @@
 
           </template>
 
-          <p class="fw-bold text-center mb-1 mt-1 fs-1-1">Details</p>
+          <p class="fw-bold text-center mb-2 mt-1 fs-1-1">Details</p>
           <textarea class="form-control w-100" v-model="character.details" rows="10" placeholder="Describe all the details of your character ..."></textarea>
         </template>
         <template v-else>

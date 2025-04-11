@@ -1,5 +1,5 @@
 import {defineStore} from 'pinia'
-import {cfl} from "@/utils/refs";
+import {cfl, damageByKey} from "@/utils/refs";
 
 export const useItemsStore = defineStore("ItemsStore", {
   state: (): RootState => ({
@@ -151,9 +151,29 @@ export const useItemsStore = defineStore("ItemsStore", {
         return "other";
       }
     },
-    test() {
-      return () => {
-        return this.itemBase;
+    messageByKey() {
+      return (key: string): any => {
+        const item = this.findByKey(key);
+        if(!item) return null;
+        return {
+          name: item.name,
+          message: this.getFormulaWeapon(item)
+        }
+      };
+    },
+    getFormulaWeapon() {
+      return (item: ItemBase): string => {
+        if(!item.weapon) return '';
+        let hit = item.type == 'M' ? "str" : 'dex';
+        if(item.property?.includes("F")) hit = "@:max(str,dex):"
+
+        let versatile = ''
+        if(item.property?.includes("V")) versatile = ` (Versatile: {${item.dmg2} + ${hit}})`;
+
+        let thrown = ''
+        if(item.property?.includes("T")) thrown = ` (Thrown ${item.range} ft.)`;
+
+        return `${item.name}${thrown}: {1d20 + prof + ${hit}} to hit, {${item.dmg1} + ${hit}}${versatile} ${damageByKey(item.dmgType || '')?.name}`;
       }
     }
   }

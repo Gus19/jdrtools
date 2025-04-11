@@ -155,7 +155,10 @@
       {{ qty }}{{ name }}<Money v-if="value" :value="value" spaces />
     </span>
   </template>
-  <i class="fa-solid fa-triangle-exclamation text-warning ps-2" v-if="!hasProf" v-tooltip title="Without proficiency" data-bs-placement="right" />
+
+  <i class="fa-solid fa-triangle-exclamation text-warning ps-2" v-if="!hasProf" title="Without proficiency" v-tooltip data-bs-placement="right" />
+<!--  <i v-if="itemBase && itemBase.weapon" class="fa-solid fa-dice-d20 ps-2" :title="itemsStore.getFormulaWeapon(itemBase)" v-tooltip  data-bs-placement="right" />-->
+
   <p ref="info" v-if="itemBase" :class="tooltip ? 'd-none' : ''">
     {{ titleTxt }}
     <template v-if="titleTxt && (itemBase.value || itemBase.weight)">{{ `\n` }}</template>

@@ -6,7 +6,7 @@
           <i class="fa-regular me-1" :class="valid ? 'fa-circle-check' : 'fa-circle-xmark'" />
           <slot name="header-label"></slot>
         </em>
-        <span class="flex-grow-1 text-center fw-bold">
+        <span class="absolute-title">
           <slot name="header-value"></slot>
         </span>
       </button>
@@ -61,10 +61,13 @@ const manualStep = computed(() => props.manualSteps && props.manualSteps.find((s
 </script>
 
 <style scoped>
-  em {
-    width: 160px;
-  }
   .accordion-button, .accordion-body {
     padding: .5rem !important;
+  }
+  .absolute-title {
+    position: absolute;
+    text-align: center;
+    font-weight: bold;
+    width: calc(100% - 1rem);
   }
 </style>

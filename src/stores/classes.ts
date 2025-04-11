@@ -24,7 +24,6 @@ export const useClassesStore = defineStore("ClassesStore", {
     classFeatures: [],
     subclassFeatures: [],
     optionalFeatures: [],
-    classProficienciesGained: [],
     error: false
   }),
   actions: {
@@ -63,9 +62,6 @@ export const useClassesStore = defineStore("ClassesStore", {
         if (data.optionalfeature) {
           this.optionalFeatures = data.optionalfeature;
         }
-
-        this.classProficienciesGained = classProficienciesGained;
-
       }
       catch (e) {
         console.error(e);
@@ -319,13 +315,7 @@ export const useClassesStore = defineStore("ClassesStore", {
     },
     getProficienciesGained() {
       return (name: string, subclass: string, level: number): any[] => {
-        return this.classProficienciesGained.filter(c => c.class == name && c.level == level && (c.subclass == null || c.subclass == subclass)).map(c => {
-          return {
-            origin: c.subclass != null ? 'subclass' : 'class',
-            originName: c.subclass != null ? c.subclass : c.class,
-            ...c
-          }
-        });
+        return classProficienciesGained.filter(c => c.level == level && ((c.originName == name && c.origin == 'class') || (c.originName == subclass && c.origin == 'subclass')));
       }
     }
   }
@@ -355,7 +345,6 @@ export interface RootState {
   classFeatures: ClassFeature[]
   subclassFeatures: SubclassFeature[]
   optionalFeatures: OptionalFeature[],
-  classProficienciesGained: any[]
   error: boolean
 }
 
@@ -875,25 +864,78 @@ export interface Progression2 {
   "*": number
 }
 
-const classProficienciesGained: any[] = [
+const classOtherProgression: any[] = [
   {
-    class: "Bard",
-    subclass: null,
+    origin: "class",
+    originName: "Fighter",
+    name: "Action Surge",
+    limit: "Rest",
+    progression: {
+      "1": 1,
+      "17": 2
+    }
+  },
+  {
+    origin: "class",
+    originName: "Fighter",
+    name: "Second Wind",
+    limit: "Rest",
+    progression: {
+      "1": 1
+    },
+    diceProgression: {
+      "1": "d10"
+    },
+    formula: "{{dice}} + {{level}}"
+  },
+  {
+    origin: "subclass",
+    originName: "Battle Master",
+    name: "Superiority Dice",
+    limit: "Rest",
+    progression: {
+      "3": 4,
+      "7": 5,
+      "15": 6
+    },
+    diceProgression: {
+      "3": "d8",
+      "10": "d10",
+      "18": "d12",
+    }
+  }
+]
+
+export const classProficienciesGained: any[] = [
+  // Artificer
+  {
+    origin: "subclass",
+    originName: "Alchemist",
     level: 3,
-    expertise: [
+    tools: [
       {
-        anyProficientSkill: 2
+        "alchemist's supplies": true,
+      },
+      {
+        "anyArtisansTool": 1
       }
     ]
   },
+  // Bard
   {
-    class: "Bard",
-    subclass: "Lore",
+    origin: "class",
+    originName: "Bard",
     level: 3,
-    skills: [
-      {
-        any: 3
-      }
-    ]
+    expertise: [{
+        anyProficientSkill: 2
+    }]
+  },
+  {
+    origin: "subclass",
+    originName: "Lore",
+    level: 3,
+    skills: [{
+      any: 3
+    }]
   }
 ]

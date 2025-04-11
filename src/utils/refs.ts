@@ -11,27 +11,6 @@ export interface Skill {
   example: string
 }
 
-export interface Property {
-  id?: number
-  type?: string
-  value?: any
-  rank?: number
-  parentId?: number
-  name?: string
-  message?: string
-  formula?: string
-  data?: Data
-  icon?: string
-  local?: boolean
-  size?: number
-}
-
-export interface Data {
-  subtitle?: string
-  appearances?: any[]
-  headers?: string[]
-}
-
 export const
   Skills: Skill[] = [
     {name: "acrobatics", attribute: "dexterity", prof: "acrobatics", display: "Acrobatics", example: "Stay on your feet in a tricky situation, or perform an acrobatic stunt."},

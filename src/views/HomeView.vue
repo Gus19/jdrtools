@@ -1,68 +1,27 @@
 <script setup lang="ts">
-  import {computed, ref, onMounted} from 'vue'
+  import {computed, onMounted, ref} from 'vue'
   import download from 'downloadjs'
   import JsonEditor from 'vue3-ts-jsoneditor';
+
+  import {useTableplop} from "@/stores/tableplop";
   import {useSpellsStore} from "@/stores/spells";
-  import {Alignments, Sizes, Skills, S} from "@/utils/refs";
-  import type {Skill, Property} from "@/utils/refs";
+  import {Alignments, messageSpell, S, Sizes, type Skill, Skills} from "@/utils/refs";
+
+  const tableplop = useTableplop();
 
   onMounted(() => {
     spellsStore.initSpells();
   });
-
-  interface Character {
-    appearances: string[];
-    private: boolean;
-    name: string;
-    type: string;
-    properties: Property[],
-    category: string|null
-  }
+  const spellsStore = useSpellsStore();
+  const spells = computed(() => spellsStore.spells);
+  const isInit = computed(() => spells.value.length != 0);
 
   const Test = ``
   const jsonsource = ref(import.meta.env.DEV ? Test : '');
   const jsonTableplop = ref('');
-  const forSurvival = ref(true);
 
   const editor = ref();
   const data = ref();
-  const defaultCharacter: Character = {
-    name: "", // nom par défaut
-    appearances: [], // token par défaut
-    properties: [],
-    private: true,
-    type: "tableplop-character-v2",
-    category: null
-  };
-  const character = ref<Character>(defaultCharacter);
-
-  const parents = ref<string[]>([]);
-  const addParent = (name: string) => {
-    parents.value.push(name);
-    return getParent(name);
-  }
-  const getParent = (name: string) => {
-    return parents.value.findIndex(p => p === name) + 1;
-  }
-
-  const randid = ref<number>(-1);
-  const addProperty = (data: Property) => {
-    if(!("id" in data)) {
-      data.id = addParent(randid.value.toString());
-      randid.value = randid.value - 1;
-    }
-    if(!("rank" in data)) {
-      data.rank = data.id;
-    }
-    character.value.properties.push(data);
-  }
-  const addMessage = (data: Property) => {
-    addProperty({
-      ...data,
-      type: "message",
-      icon: iconMsg
-    })
-  }
 
   const handleFormat = () => {
     jsonsource.value = JSON.stringify(JSON.parse(jsonsource.value),null, 2);
@@ -70,27 +29,22 @@
 
   const handleTableplop = () => {
     jsonTableplop.value = '';
-    character.value.appearances = [];
-    character.value.properties = [];
-    parents.value = [];
+    tableplop.resetData();
     data.value = JSON.parse(jsonsource.value);
     build();
-    jsonTableplop.value = JSON.stringify(character.value, null, 2);
+    jsonTableplop.value = JSON.stringify(tableplop.character, null, 2);
   }
 
-  const btnDisabled = computed(() => {
-    if(!jsonTableplop) return true;
-    return jsonTableplop.value.length === 0;
-  });
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(jsonTableplop.value);
+  const extractCR = () => {
+    if("object" == typeof data.value.cr) {
+      return data.value.cr.cr;
+    }
+    return data.value.cr
   }
 
   const
     Character = "Character", Actions = "Actions", Spells = "Spells", Throws = "Throws",
     Abilities: string[] = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"],
-    iconMsg: string = "/images/message.png",
     cr: any = {
       "0": 10,
       "1/8": 25,
@@ -165,100 +119,14 @@
     }
   ;
 
-  const extractCR = () => {
-    if("object" == typeof data.value.cr) {
-      return data.value.cr.cr;
-    }
-    return data.value.cr
-  }
-
-  const build = () => {
-    if(!("cr" in data.value)) {
-      data.value.cr = "0";
-    }
-    if(!("proficiency" in data.value)) {
-      data.value.proficiency = parseInt(data.value.pbNote || prof[extractCR()]);
-    }
-    if("summonedBySpell" in data.value) {
-      character.value.category = "Summoned";
-    }
-    else {
-      character.value.category = "CR " + extractCR();
-    }
-    character.value.name = data.value.name;
-    if(data.value.token) {
-      character.value.appearances.push(`${import.meta.env.VITE_TOKENURL}/bestiary/tokens/${data.value.token.source}/${data.value.token.name}.webp`.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
-    }
-    else if(data.value.hasToken) {
-      let name = data.value.name;
-      if("summonedBySpell" in data.value) {
-        name = name.split(' (')[0];
-      }
-      character.value.appearances.push(`${import.meta.env.VITE_TOKENURL}/bestiary/tokens/${data.value.source}/${name}.webp`.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
-    }
-    addSections();
-    // Character
-    addAbilities();
-    const parentId = getParent(Character);
-    const [sectionId, section2Id] = addHorizontalSection(parentId, "infos");
-    addInfo(sectionId);
-    addSenses(section2Id);
-    if(forSurvival.value) {
-      addChallenge(section2Id);
-    }
-    addNotes(parentId);
-    addAppearance(parentId);
-
-    // Actions
-    addActions("Actions", "action");
-    addActions("Actions Bonus", "bonus");
-    addActions("Reactions", "reaction");
-    addActions("Legendary", "legendary");
-    addActions("Mythic", "mythic");
-    addActions("Lair", "lair");
-    addActions("Regional Effects", "regional");
-
-    // Spells
-    addSpells();
-
-    // Throws
-    addSavingThrows();
-    addSkills();
-  }
-
-  const addHorizontalSection = (parentId: number, name: string, sizes = [50, 50]) => {
-    const horizontalId = addParent(name+"-horizontal-section");
-    addProperty({
-      id: horizontalId,
-      type: "horizontal-section",
-      parentId: parentId
-    });
-    const sectionId = addParent(name+"-section-1");
-    const section2Id = addParent(name+"-section-2");
-    addProperty({
-      id: sectionId,
-      type: "section",
-      size: sizes[0],
-      parentId: horizontalId
-    });
-    addProperty({
-      id: section2Id,
-      type: "section",
-      size: sizes[1],
-      parentId: horizontalId
-    });
-
-    return [sectionId, section2Id];
-  }
-
   const addSections = () => {
     const sections = [Character, Actions];
     if("spellcasting" in data.value) sections.push(Spells);
     sections.push(Throws);
 
     sections.forEach(s => {
-      const id = addParent(s);
-      addProperty({
+      const id = tableplop.addParent(s);
+      tableplop.addProperty({
         id: id,
         type: "tab-section",
         value: s
@@ -268,16 +136,16 @@
 
   const addAbilities = () => {
     const name = "Abilities"
-    const parentId = getParent(Character);
-    const id = addParent(name);
-    addProperty({
+    const parentId = tableplop.getParent(Character);
+    const id = tableplop.addParent(name);
+    tableplop.addProperty({
       id: id,
       type: "title-section",
       value: name,
       parentId: parentId
     });
 
-    addProperty({
+    tableplop.addProperty({
       parentId: id,
       type: "number",
       name: "initiative",
@@ -290,8 +158,8 @@
     data.value.hp.special && (e = data.value.hp.special);
 
     if(data.value.hp.formula) {
-      const tableid = addParent("table-roll-hp")
-      addProperty({
+      const tableid = tableplop.addParent("table-roll-hp")
+      tableplop.addProperty({
         id: tableid,
         parentId: id,
         type: "table",
@@ -304,10 +172,10 @@
         }
       });
 
-      const col1 = addParent("table-roll-hp-col1");
-      const col2 = addParent("table-roll-hp-col2");
-      const col3 = addParent("table-roll-hp-col3");
-      addProperty({
+      const col1 = tableplop.addParent("table-roll-hp-col1");
+      const col2 = tableplop.addParent("table-roll-hp-col2");
+      const col3 = tableplop.addParent("table-roll-hp-col3");
+      tableplop.addProperty({
         id: col1,
         parentId: tableid,
         type: "number",
@@ -315,13 +183,13 @@
         value: e,
         message: "!m hp-average-set"
       });
-      addMessage({
+      tableplop.addMessage({
         parentId: col1,
         name: "hp-average-set",
         message: "Set average HP {hit-points-maximum = hp-average} {hit-points = hit-points-maximum} !hr"
       });
 
-      addProperty({
+      tableplop.addProperty({
         id: col2,
         parentId: tableid,
         type: "text",
@@ -329,13 +197,13 @@
         value: data.value.hp.formula,
         message: "!m hp-random-roll"
       });
-      addMessage({
+      tableplop.addMessage({
         parentId: col2,
         name: "hp-random-roll",
         message: `Roll random HP {hit-points-maximum = ${data.value.hp.formula}} {hit-points = hit-points-maximum} !hr`
       });
 
-      addProperty({
+      tableplop.addProperty({
         id: col3,
         parentId: tableid,
         type: "text",
@@ -343,15 +211,15 @@
         value: data.value.hp.formula.replace('d', '*'),
         message: "!m hp-max-roll"
       });
-      addMessage({
+      tableplop.addMessage({
         parentId: col3,
         name: "hp-max-roll",
         message: `Roll max HP {hit-points-maximum = ${data.value.hp.formula.replace('d', '*')}} {hit-points = hit-points-maximum} !hr`
       });
     }
 
-    const hpid = addParent("hit-points");
-    addProperty({
+    const hpid = tableplop.addParent("hit-points");
+    tableplop.addProperty({
       id: hpid,
       parentId: id,
       type: "health",
@@ -359,14 +227,14 @@
       local: true,
       value: e
     });
-    addProperty({
+    tableplop.addProperty({
       parentId: hpid,
       type: "number",
       name: "hit-points-maximum",
       local: true,
       value: e
     });
-    addProperty({
+    tableplop.addProperty({
       parentId: hpid,
       type: "number",
       name: "hit-points-temporary",
@@ -389,9 +257,9 @@
 
   const makeScore = (e:string, parentId:number) => {
     const t = x(e), a = data.value[t];
-    const scoreId = addParent(e);
+    const scoreId = tableplop.addParent(e);
 
-    addProperty({
+    tableplop.addProperty({
       id: scoreId,
       parentId: parentId,
       type: "ability",
@@ -399,7 +267,7 @@
       message: `${e} check: {1d20 + ${e}}`,
       formula: `floor ((${e}-score - 10) / 2)`,
     });
-    addProperty({
+    tableplop.addProperty({
       parentId: scoreId,
       type: "number",
       name: e + "-score",
@@ -409,14 +277,14 @@
 
   const addInfo = (sectionId: number) => {
     const name = "Info"
-    const id = addParent(name);
-    addProperty({
+    const id = tableplop.addParent(name);
+    tableplop.addProperty({
       id: id,
       type: "title-section",
       value: name,
       parentId: sectionId
     });
-    addProperty({
+    tableplop.addProperty({
       parentId: id,
       type: "number",
       name: "proficiency",
@@ -443,7 +311,7 @@
         }
       }
 
-      addProperty({
+      tableplop.addProperty({
         parentId: id,
         type: "text",
         name: "type",
@@ -451,7 +319,7 @@
       });
     }
     if(data.value.size) {
-      addProperty({
+      tableplop.addProperty({
         parentId: id,
         type: "text",
         name: "size",
@@ -460,7 +328,7 @@
     }
     if(data.value.alignment) {
       let a = data.value.alignment.map((e: string) => Alignments[e]).join(" ");
-      addProperty({
+      tableplop.addProperty({
         parentId: id,
         type: "text",
         name: "alignment",
@@ -471,8 +339,8 @@
 
   const addSenses = (sectionId: number) => {
     const name = "Senses"
-    const id = addParent(name);
-    addProperty({
+    const id = tableplop.addParent(name);
+    tableplop.addProperty({
       id: id,
       type: "title-section",
       value: name,
@@ -480,23 +348,23 @@
     });
     makeSenses(id);
   }
-  
+
   const addChallenge = (sectionId: number) => {
     const name = "Challenge"
-    const id = addParent(name);
-    addProperty({
+    const id = tableplop.addParent(name);
+    tableplop.addProperty({
       id: id,
       type: "title-section",
       value: name,
       parentId: sectionId
     });
-    addProperty({
+    tableplop.addProperty({
       parentId: id,
       type: "text",
       name: "cr",
       value: extractCR()
     });
-    addProperty({
+    tableplop.addProperty({
       parentId: id,
       type: "number",
       name: "experience",
@@ -505,13 +373,13 @@
     if("object" == typeof data.value.cr) {
       Object.keys(data.value.cr).forEach(k => {
         if(k === 'lair' || k === 'coven') {
-          addProperty({
+          tableplop.addProperty({
             parentId: id,
             type: "text",
             name: "cr-"+k,
             value: data.value.cr[k]
           });
-          addProperty({
+          tableplop.addProperty({
             parentId: id,
             type: "number",
             name: "experience-"+k,
@@ -524,8 +392,8 @@
 
   const addNotes = (parentId: number) => {
     const name = "Notes"
-    const id = addParent(name);
-    addProperty({
+    const id = tableplop.addParent(name);
+    tableplop.addProperty({
       id: id,
       type: "title-section",
       value: name,
@@ -545,7 +413,7 @@
 
     data.value.trait && s.push(...data.value.trait.map(((e: any) => `<strong><em>${e.name}. </strong></em>${S(e.entries[0])}`)));
 
-    addProperty({
+    tableplop.addProperty({
       type: "paragraph",
       value: s.map((e => e ? `<p>${e}</p>` : "<hr>")).join(""),
       parentId: id
@@ -568,17 +436,17 @@
 
   const addAppearance = (parentId: number) => {
     const name = "appearance"
-    const id = addParent(name);
+    const id = tableplop.addParent(name);
     const appearances: any[] = [];
-    if(character.value.appearances.length > 0) {
+    if(tableplop.character.appearances.length > 0) {
       appearances.push({
-        url: character.value.appearances[0],
-        location: character.value.appearances[0],
-        iconSrc: character.value.appearances[0]
+        url: tableplop.character.appearances[0],
+        location: tableplop.character.appearances[0],
+        iconSrc: tableplop.character.appearances[0]
       })
     }
 
-    addProperty({
+    tableplop.addProperty({
       id: id,
       type: "appearance",
       parentId: parentId,
@@ -598,7 +466,7 @@
       data.value.ac[0].ac && (e = data.value.ac[0].ac);
       data.value.ac[0].special && (e = E("AC:\n" + data.value.ac[0].special, "number", null == e ? "" : e.toString()));
     }
-    addProperty({
+    tableplop.addProperty({
       parentId: parentId,
       type: "number",
       name: "armor-class",
@@ -611,7 +479,7 @@
       const a = `${e}-speed`;
 
       if("number" == typeof t) {
-        addProperty({
+        tableplop.addProperty({
           parentId: parentId,
           type: "number",
           name: a,
@@ -619,7 +487,7 @@
         })
       }
       else if ("object" == typeof t) {
-        addProperty({
+        tableplop.addProperty({
           parentId: parentId,
           type: "number",
           name: `${a} ${t.condition}`,
@@ -633,8 +501,7 @@
     if (data.value.senses) {
       for (const a of data.value.senses) {
         const [e, ...t] = a.split(" ");
-        // character.value.stats[e] = {value: t.join(" "), type: "text", section: "senses"}
-        addProperty({
+        tableplop.addProperty({
           parentId: parentId,
           type: "text",
           name: e,
@@ -642,19 +509,17 @@
         })
       }
     }
-    addProperty({
+    tableplop.addProperty({
       parentId: parentId,
       type: "number",
       name: "passive-perception",
-      //value: data.value.passive
-      formula: "10 + perception + prof"
+      formula: "10 + perception"
     });
-    addProperty({
+    tableplop.addProperty({
       parentId: parentId,
       type: "number",
       name: "passive-stealth",
-      // value: data.value.passive
-      formula: "10 + stealth + prof"
+      formula: "10 + stealth"
     });
   }
 
@@ -700,9 +565,9 @@
     }
 
     if(data.value[key]) {
-      const parentId = getParent(Actions);
-      const id = addParent(name+"-section");
-      addProperty({
+      const parentId = tableplop.getParent(Actions);
+      const id = tableplop.addParent(name+"-section");
+      tableplop.addProperty({
         id: id,
         type: "title-section",
         value: name,
@@ -710,14 +575,14 @@
       });
 
       if(key == "legendary" && "legendaryHeader" in data.value) {
-        addProperty({
+        tableplop.addProperty({
           type: "paragraph",
           value: `${data.value.legendaryHeader.join(" ")}`,
           parentId: id
         });
       }
       else if(key == "mythic" && "mythicHeader" in data.value) {
-        addProperty({
+        tableplop.addProperty({
           type: "paragraph",
           value: `${data.value.mythicHeader.join(" ")}`,
           parentId: id
@@ -726,7 +591,7 @@
 
       data.value[key].forEach((e: any) => {
         if("string" == typeof e) {
-          addProperty({
+          tableplop.addProperty({
             type: "paragraph",
             value: e,
             parentId: id
@@ -746,7 +611,7 @@
 
   const actionAddMessageOrP = (parentId:number, e:any) => {
     if("string" == typeof e) {
-      addProperty({
+      tableplop.addProperty({
         type: "paragraph",
         value: e,
         parentId: parentId
@@ -761,13 +626,13 @@
         entry = e.entry;
       }
       if (C(e)) {
-        addMessage({
-          name: formatNameMessage(e.name),
+        tableplop.addMessage({
+          name: tableplop.formatNameMessage(e.name),
           message: `${S(e.name)}: ${S(entry)}`,
           parentId: parentId
         })
       } else {
-        addProperty({
+        tableplop.addProperty({
           type: "paragraph",
           value: `<strong>${e.name}</strong>: ${entry}`,
           parentId: parentId
@@ -776,16 +641,15 @@
     }
   }
 
-  const formatNameMessage = (n: string) => {
-    return n.replace(/{@.*?}/g, "").trim().toLocaleLowerCase().split(" ").join("-")
-  }
-
   const extractSpell = (tag: string) => {
     // let test = "{@spell fire bolt}";
     let name = extractSpellName(tag).split('||')[0];
     let spell = null;
     if(spells.value !== null) {
       spell = spells.value.find(s => s.name.toLowerCase() === name.toLowerCase());
+      if(spell) {
+        spell.info = S(messageSpell(spell))
+      }
     }
     return {
       name: name,
@@ -796,13 +660,13 @@
   const addSpells = () => {
     if(!("spellcasting" in data.value)) return;
 
-    const parentId = getParent(Spells);
+    const parentId = tableplop.getParent(Spells);
 
     data.value.spellcasting.forEach((s: any) => {
       let id = parentId;
       if(data.value.spellcasting.length > 1) {
-        id = addParent(`spell-${s.name}-section`);
-        addProperty({
+        id = tableplop.addParent(`spell-${s.name}-section`);
+        tableplop.addProperty({
           id: id,
           type: "title-section",
           value: s.name,
@@ -810,7 +674,7 @@
         });
       }
       if(s.headerEntries) {
-        addProperty({
+        tableplop.addProperty({
           type: "paragraph",
           value: `${s.headerEntries.join(" ")}`,
           parentId: id
@@ -822,8 +686,8 @@
       times.forEach((t,i) => {
         if(t in s) {
           if(t === "will") {
-            const willid = addParent(`spell-${s.name}-section-will`);
-            addProperty({
+            const willid = tableplop.addParent(`spell-${s.name}-section-will`);
+            tableplop.addProperty({
               id: willid,
               type: "title-section",
               value: `${timetxt[i]}`,
@@ -831,7 +695,7 @@
             });
             s[t].forEach((tag: string) => {
               const ex = extractSpell(tag);
-              addMessageSpell(willid, ex);
+              tableplop.addMessageSpell(willid, ex);
             });
           }
           else {
@@ -841,14 +705,14 @@
               const nb = parseInt(split[0]);
               // si "e" en [1] alors checkbox pour chaque spell, sinon une seule checkbox
               if (!each) {
-                addCheckboxes(id, `${s.name}-${t}`, `${s.name} /${timetxt[i]}`, nb);
+                tableplop.addCheckboxes(id, `${s.name}-${t}`, `${s.name} /${timetxt[i]}`, nb);
               }
               s[t][key].forEach((tag: string) => {
                 const ex = extractSpell(tag);
                 if (each) {
-                  addCheckboxes(id, `${ex.name}-${t}`, `${ex.name} /${timetxt[i]}`, nb);
+                  tableplop.addCheckboxes(id, `${ex.name}-${t}`, `${ex.name} /${timetxt[i]}`, nb);
                 }
-                addMessageSpell(id, ex);
+                tableplop.addMessageSpell(id, ex);
               });
             });
           }
@@ -857,8 +721,8 @@
 
       if(s.spells) {
         Object.keys(s.spells).forEach((lvl: string) => {
-          const spid = addParent(`spell-${s.name}-section-${lvl}`);
-          addProperty({
+          const spid = tableplop.addParent(`spell-${s.name}-section-${lvl}`);
+          tableplop.addProperty({
             id: spid,
             type: "title-section",
             value: parseInt(lvl) === 0 ? `Cantrip` : `Level ${lvl}`,
@@ -866,11 +730,11 @@
           });
           const o = s.spells[lvl];
           if(parseInt(lvl) > 0) {
-            addCheckboxes(spid, `spell-${s.name}-section-${lvl}-slots`, `Slots level ${lvl}`, o.slots);
+            tableplop.addCheckboxes(spid, `spell-${s.name}-section-${lvl}-slots`, `Slots level ${lvl}`, o.slots);
           }
           o.spells.forEach((tag: string) => {
             const ex = extractSpell(tag);
-            addMessageSpell(spid, ex);
+            tableplop.addMessageSpell(spid, ex);
           });
 
         });
@@ -879,47 +743,11 @@
     });
   }
 
-  const addCheckboxes = (parentId: number, name: string, text: string, max: number) => {
-    const id = addParent(`${name}`);
-    addProperty({
-      id: id,
-      type: "checkboxes",
-      name: text,
-      parentId: parentId,
-      local: true
-    });
-    addProperty({
-      type: "number",
-      name: text + '-max',
-      parentId: id,
-      local: true,
-      value: max
-    });
-  }
-
-  const addMessageSpell = (parentId: number, ex: any) => {
-    let message = "";
-    if(!ex.spell) {
-      message = "Woups it's undefined ...";
-    }
-    else {
-      const s = ex.spell;
-      message = s.info;
-    }
-    const id = getParent(ex.name + '-spell');
-    addMessage({
-      // id: id,
-      name: formatNameMessage(ex.spell?.name || ex.name),
-      message: S(message),
-      parentId: parentId
-    });
-  }
-
   const addSavingThrows = () => {
     const name = "Saving Throws"
-    const parentId = getParent(Throws);
-    const id = addParent(name);
-    addProperty({
+    const parentId = tableplop.getParent(Throws);
+    const id = tableplop.addParent(name);
+    tableplop.addProperty({
       id: id,
       type: "title-section",
       value: name,
@@ -928,8 +756,8 @@
 
     for (const e of Abilities) {
       const name = `${e}-save`;
-      const stid = addParent(name);
-      addProperty({
+      const stid = tableplop.addParent(name);
+      tableplop.addProperty({
         id: stid,
         parentId: id,
         type: "saving-throw",
@@ -937,7 +765,7 @@
         message: `${x(e).toUpperCase()} save: {1d20 + ${e}-save}`,
         formula: `${e} + (${name}-proficiency ? proficiency : 0)`,
       });
-      addProperty({
+      tableplop.addProperty({
         parentId: stid,
         type: "checkbox",
         name: name + "-proficiency",
@@ -962,9 +790,9 @@
 
   const addSkills = () => {
     const name = "Skills"
-    const parentId = getParent(Throws);
-    const id = addParent(name);
-    addProperty({
+    const parentId = tableplop.getParent(Throws);
+    const id = tableplop.addParent(name);
+    tableplop.addProperty({
       id: id,
       type: "title-section",
       value: name,
@@ -972,8 +800,8 @@
     });
 
     for (const s of Skills) {
-      const skid = addParent(s.name);
-      addProperty({
+      const skid = tableplop.addParent(s.name);
+      tableplop.addProperty({
         id: skid,
         parentId: id,
         type: "skill",
@@ -984,13 +812,13 @@
         message: `${s.name} check: {1d20 + ${s.name}}`,
         formula: `${s.attribute} + (${s.name}-proficiency ? proficiency : jack-of-all-trades ? (floor (proficiency / 2)) : 0) + (${s.name}-expertise ? proficiency : 0)`,
       });
-      addProperty({
+      tableplop.addProperty({
         parentId: skid,
         type: "checkbox",
         name: s.name + "-proficiency",
         value: checkSkillProf(s)
       });
-      addProperty({
+      tableplop.addProperty({
         parentId: skid,
         type: "checkbox",
         name: s.name + "-expertise",
@@ -998,7 +826,7 @@
       });
     }
 
-    addProperty({
+    tableplop.addProperty({
       parentId: id,
       type: "checkbox",
       name: "jack-of-all-trades",
@@ -1006,12 +834,70 @@
     })
   }
 
-  const downloadJson = () => {
-    download(jsonTableplop.value, character.value.name + ".json", "application/json");
+  const build = () => {
+    if(!("cr" in data.value)) {
+      data.value.cr = "0";
+    }
+    if(!("proficiency" in data.value)) {
+      data.value.proficiency = parseInt(data.value.pbNote || prof[extractCR()]);
+    }
+    if("summonedBySpell" in data.value) {
+      tableplop.character.category = "Summoned";
+    }
+    else {
+      tableplop.character.category = "CR " + extractCR();
+    }
+    tableplop.character.name = data.value.name;
+    if(data.value.token) {
+      tableplop.character.appearances.push(`${import.meta.env.VITE_TOKENURL}/bestiary/tokens/${data.value.token.source}/${data.value.token.name}.webp`.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
+    }
+    else if(data.value.hasToken) {
+      let name = data.value.name;
+      if("summonedBySpell" in data.value) {
+        name = name.split(' (')[0];
+      }
+      tableplop.character.appearances.push(`${import.meta.env.VITE_TOKENURL}/bestiary/tokens/${data.value.source}/${name}.webp`.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
+    }
+    addSections();
+    // Character
+    addAbilities();
+    const parentId = tableplop.getParent(Character);
+    const [sectionId, section2Id] = tableplop.addHorizontalSection(parentId, "infos");
+    addInfo(sectionId);
+    addSenses(section2Id);
+    addChallenge(section2Id);
+    addNotes(parentId);
+    addAppearance(parentId);
+
+    // Actions
+    addActions("Actions", "action");
+    addActions("Actions Bonus", "bonus");
+    addActions("Reactions", "reaction");
+    addActions("Legendary", "legendary");
+    addActions("Mythic", "mythic");
+    addActions("Lair", "lair");
+    addActions("Regional Effects", "regional");
+
+    // Spells
+    addSpells();
+
+    // Throws
+    addSavingThrows();
+    addSkills();
   }
 
-  const spellsStore = useSpellsStore();
-  const spells = computed(() => spellsStore.spells);
+  const btnDisabled = computed(() => {
+    if(!jsonTableplop) return true;
+    return jsonTableplop.value.length === 0;
+  });
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(jsonTableplop.value);
+  }
+
+  const downloadJson = () => {
+    download(jsonTableplop.value, tableplop.character.name + ".json", "application/json");
+  }
 </script>
 
 <template>
@@ -1025,7 +911,7 @@
     </div>
     <div class="col-6 d-flex justify-content-between align-items-center">
       <div class="btn-group mw">
-        <button class="btn btn-sm btn-success" @click="handleTableplop" :disabled="spells.length === 0 || !jsonsource">
+        <button class="btn btn-sm btn-success" @click="handleTableplop" :disabled="!isInit || !jsonsource">
           <i class="fa-solid fa-gears" />
           Convert
         </button>
@@ -1038,7 +924,7 @@
           Download
         </button>
       </div>
-      <label v-if="spells.length === 0" class="fst-italic small">Loading spells in progress ...</label>
+      <label v-if="!isInit" class="fst-italic small">Loading spells in progress ...</label>
       <label class="fw-bold">Tableplop</label>
     </div>
   </div>
