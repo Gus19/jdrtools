@@ -1853,13 +1853,13 @@
       indexChoice = 0;
     }
     else if(option) {
-      indexChoice = as.findIndex((a:any) => a.name == option);
+      indexChoice = as.findIndex((a:any, i: number) => a.name == option || (a.name == null && option == `Option ${i+1}`));
     }
     let o = {
       origin: origin,
       originName: originName,
       option: option,
-      optionChoice: as.length > 1 ? as.map((a:any) => a.name) : null,
+      optionChoice: as.length > 1 ? as.map((a:any, i: number) => a.name || `Option ${i+1}`) : null,
       spells: [] as any[]
     }
     if(indexChoice != null) {
