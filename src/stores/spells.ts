@@ -76,9 +76,14 @@ export const useSpellsStore = defineStore("SpellsStore", {
     isLoad: (state) => state.spells.length > 0,
     spellsChoice() {
       return (className: string|null = null, level: number|null = null, schools: null|string[] = null): SpellInfo[] => {
-        const names = this.sources.filter((s:any) => s.classes.includes(className)).map((s:any) => s.name);
+        let names = []
+        if(className != null) names = this.sources.filter((s:any) => s.classes.includes(className)).map((s:any) => s.name);
         return this.spellsSort(this.spells
-          .filter(s => (className == null || names.includes(s.name)) && (level == null || s.level == level) && (schools == null || schools.includes(s.school)))
+          .filter(s =>
+            (className == null || names.includes(s.name)) &&
+            (level == null || s.level == level) &&
+            (schools == null || schools.includes(s.school))
+          )
         );
       }
     },

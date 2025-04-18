@@ -51,6 +51,7 @@
   import ItemSearch from "@/components/ItemSearch.vue";
   import Money from "@/components/Money.vue";
   import FeatList from "@/components/FeatList.vue";
+  import Condition from "@/components/Condition.vue";
   const spellsStore = useSpellsStore();
   const racesStore = useRacesStore();
   const bgStore = useBackgroundsStore();
@@ -222,7 +223,6 @@
       let f = false;
       const level = character.value.level;
       // const leveling = character.value.state == 'leveling';
-      // TODO if not leveling, only Equipment / Spells prepare
 
       if(level == 1) {
         const a = character.value.race.name !== null;
@@ -366,7 +366,6 @@
                   const feat = feats.value.find((f: any) => f.name == n);
                   if (feat.ability && feat.ability[0].choose) {
                     let len = character.value.abilities.improvments.filter((ip: any) => ip.origin == 'feat' && ip.level == level).length;
-                    console.log('check len', len, n);
                     g2 = len != 0;
                   } else {
                     g2 = true;
@@ -475,8 +474,9 @@
               j4 = false;
               return;
             }
+            if(asv.count != 0 && asv.selected != asv.count) j4 = false;
             asv.spells.forEach((asp:any) => {
-              if(asp.selected != asp.count) j4 = false;
+              if(asp.count != 0 && asp.selected != asp.count) j4 = false;
             });
           });
           ss.push({
@@ -788,7 +788,14 @@
     return JSON.parse(localStorage.getItem(storagekey)||'{}');
   };
 
-  watch(character, saveStorage, {deep: true});
+  watch(character, (nv) => {
+    if(dev) {
+      console.log('watch character');
+      // console.log(JSON.stringify(nv, null, 2));
+    }
+    saveStorage();
+  },{deep: true});
+
   watch(() => character.value && character.value.abilities, (newValue) => {
     if(newValue) {
       calcDatasAbilities();
@@ -1264,6 +1271,7 @@
       lastClass.value.spellcastingAbility = sub.spellcastingAbility || null;
       calculSpellcasterLevel();
     }
+    calcDatasClass(false);
   }
   const calculSpellcasterLevel = () => {
     let l = 0;
@@ -1340,11 +1348,20 @@
       if(classProficienciesGained.value) {
         classProficienciesGained.value.forEach((cpg:any) => {
           addDefaultSkills(cpg.origin, cpg.skills, cpg.originName);
+          // if (cpg.expertise) addDefaultExpertise(cpg.origin, cpg.expertise, cpg.originName);
           addDefaultTools(cpg.origin, cpg.tools, cpg.originName)
           addDefaultLanguage(cpg.origin, cpg.languages, cpg.originName)
           addDefaultEquipmentProf('armor', cpg.origin, cpg.armors, cpg.originName);
           addDefaultEquipmentProf('weapon', cpg.origin, cpg.weapons, cpg.originName);
-          // if (cpg.expertise) addDefaultExpertise(cpg.origin, cpg.expertise, cpg.originName);
+          ['resist', 'immune', 'vulnerable', 'conditionImmune'].forEach((k:string) => {
+            if(cpg[k]) {
+              cpg[k].forEach((a: any) => {
+                if("string" == typeof a) {
+                  addSkillProf(k, cpg.origin, a, false, cpg.originName);
+                }
+              })
+            }
+          });
         });
       }
     });
@@ -1544,8 +1561,13 @@
       classProficienciesGained.value.forEach((cpg:any) => {
         if(cpg.skills) chooseAddSkill(cpg.origin, cpg.skills[0], cpg.originName);
         if(cpg.expertise) chooseAddExpertise(cpg.origin, cpg.expertise[0], cpg.originName);
-        if(cpg.languages) chooseAddLanguage(cpg.origin, cpg.languages[0], cpg.originName);
+        if(cpg.languages) chooseAddLanguage(cpg.origin, cpg.languages, cpg.originName);
         if(cpg.tools) chooseAddTools(cpg.origin, cpg.tools[0], cpg.originName);
+        if(cpg.additionalSpells) {
+          let option = null;
+          if (lastClass.value.option) option = lastClass.value.option;
+          chooseAddSpells(cpg.origin, cpg.originName, cpg.additionalSpells, option);
+        }
       });
     }
 
@@ -1799,17 +1821,18 @@
       const s = spellsStore.findByName(n);
       if (s) {
         from[s.level].push(s);
-        spellslots[s.level]++;
+        // spellslots[s.level]++;
         addSpell(s.name, s.level, false, true, origin, originName);
         addSpellLimit(s.name, origin, originName, limit, limitNumber);
       }
     }
     else if (k.choose) {
       if ("string" == typeof k.choose) {
+        if(k.choose.length == 0) k.choose = "level=0;1;2;3;4;5;6;7;8;9";
         const split = k.choose.split("|");
-        let resClass = null;
-        let resLvl = null;
-        let resSchool = null
+        let resClass: any = null;
+        let resLvl: any = null;
+        let resSchool: any = null
         split.forEach((s: string) => {
           const a = /([^=]*)=([^=]*)/;
           const g = a.exec(s);
@@ -1819,12 +1842,22 @@
             if (g[1] == 'school') resSchool = g[2].split(';');
           }
         })
-        if (resLvl != null && !isNaN(resLvl)) {
-          const spls = spellsStore.spellsChoice(resClass, resLvl, resSchool);
-          from[resLvl].push(
-              ...spls
-          );
-          spellslots[resLvl] += k.count || 1;
+        if (resLvl != null) {
+          if(!isNaN(resLvl)) {
+            const spls = spellsStore.spellsChoice(resClass, resLvl, resSchool);
+            from[resLvl].push(...spls);
+            spellslots[resLvl] += k.count || 1;
+          }
+          else {
+            resLvl.split(';').forEach((l: string) => {
+              // TODO
+              if(from[l].length == 0) {
+                const spls = spellsStore.spellsChoice(resClass, parseInt(l), resSchool);
+                from[l].push(...spls);
+              }
+            })
+            globalCount.value += k.count || 1;
+          }
         }
         else {
           console.error('Error extract spell choose', k.choose);
@@ -1845,6 +1878,7 @@
     }
   }
 
+  const globalCount = ref(0);
   const chooseAddSpells = (origin: string, originName: string, as: any, option:string|null = null) => {
     if(!as) return;
     const ch = chooses.value.additionalSpells;
@@ -1860,8 +1894,11 @@
       originName: originName,
       option: option,
       optionChoice: as.length > 1 ? as.map((a:any, i: number) => a.name || `Option ${i+1}`) : null,
+      count: 0,
+      selected: 0,
       spells: [] as any[]
     }
+    globalCount.value = 0;
     if(indexChoice != null) {
       const spells: any = [];
 
@@ -1946,12 +1983,18 @@
           spells.push({
             spellslot: spellslot,
             count: spellslots[spellslot],
-            selected: character.value.spells.filter((s:any) => s.origin == origin && (s.originName == originName || s.originName == null || originName == null) && s.level <= character.value.level && s.spellslot == spellslot).length,
+            selected: character.value.spells.filter((s:any) => s.origin == origin && (s.originName == originName || s.originName == null || originName == null) && s.level <= character.value.level && s.spellslot == spellslot && s.choose).length,
             from: from[spellslot]
           });
         }
       })
 
+      if(c.name && as.length == 1 && (origin == "class" || origin == "subclass")) {
+        o.originName = c.name
+        o.origin = "feature";
+      };
+      o.count = globalCount.value;
+      o.selected = character.value.spells.filter((s:any) => s.origin == o.origin && (s.originName == o.originName || s.originName == null || originName == null) && s.level <= character.value.level && s.choose).length,
       o.spells = spells;
     }
     if(o.spells.length > 0 || as.length > 1) {
@@ -2243,6 +2286,7 @@
     return from;
   }
   const jackofAllTrades = computed(() => character.value && character.value.class.find((cl:any) => cl.name == 'Bard' && cl.level >= 2) != null);
+  const unarmoredDefense = computed(() => character.value && character.value.class.find((cl:any) => (cl.name == 'Monk' || cl.name == 'Barbarian') && cl.level >= 1) != null)
   const calculSkills = computed(() => Skills.map(s => {
     const level = character.value.level;
     const skill = character.value.skills.find((c:any) => c.name == s.name);
@@ -2295,7 +2339,7 @@
     }
   }
   const countProfByOrigin = (key:string, origin: string, originName: string|null = null) => {
-    return character.value[key].filter((s:any) => (s.origin == origin && (originName == null || s.originName == originName)) && s.choose).length;
+    return character.value[key].filter((s:any) => (s.origin == origin && (originName == null || s.originName == originName)) && s.choose && s.level == character.value.level).length;
   }
   const displayChoosesProf = (key: string, origin: string, originName: string|null = null) => {
     const c = chooses.value[key].find((sk:any) => sk.origin == origin && (originName == null || sk.originName == originName))
@@ -2571,7 +2615,7 @@
   const computedSpells = computed(() => {
     if(character.value && character.value.spells) {
       let r:any = [];
-      character.value.spells.sort((a:any, b:any) => a.name.localeCompare(b.name)).forEach((s:any) => {
+      character.value.spells.forEach((s:any) => {
         let is = r.findIndex((rf:any) => rf.spellslot == s.spellslot);
         if(is == -1) {
           r.push({
@@ -2592,6 +2636,7 @@
           ...s,
           info: spellsStore.findByName(s.name)?.info
         });
+        r[is].origins[io].spells.sort((a:any, b:any) => a.name.localeCompare(b.name));
       });
       return r.sort((a:any, b:any) => a.spellslot - b.spellslot);
     }
@@ -2805,13 +2850,16 @@
     }
     else {
       ac = 10 + modDex.value;
+      if(unarmoredDefense.value) {
+        ac += modCon.value;
+      }
     }
     if(shield != null) {
       ac += shield.ac || 2;
     }
     character.value.ac = ac;
   }
-  watch(() => character.value && [character.value.equipment.armor, character.value.equipment.shield, modDex.value], (nv) => {
+  watch(() => character.value && [character.value.equipment.armor, character.value.equipment.shield, modDex.value, modCon.value], (nv) => {
     if(nv) {
       calcAC()
     }
@@ -3017,6 +3065,9 @@
         else if(armor.type == "MA") f = `${armor.ac} + min(dex,2)`;
         else f = `${armor.ac}`;
       }
+    }
+    else if(unarmoredDefense.value) {
+      f += " + con";
     }
     tableplop.addProperty({
       parentId: id,
@@ -3586,7 +3637,7 @@
       <div class="btn-group btn-group-sm mb-1 d-flex align-items-center">
         <button class="btn btn-secondary" @click="logJson">logJson</button>
         <button class="btn btn-secondary" @click="json = steps">steps</button>
-        <button class="btn btn-secondary" @click="json = chooses">chooses</button>
+        <button class="btn btn-secondary" @click="json = chooses.additionalSpells">chooses</button>
         <button class="btn btn-secondary" @click="json = classProficienciesGained">classProficienciesGained</button>
       </div>
     </template>
@@ -4095,7 +4146,10 @@
               </div>
 
               <template v-for="as in chooses.additionalSpells">
-                <p class="fw-bold m-0">{{ as.originName }}</p>
+                <p class="fw-bold m-0">
+                  {{ as.originName }}
+                  <span class="small fst-normal" v-if="as.count"> ({{as.selected}}/{{as.count}})</span>
+                </p>
                 <div v-if="as.optionChoice" class="btn-group btn-group-sm mb-1 d-flex align-items-center">
                   <button type="button" class="btn" :class="as.option == o ? 'btn-primary' : 'btn-outline-secondary'" v-for="o in as.optionChoice" :key="o" @click="changeOption(as.origin, as.originName, o)">{{o}}</button>
                 </div>
@@ -4103,9 +4157,9 @@
                   <p class="fst-italic m-0">
                     <template v-if="asp.spellslot == 0">Cantrip</template>
                     <template v-else>Level {{ asp.spellslot }}</template>
-                    <span class="small fst-normal"> ({{asp.selected}}/{{asp.count}})</span>
+                    <span class="small fst-normal" v-if="asp.count"> ({{asp.selected}}/{{asp.count}})</span>
                   </p>
-                  <div v-for="spell in filterOptions('additional', asp.from)" class="form-check pb-1">
+                  <div v-for="spell in filterOptions('additional', asp.from)" :key="spell" class="form-check pb-1">
                     <input class="form-check-input" type="checkbox" :value="spell.name"
                            @click="changeSpell($event, asp.spellslot, true, as.origin, as.originName)"
                            :checked="isSpellCheck(spell.name)"
@@ -4434,6 +4488,20 @@
             <template v-for="(r,i) in character.resist.map((r:any) => r.name)" :key="r">
               <template v-if="i>0">,&#160;</template>
               <DamageType :name="r" />
+            </template>
+          </CharacterInfo>
+          <CharacterInfo v-if="character.immune.length">
+            <template v-slot:label>Immunities:</template>
+            <template v-for="(r,i) in character.immune.map((r:any) => r.name)" :key="r">
+              <template v-if="i>0">,&#160;</template>
+              <DamageType :name="r" />
+            </template>
+          </CharacterInfo>
+          <CharacterInfo v-if="character.conditionImmune.length">
+            <template v-slot:label>Condition Immunities:</template>
+            <template v-for="(r,i) in character.conditionImmune.map((r:any) => r.name)" :key="r">
+              <template v-if="i>0">,&#160;</template>
+              <Condition :name="r" />
             </template>
           </CharacterInfo>
 

@@ -114,6 +114,30 @@ export const Damages: Damage[] = [
   {name: "thunder", display: "Thunder", example: "Concussive sound" }
 ]
 
+export interface Condition {
+  name: string,
+  display: string,
+  example?: string
+}
+
+export const Conditions: Condition[] = [
+  {name: "blinded", display: "Blinded"},
+  {name: "charmed", display: "Charmed"},
+  {name: "deafened", display: "Deafened"},
+  {name: "exhaustion", display: "Exhaustion"},
+  {name: "frightened", display: "Frightened"},
+  {name: "grappled", display: "Grappled"},
+  {name: "incapacitated", display: "Incapacitated"},
+  {name: "invisible", display: "Invisible"},
+  {name: "paralyzed", display: "Paralyzed"},
+  {name: "petrified", display: "Petrified"},
+  {name: "poisoned", display: "Poisoned"},
+  {name: "prone", display: "Prone"},
+  {name: "restrained", display: "Restrained"},
+  {name: "stunned", display: "Stunned"},
+  {name: "unconscious", display: "Unconscious"},
+]
+
 export const damageByKey = (key: string) => {
   return Damages.find(damage => damage.key == key);
 }

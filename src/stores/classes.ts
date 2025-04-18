@@ -43,7 +43,10 @@ export const useClassesStore = defineStore("ClassesStore", {
             local1.push(...data.class);
           }
           if (data.subclass) {
-            local2.push(...data.subclass);
+            local2.push(...data.subclass.filter((s:any) =>
+              !["TDCSR"].includes(s.source) &&
+              s.name != "Knowledge Domain (PSA)")
+            );
           }
           if (data.classFeature) {
             local3.push(...data.classFeature);
@@ -56,6 +59,11 @@ export const useClassesStore = defineStore("ClassesStore", {
         this.subclasses = local2;
         this.classFeatures = local3;
         this.subclassFeatures = local4;
+        this.subclassFeatures.forEach(s => {
+          if(s.name == "Giant Power" || s.name == "Giant's Havoc") {
+            s.header = 1;
+          }
+        })
 
         const response = await fetch(`${import.meta.env.VITE_BASEURL}/data/optionalfeatures.json`);
         const data = await response.json();
@@ -908,18 +916,145 @@ const classOtherProgression: any[] = [
 
 export const classProficienciesGained: any[] = [
   // Artificer
+  // Alchemist
   {
     origin: "subclass",
     originName: "Alchemist",
     level: 3,
-    tools: [
+    tools: [{
+      "alchemist's supplies": true
+    }]
+  },
+  {
+    origin: "subclass",
+    originName: "Alchemist",
+    level: 9,
+    additionalSpells: [
       {
-        "alchemist's supplies": true,
-      },
-      {
-        "anyArtisansTool": 1
+        "innate": {
+          "9": {
+            "daily": {
+              "1": [
+                "lesser restoration"
+              ]
+            },
+            modAbility: "int"
+          }
+        }
       }
     ]
+  },
+  {
+    origin: "subclass",
+    originName: "Alchemist",
+    level: 15,
+    resist: ["acid", "poison"],
+    conditionImmune: ["poisoned"],
+    additionalSpells: [
+      {
+        "innate": {
+          "15": {
+            "daily": {
+              "1": [
+                "greater restoration",
+                "heal"
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    origin: "subclass",
+    originName: "Armorer",
+    level: 3,
+    tools: [{
+      "smith's tools": true
+    }],
+    armors: ["heavy"]
+    // TODO : add optional feature option like Infusions
+  },
+  // Artillerist
+  {
+    origin: "subclass",
+    originName: "Artillerist",
+    level: 3,
+    tools: [{
+      "woodcarver's tools": true
+    }]
+  },
+  // Battle Smith
+  {
+    origin: "subclass",
+    originName: "Battle Smith",
+    level: 3,
+    tools: [{
+      "smith's tools": true
+    }],
+    weapons: ["martial"]
+  },
+  // Barbarian
+  {
+    origin: "class",
+    originName: "Barbarian",
+    level: 3,
+    skills: [{
+      "choose": {
+        "from": [
+          "animal handling",
+          "athletics",
+          "intimidation",
+          "nature",
+          "perception",
+          "survival"
+        ],
+        "count": 1
+      }
+    }]
+  },
+  {
+    origin: "class",
+    originName: "Barbarian",
+    level: 10,
+    skills: [{
+      "choose": {
+        "from": [
+          "animal handling",
+          "athletics",
+          "intimidation",
+          "nature",
+          "perception",
+          "survival"
+        ],
+        "count": 1
+      }
+    }]
+  },
+  {
+    origin: "subclass",
+    originName: "Ancestral Guardian",
+    level: 10,
+    additionalSpells: [{
+      "innate": {
+        "10": {
+          "daily": {
+            "1": [
+              "augury",
+              "clairvoyance"
+            ]
+          }
+        }
+      }
+    }]
+  },
+  {
+    origin: "subclass",
+    originName: "Giant",
+    level: 3,
+    languages: [{
+      "giant": true
+    }]
   },
   // Bard
   {
@@ -927,7 +1062,15 @@ export const classProficienciesGained: any[] = [
     originName: "Bard",
     level: 3,
     expertise: [{
-        anyProficientSkill: 2
+      anyProficientSkill: 2
+    }]
+  },
+  {
+    origin: "class",
+    originName: "Bard",
+    level: 10,
+    expertise: [{
+      anyProficientSkill: 2
     }]
   },
   {
