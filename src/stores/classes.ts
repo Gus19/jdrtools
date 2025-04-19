@@ -916,18 +916,17 @@ const classOtherProgression: any[] = [
 
 export const classProficienciesGained: any[] = [
   // Artificer
-  // Alchemist
   {
-    origin: "subclass",
     originName: "Alchemist",
+    origin: "subclass",
     level: 3,
     tools: [{
       "alchemist's supplies": true
     }]
   },
   {
-    origin: "subclass",
     originName: "Alchemist",
+    origin: "subclass",
     level: 9,
     additionalSpells: [
       {
@@ -945,8 +944,8 @@ export const classProficienciesGained: any[] = [
     ]
   },
   {
-    origin: "subclass",
     originName: "Alchemist",
+    origin: "subclass",
     level: 15,
     resist: ["acid", "poison"],
     conditionImmune: ["poisoned"],
@@ -966,8 +965,8 @@ export const classProficienciesGained: any[] = [
     ]
   },
   {
-    origin: "subclass",
     originName: "Armorer",
+    origin: "subclass",
     level: 3,
     tools: [{
       "smith's tools": true
@@ -975,19 +974,17 @@ export const classProficienciesGained: any[] = [
     armors: ["heavy"]
     // TODO : add optional feature option like Infusions
   },
-  // Artillerist
   {
-    origin: "subclass",
     originName: "Artillerist",
+    origin: "subclass",
     level: 3,
     tools: [{
       "woodcarver's tools": true
     }]
   },
-  // Battle Smith
   {
-    origin: "subclass",
     originName: "Battle Smith",
+    origin: "subclass",
     level: 3,
     tools: [{
       "smith's tools": true
@@ -996,8 +993,8 @@ export const classProficienciesGained: any[] = [
   },
   // Barbarian
   {
-    origin: "class",
     originName: "Barbarian",
+    origin: "class",
     level: 3,
     skills: [{
       "choose": {
@@ -1014,8 +1011,8 @@ export const classProficienciesGained: any[] = [
     }]
   },
   {
-    origin: "class",
     originName: "Barbarian",
+    origin: "class",
     level: 10,
     skills: [{
       "choose": {
@@ -1032,8 +1029,8 @@ export const classProficienciesGained: any[] = [
     }]
   },
   {
-    origin: "subclass",
     originName: "Ancestral Guardian",
+    origin: "subclass",
     level: 10,
     additionalSpells: [{
       "innate": {
@@ -1049,8 +1046,8 @@ export const classProficienciesGained: any[] = [
     }]
   },
   {
-    origin: "subclass",
     originName: "Giant",
+    origin: "subclass",
     level: 3,
     languages: [{
       "giant": true
@@ -1058,27 +1055,304 @@ export const classProficienciesGained: any[] = [
   },
   // Bard
   {
-    origin: "class",
     originName: "Bard",
+    origin: "class",
     level: 3,
     expertise: [{
       anyProficientSkill: 2
     }]
   },
   {
-    origin: "class",
     originName: "Bard",
+    origin: "class",
     level: 10,
     expertise: [{
       anyProficientSkill: 2
     }]
   },
   {
-    origin: "subclass",
     originName: "Lore",
+    origin: "subclass",
     level: 3,
     skills: [{
       any: 3
     }]
-  }
+  },
+  {
+    originName: "Swords",
+    origin: "subclass",
+    level: 3,
+    armors: ["medium"],
+    weapons: ["scimitar"]
+  },
+  {
+    originName: "Valor",
+    origin: "subclass",
+    level: 3,
+    armors: ["medium","shield"],
+    weapons: ["martial"]
+  },
+  // Cleric
+  {
+    originName: "Arcana",
+    origin: "subclass",
+    level: 1,
+    skills: [{
+      "arcana": true,
+    }]
+  },
+  {
+    originName: "Death",
+    origin: "subclass",
+    level: 1,
+    weapons: ["martial"]
+  },
+  {
+    originName: "Forge",
+    origin: "subclass",
+    level: 1,
+    tools: [{
+      "smith's tools": true
+    }],
+    armors: ["heavy"]
+  },
+  {
+    originName: "Knowledge",
+    origin: "subclass",
+    level: 1,
+    skills: [{
+      "choose": {
+        "from": [
+          "arcana",
+          "history",
+          "nature",
+          "religion"
+        ],
+        "count": 2
+      }
+    }],
+    languages: [{
+      "any": 2
+    }]
+  },
+  {
+    originName: "Life",
+    origin: "subclass",
+    level: 1,
+    armors: ["heavy"]
+  },
+  {
+    originName: "Nature",
+    origin: "subclass",
+    level: 1,
+    skills: [{
+      "choose": {
+        "from": [
+          "animal handling",
+          "nature",
+          "survival"
+        ],
+        "count": 1
+      }
+    }],
+    armors: ["heavy"]
+  },
+  {
+    originName: "Order",
+    origin: "subclass",
+    level: 1,
+    skills: [{
+      "choose": {
+        "from": [
+          "persuasion",
+          "intimidation"
+        ],
+        "count": 1
+      }
+    }],
+    armors: ["heavy"]
+  },
+  {
+    originName: "Peace",
+    origin: "subclass",
+    level: 1,
+    skills: [{
+      "choose": {
+        "from": [
+          "insight",
+          "performance",
+          "persuasion"
+        ],
+        "count": 1
+      }
+    }]
+  },
+  {
+    originName: "Tempest",
+    origin: "subclass",
+    level: 1,
+    armors: ["heavy"],
+    weapons: ["martial"]
+  },
+  {
+    originName: "Twilight",
+    origin: "subclass",
+    level: 1,
+    armors: ["heavy"],
+    weapons: ["martial"]
+  },
+  {
+    originName: "War",
+    origin: "subclass",
+    level: 1,
+    armors: ["heavy"],
+    weapons: ["martial"]
+  },
+  {
+    originName: "War",
+    origin: "subclass",
+    level: 17,
+    resist: ["slashing", "piercing", "bludgeoning"]
+  },
+  {
+    originName: "Solidarity (PSA)",
+    origin: "subclass",
+    level: 1,
+    armors: ["heavy"]
+  },
+  {
+    originName: "Strength (PSA)",
+    origin: "subclass",
+    level: 1,
+    skills: [{
+      "choose": {
+        "from": [
+          "animal handling",
+          "nature",
+          "survival"
+        ],
+        "count": 1
+      }
+    }],
+    armors: ["heavy"]
+  },
+  {
+    originName: "Strength (PSA)",
+    origin: "subclass",
+    level: 17,
+    resist: ["slashing", "piercing", "bludgeoning"]
+  },
+  {
+    originName: "Zeal (PSA)",
+    origin: "subclass",
+    level: 1,
+    armors: ["heavy"],
+    weapons: ["martial"]
+  },
+  // Druid
+  {
+    originName: "Shepherd",
+    origin: "subclass",
+    level: 2,
+    languages: [{
+      "sylvan": true
+    }]
+  },
+  {
+    originName: "Spores",
+    origin: "subclass",
+    level: 14,
+    conditionImmune: ["blinded", "deafened", "frightened", "poisoned"]
+  },
+  // Fighter
+  {
+    originName: "Arcane Archer",
+    origin: "subclass",
+    level: 3,
+    skills: [{
+      "choose": {
+        "from": [
+          "arcana",
+          "nature",
+        ],
+        "count": 1
+      }
+    }]
+  },
+  {
+    originName: "Purple Dragon Knight (Banneret)",
+    origin: "subclass",
+    level: 7,
+    skills: [{
+      "choose": {
+        "from": [
+          "persuasion",
+          "animal handling",
+          "insight",
+          "intimidation",
+          "performance"
+        ],
+        "count": 1
+      }
+    }],
+    expertises: [{
+      "persuasion": true
+    }]
+  },
+  {
+    originName: "Battle Master",
+    origin: "subclass",
+    level: 3,
+    tools: [{anyArtisansTool: true}]
+  },
+  {
+    originName: "Cavalier",
+    origin: "subclass",
+    level: 3,
+    skills: [{
+      "choose": {
+        "from": [
+          "animal handling",
+          "history",
+          "insight",
+          "performance",
+          "persuasion"
+        ],
+        "count": 1
+      }
+    }],
+    languages: [{
+      "any": 1
+    }]
+  },
+  {
+    originName: "Rune Knight",
+    origin: "subclass",
+    level: 3,
+    tools: [{
+      "smith's tools": true
+    }],
+    languages: [{
+      "giant": true
+    }]
+  },
+  {
+    originName: "Samurai",
+    origin: "subclass",
+    level: 3,
+    skills: [{
+      "choose": {
+        "from": [
+          "history",
+          "insight",
+          "performance",
+          "persuasion"
+        ],
+        "count": 1
+      }
+    }],
+    languages: [{
+      "any": 1
+    }]
+  },
 ]

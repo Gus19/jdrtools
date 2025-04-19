@@ -1087,6 +1087,16 @@
       });
     }
   }
+  const addDefaultExpertise = (origin: string, profs: any, originName: string) => {
+    if(profs) {
+      const sp = profs[0];
+      Object.keys(sp).filter((k: string) => k != "anyProficientSkill").forEach((k: string) => {
+        let name: any = Skills.find(s => s.prof == k)?.name;
+        addSkillProf('expertises', origin, name, false, originName);
+      });
+    }
+  }
+
   const addDefaultLanguage = (origin: string, profs: any, originName: string) => {
     if(profs) {
       const lp = profs[0];
@@ -1348,9 +1358,9 @@
       if(classProficienciesGained.value) {
         classProficienciesGained.value.forEach((cpg:any) => {
           addDefaultSkills(cpg.origin, cpg.skills, cpg.originName);
-          // if (cpg.expertise) addDefaultExpertise(cpg.origin, cpg.expertise, cpg.originName);
-          addDefaultTools(cpg.origin, cpg.tools, cpg.originName)
-          addDefaultLanguage(cpg.origin, cpg.languages, cpg.originName)
+          addDefaultExpertise(cpg.origin, cpg.expertises, cpg.originName);
+          addDefaultTools(cpg.origin, cpg.tools, cpg.originName);
+          addDefaultLanguage(cpg.origin, cpg.languages, cpg.originName);
           addDefaultEquipmentProf('armor', cpg.origin, cpg.armors, cpg.originName);
           addDefaultEquipmentProf('weapon', cpg.origin, cpg.weapons, cpg.originName);
           ['resist', 'immune', 'vulnerable', 'conditionImmune'].forEach((k:string) => {
@@ -4078,7 +4088,7 @@
                 </div>
               </template>
 
-              <template v-if="chooses.tools.length > 0 || stepdisabled">
+              <template v-if="chooses.tools.length > 0 || toolsChoices.length > 0">
                 <p class="fw-bold m-0">Tools</p>
                 <div class="d-flex">
                   <div class="flex-1" v-for="cl in toolsChoices" :key="cl.name">
