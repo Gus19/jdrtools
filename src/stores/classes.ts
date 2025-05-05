@@ -45,8 +45,8 @@ export const useClassesStore = defineStore("ClassesStore", {
           if (data.subclass) {
             local2.push(...data.subclass.filter((s:any) =>
               !["TDCSR"].includes(s.source) &&
-              s.name != "Knowledge Domain (PSA)")
-            );
+              s.name != "Knowledge Domain (PSA)"
+            ));
           }
           if (data.classFeature) {
             local3.push(...data.classFeature);
@@ -60,8 +60,16 @@ export const useClassesStore = defineStore("ClassesStore", {
         this.classFeatures = local3;
         this.subclassFeatures = local4;
         this.subclassFeatures.forEach(s => {
-          if(s.name == "Giant Power" || s.name == "Giant's Havoc") {
+          if(["Giant Power", "Giant's Havoc"].includes(s.name)) {
             s.header = 1;
+          }
+          if([
+                "Colossus Slayer", "Giant Killer", "Horde Breaker", // Hunter lvl 3
+                "Escape the Horde", "Multiattack Defense", "Steel Will", // Hunter lvl7
+                "Volley", "Whirlwind Attack", // Hunter lvl 11
+                "Evasion", "Stand Against the Tide", "Uncanny Dodge" // Hunter lvl 15
+              ].includes(s.name)) {
+            s.header = null;
           }
         })
 
@@ -69,6 +77,7 @@ export const useClassesStore = defineStore("ClassesStore", {
         const data = await response.json();
         if (data.optionalfeature) {
           this.optionalFeatures = data.optionalfeature;
+          this.optionalFeatures.push(...complementsFeatures);
         }
       }
       catch (e) {
@@ -786,7 +795,7 @@ export interface SubclassFeature {
   subclassSource: string
   level: number
   entries: any[]
-  header?: number
+  header?: number|null
   type?: string
   srd?: boolean
   consumes?: Consumes2
@@ -806,8 +815,8 @@ export interface Consumes2 {
 
 export interface OptionalFeature {
   name: string
-  source: string
-  page: number
+  source?: string
+  page?: number
   srd?: boolean
   featureType: string[]
   prerequisite?: Prerequisite[]
@@ -816,7 +825,7 @@ export interface OptionalFeature {
   consumes?: Consumes3
   otherSources?: OtherSource5[]
   additionalSpells?: AdditionalSpell3[]
-  skillProficiencies?: SkillProficiency[]
+  skillProficiencies?: any[]
   senses?: Sense[]
   hasFluffImages?: boolean
   optionalfeatureProgression?: OptionalfeatureProgression3[]
@@ -966,80 +975,6 @@ const classOtherProgression: any[] = [
       "9": {formula: "mod('int')"}
     }
   },
-  /*{ TODO : ADD this into class-artificier.json + add keys into optionalfeatures.json
-  "optionalfeatureProgression": [
-				{
-					"name": "Armor Model",
-					"featureType": [
-						"ArmorModel"
-					],
-					"progression": {
-						"3": 1
-					}
-				}
-			]
-			{
-			"name": "Guardian",
-			"featureType": [
-				"ArmorModel"
-			],
-			"entries": [
-				"You design your armor to be in the front line of conflict. It has the following features:",
-				{
-					"type": "entries",
-					"name": "Thunder Gauntlets",
-					"entries": [
-						"Each of the armor's gauntlets counts as a simple melee weapon while you aren't holding anything in it, and it deals {@damage 1d8} thunder damage on a hit. A creature hit by the gauntlet has disadvantage on attack rolls against targets other than you until the start of your next turn, as the armor magically emits a distracting pulse when the creature attacks someone else."
-					]
-				},
-				{
-					"type": "entries",
-					"name": "Defensive Field",
-					"entries": [
-						"As a bonus action, you can gain temporary hit points equal to your level in this class, replacing any temporary hit points you already have. You lose these temporary hit points if you doff the armor. You can use this bonus action a number of times equal to your proficiency bonus, and you regain all expended uses when you finish a long rest."
-					]
-				}
-			]
-		},
-		{
-			"name": "Infiltrator",
-			"featureType": [
-				"ArmorModel"
-			],
-			"entries": [
-				"You customize your armor for subtle undertakings. It has the following features:",
-				{
-					"type": "entries",
-					"name": "Lightning Launcher",
-					"entries": [
-						"A gemlike node appears on one of your armored fists or on the chest (your choice). It counts as a simple ranged weapon, with a normal range of 90 feet and a long range of 300 feet, and it deals {@damage 1d6} lightning damage on a hit. Once on each of your turns when you hit a creature with it, you can deal an extra {@damage 1d6} lightning damage to that target."
-					]
-				},
-				{
-					"type": "entries",
-					"name": "Powered Steps",
-					"entries": [
-						"Your walking speed increases by 5 feet."
-					]
-				},
-				{
-					"type": "entries",
-					"name": "Dampening Field",
-					"entries": [
-						"You have advantage on Dexterity ({@skill Stealth}) checks. If the armor normally imposes disadvantage on such checks, the advantage and disadvantage cancel each other, as normal."
-					]
-				}
-			]
-		}
-    name: "Armor Model",
-    origin: "subclass",
-    originName: "Armorer",
-    parent: "Armor Model",
-    limit: "Rest",
-    progression: {
-      "3": 1
-    }
-  }*/
   // {
   //   origin: "class",
   //   originName: "Fighter",
@@ -1137,7 +1072,18 @@ export const classProficienciesGained: any[] = [
     tools: [{
       "smith's tools": true
     }],
-    armors: ["heavy"]
+    armors: ["heavy"],
+    optionalfeatureProgression: [
+      {
+        name: "Armor Model",
+        featureType: [
+          "ArmorModel"
+        ],
+        progression: {
+          "3": 1
+        }
+      }
+    ]
   },
   {
     originName: "Artillerist",
@@ -1217,6 +1163,54 @@ export const classProficienciesGained: any[] = [
     languages: [{
       "giant": true
     }]
+  },
+  {
+    originName: "Totem Warrior",
+    origin: "subclass",
+    level: 3,
+    optionalfeatureProgression: [
+      {
+        name: "Totem Spirit",
+        featureType: [
+          "TotemSpirit"
+        ],
+        progression: {
+          "3": 1
+        }
+      }
+    ]
+  },
+  {
+    originName: "Totem Warrior",
+    origin: "subclass",
+    level: 6,
+    optionalfeatureProgression: [
+      {
+        name: "Aspect of the Beast",
+        featureType: [
+          "AspectBeast"
+        ],
+        progression: {
+          "6": 1
+        }
+      }
+    ]
+  },
+  {
+    originName: "Totem Warrior",
+    origin: "subclass",
+    level: 14,
+    optionalfeatureProgression: [
+      {
+        name: "Totemic Attunement",
+        featureType: [
+          "TotemicAttunement"
+        ],
+        progression: {
+          "14": 1
+        }
+      }
+    ]
   },
   // Bard
   {
@@ -1589,11 +1583,462 @@ export const classProficienciesGained: any[] = [
   },
   // Ranger
   {
+    originName: "Ranger",
+    origin: "class",
+    level: 3,
+    additionalSpells: [
+      {
+        name: "Primal Awareness",
+        prepared: {
+          "3": [
+            "speak with animals"
+          ],
+          "5": [
+            "beast sense"
+          ],
+          "9": [
+            "speak with plants"
+          ],
+          "13": [
+            "locate creature"
+          ],
+          "17": [
+            "commune with nature"
+          ]
+        }
+      }
+    ]
+  },
+  {
     originName: "Drakewarden",
     origin: "subclass",
     level: 3,
     languages: [{
       "draconic": true
     }]
+  },
+  {
+    originName: "Fey Wanderer",
+    origin: "subclass",
+    level: 3,
+    skills: [{
+      "choose": {
+        "from": [
+          "deception",
+          "performance",
+          "persuasion"
+        ],
+        "count": 1
+      }
+    }]
+  },
+  {
+    originName: "Fey Wanderer",
+    origin: "subclass",
+    level: 15,
+    additionalSpells: [
+      {
+        "innate": {
+          "15": {
+            "daily": {
+              "mod('wis')": [
+                "misty step"
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    originName: "Horizon Walker",
+    origin: "subclass",
+    level: 7,
+    additionalSpells: [
+      {
+        "innate": {
+          "7": {
+            "rest": {
+              "1": [
+                "etherealness"
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    originName: "Hunter",
+    origin: "subclass",
+    level: 3,
+    optionalfeatureProgression: [
+      {
+        name: "Hunter's Prey",
+        featureType: [
+          "HunterPrey"
+        ],
+        progression: {
+          "3": 1
+        }
+      }
+    ]
+  },
+  {
+    originName: "Hunter",
+    origin: "subclass",
+    level: 7,
+    optionalfeatureProgression: [
+      {
+        name: "Defensive Tactics",
+        featureType: [
+          "DefensiveTactics"
+        ],
+        progression: {
+          "7": 1
+        }
+      }
+    ]
+  },
+  {
+    originName: "Hunter",
+    origin: "subclass",
+    level: 11,
+    optionalfeatureProgression: [
+      {
+        name: "Multiattack",
+        featureType: [
+          "Multiattack"
+        ],
+        progression: {
+          "11": 1
+        }
+      }
+    ]
+  },
+  {
+    originName: "Hunter",
+    origin: "subclass",
+    level: 15,
+    optionalfeatureProgression: [
+      {
+        name: "Superior Hunter's Defense",
+        featureType: [
+          "SuperiorHunterDefense"
+        ],
+        progression: {
+          "15": 1
+        }
+      }
+    ]
+  },
+]
+
+const complementsFeatures: OptionalFeature[] = [
+  // Barbarian = Totem Warrior = Totem Spirit
+  {
+    "name": "Bear Totem",
+    "featureType": [
+      "TotemSpirit"
+    ],
+    "entries": [
+      "While raging, you have resistance to all damage except psychic damage. The spirit of the bear makes you tough enough to stand up to any punishment."
+    ]
+  },
+  {
+    "name": "Eagle Totem",
+    "featureType": [
+      "TotemSpirit"
+    ],
+    "entries": [
+      "While you're raging and aren't wearing heavy armor, other creatures have disadvantage on opportunity attack rolls against you, and you can use the {@action Dash} action as a bonus action on your turn. The spirit of the eagle makes you into a predator who can weave through the fray with ease."
+    ]
+  },
+  {
+    "name": "Elk Totem",
+    "featureType": [
+      "TotemSpirit"
+    ],
+    "entries": [
+      "While you're raging and aren't wearing heavy armor, your walking speed increases by 15 feet. The spirit of the elk makes you extraordinarily swift."
+    ]
+  },
+  {
+    "name": "Tiger Totem",
+    "featureType": [
+      "TotemSpirit"
+    ],
+    "entries": [
+      "While raging, you can add 10 feet to your long jump distance and 3 feet to your high jump distance. The spirit of the tiger empowers your leaps."
+    ]
+  },
+  {
+    "name": "Wolf Totem",
+    "featureType": [
+      "TotemSpirit"
+    ],
+    "entries": [
+      "While you're raging, your friends have advantage on melee attack rolls against any creature within 5 feet of you that is hostile to you. The spirit of the wolf makes you a leader of hunters."
+    ]
+  },
+  // Aspect
+  {
+    "name": "Bear Aspect",
+    "featureType": [
+      "AspectBeast"
+    ],
+    "entries": [
+      "You gain the might of a bear. Your carrying capacity (including maximum load and maximum lift) is doubled, and you have advantage on Strength checks made to push, pull, lift, or break objects."
+    ]
+  },
+  {
+    "name": "Eagle Aspect",
+    "featureType": [
+      "AspectBeast"
+    ],
+    "entries": [
+      "You gain the eyesight of an eagle. You can see up to 1 mile away with no difficulty, able to discern even fine details as though looking at something no more than 100 feet away from you. Additionally, dim light doesn't impose disadvantage on your Wisdom ({@skill Perception}) checks."
+    ]
+  },
+  {
+    "name": "Elk Aspect",
+    "featureType": [
+      "AspectBeast"
+    ],
+    "entries": [
+      "Whether mounted or on foot, your travel pace is doubled, as is the travel pace of up to ten companions while they're within 60 feet of you and you're not {@condition incapacitated}. The elk spirit helps you roam far and fast."
+    ]
+  },
+  {
+    "name": "Tiger Aspect",
+    "featureType": [
+      "AspectBeast"
+    ],
+    "entries": [
+      "You gain proficiency in two skills from the following list: {@skill Athletics}, {@skill Acrobatics}, {@skill Stealth}, and {@skill Survival}. The cat spirit hones your survival instincts."
+    ],
+    "skillProficiencies": [{
+      "choose": {
+        "from": [
+          "athletics",
+          "acrobatics",
+          "stealth",
+          "survival"
+        ],
+        "count": 2
+      }
+    }]
+  },
+  {
+    "name": "Wolf Aspect",
+    "featureType": [
+      "AspectBeast"
+    ],
+    "entries": [
+      "You gain the hunting sensibilities of a wolf. You can track other creatures while traveling at a fast pace, and you can move stealthily while traveling at a normal pace."
+    ]
+  },
+  // Totemic Attunement
+  {
+    "name": "Bear Attunement",
+    "featureType": [
+      "TotemicAttunement"
+    ],
+    "entries": [
+      "While you're raging, any creature within 5 feet of you that's hostile to you has disadvantage on attack rolls against targets other than you or another character with this feature. An enemy is immune to this effect if it can't see or hear you or if it can't be {@condition frightened}."
+    ]
+  },
+  {
+    "name": "Eagle Attunement",
+    "featureType": [
+      "TotemicAttunement"
+    ],
+    "entries": [
+      "While raging, you have a flying speed equal to your current walking speed. This benefit works only in short bursts; you fall if you end your turn in the air and nothing else is holding you aloft."
+    ]
+  },
+  {
+    "name": "Elk Attunement",
+    "featureType": [
+      "TotemicAttunement"
+    ],
+    "entries": [
+      "While raging, you can use a bonus action during your move to pass through the space of a Large or smaller creature. That creature must succeed on a Strength saving throw ({@dc 8} + your Strength bonus + your proficiency bonus) or be knocked {@condition prone} and take bludgeoning damage equal to {@damage 1d12} + your Strength modifier."
+    ]
+  },
+  {
+    "name": "Tiger Attunement",
+    "featureType": [
+      "TotemicAttunement"
+    ],
+    "entries": [
+      "While you're raging, if you move at least 20 feet in a straight line toward a Large or smaller target right before making a melee weapon attack against it, you can use a bonus action to make an additional melee weapon attack against it."
+    ]
+  },
+  {
+    "name": "Wolf Attunement",
+    "featureType": [
+      "TotemicAttunement"
+    ],
+    "entries": [
+      "While you're raging, you can use a bonus action on your turn to knock a Large or smaller creature {@condition prone} when you hit it with melee weapon attack."
+    ]
+  },
+  // Artificer = Armorer = Armor Model
+  {
+    "name": "Guardian",
+    "featureType": [
+      "ArmorModel"
+    ],
+    "entries": [
+      "You design your armor to be in the front line of conflict. It has the following features:",
+      {
+        "type": "entries",
+        "name": "Thunder Gauntlets",
+        "entries": [
+          "Each of the armor's gauntlets counts as a simple melee weapon while you aren't holding anything in it, and it deals {@damage 1d8} thunder damage on a hit. A creature hit by the gauntlet has disadvantage on attack rolls against targets other than you until the start of your next turn, as the armor magically emits a distracting pulse when the creature attacks someone else."
+        ]
+      },
+      {
+        "type": "entries",
+        "name": "Defensive Field",
+        "entries": [
+          "As a bonus action, you can gain temporary hit points equal to your level in this class, replacing any temporary hit points you already have. You lose these temporary hit points if you doff the armor. You can use this bonus action a number of times equal to your proficiency bonus, and you regain all expended uses when you finish a long rest."
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Infiltrator",
+    "featureType": [
+      "ArmorModel"
+    ],
+    "entries": [
+      "You customize your armor for subtle undertakings. It has the following features:",
+      {
+        "type": "entries",
+        "name": "Lightning Launcher",
+        "entries": [
+          "A gemlike node appears on one of your armored fists or on the chest (your choice). It counts as a simple ranged weapon, with a normal range of 90 feet and a long range of 300 feet, and it deals {@damage 1d6} lightning damage on a hit. Once on each of your turns when you hit a creature with it, you can deal an extra {@damage 1d6} lightning damage to that target."
+        ]
+      },
+      {
+        "type": "entries",
+        "name": "Powered Steps",
+        "entries": [
+          "Your walking speed increases by 5 feet."
+        ]
+      },
+      {
+        "type": "entries",
+        "name": "Dampening Field",
+        "entries": [
+          "You have advantage on Dexterity ({@skill Stealth}) checks. If the armor normally imposes disadvantage on such checks, the advantage and disadvantage cancel each other, as normal."
+        ]
+      }
+    ]
+  },
+  // Ranger = Hunter = HunterPrey
+  {
+    "name": "Horde Breaker",
+    "featureType": [
+      "HunterPrey"
+    ],
+    "entries": [
+      "Once on each of your turns when you make a weapon attack, you can make another attack with the same weapon against a different creature that is within 5 feet of the original target and within range of your weapon."
+    ]
+  },
+  {
+    "name": "Colossus Slayer",
+    "featureType": [
+      "HunterPrey"
+    ],
+    "entries": [
+      "Your tenacity can wear down the most potent foes. When you hit a creature with a weapon attack, the creature takes an extra {@damage 1d8} damage if it's below its hit point maximum. You can deal this extra damage only once per turn."
+    ]
+  },
+  {
+    "name": "Giant Killer",
+    "featureType": [
+      "HunterPrey"
+    ],
+    "entries": [
+      "When a Large or larger creature within 5 feet of you hits or misses you with an attack, you can use your reaction to attack that creature immediately after its attack, provided that you can see the creature."
+    ]
+  },
+  // Ranger = Hunter = Defensive Tactics
+  {
+    "name": "Escape the Horde",
+    "featureType": [
+      "DefensiveTactics"
+    ],
+    "entries": [
+      "Opportunity attacks against you are made with disadvantage."
+    ]
+  },
+  {
+    "name": "Multiattack Defense",
+    "featureType": [
+      "DefensiveTactics"
+    ],
+    "entries": [
+      "When a creature hits you with an attack, you gain a +4 bonus to AC against all subsequent attacks made by that creature for the rest of the turn."
+    ]
+  },
+  {
+    "name": "Steel Will",
+    "featureType": [
+      "DefensiveTactics"
+    ],
+    "entries": [
+      "You have advantage on saving throws against being {@condition frightened}."
+    ]
+  },
+  // Ranger = Hunter = Multiattack
+  {
+    "name": "Volley",
+    "featureType": [
+      "Multiattack"
+    ],
+    "entries": [
+      "You can use your action to make a ranged attack against any number of creatures within 10 feet of a point you can see within your weapon's range. You must have ammunition for each target, as normal, and you make a separate attack roll for each target."
+    ]
+  },
+  {
+    "name": "Whirlwind Attack",
+    "featureType": [
+      "Multiattack"
+    ],
+    "entries": [
+      "You can use your action to make a melee attack against any number of creatures within 5 feet of you, with a separate attack roll for each target."
+    ]
+  },
+  // Ranger = Hunter = Superior Hunter's Defense
+  {
+    "name": "Evasion",
+    "featureType": [
+      "SuperiorHunterDefense"
+    ],
+    "entries": [
+      "You can nimbly dodge out of the way of certain area effects, such as a red dragon's fiery breath or a {@spell lightning bolt} spell. When you are subjected to an effect that allows you to make a Dexterity saving throw to take only half damage, you instead take no damage if you succeed on the saving throw, and only half damage if you fail."
+    ]
+  },
+  {
+    "name": "Stand Against the Tide",
+    "featureType": [
+      "SuperiorHunterDefense"
+    ],
+    "entries": [
+      "When a hostile creature misses you with a melee attack, you can use your reaction to force that creature to repeat the same attack against another creature (other than itself) of your choice."
+    ]
+  },
+  {
+    "name": "Uncanny Dodge",
+    "featureType": [
+      "SuperiorHunterDefense"
+    ],
+    "entries": [
+      "When an attacker that you can see hits you with an attack, you can use your reaction to halve the attack's damage against you."
+    ]
   },
 ]

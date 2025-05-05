@@ -798,7 +798,6 @@
   const saveStorage = () => {
     if(dev) {
       console.log('watch character');
-      // console.log(JSON.stringify(nv, null, 2));
     }
     localStorage.setItem(storagekey, JSON.stringify(character.value));
     calcAllChooses();
@@ -1432,9 +1431,9 @@
       }
     }
   }
-  const resetSkills = (origin: string) => {
-    character.value.skills = character.value.skills.filter((sk:any) => !(sk.origin == origin && sk.level == character.value.level));
-    character.value.expertises = character.value.expertises.filter((sk:any) => !(sk.origin == origin && sk.level == character.value.level));
+  const resetSkills = (origin: string, originName: string|null = null) => {
+    character.value.skills = character.value.skills.filter((sk:any) => !(sk.origin == origin && sk.level == character.value.level && (originName == null || sk.originName == originName)));
+    character.value.expertises = character.value.expertises.filter((sk:any) => !(sk.origin == origin && sk.level == character.value.level && (originName == null || sk.originName == originName)));
   }
   const addSkillProf = (key:string, origin: string, name: string, choose: boolean = true, originName:string) => {
     if(!name) return;
@@ -1589,7 +1588,7 @@
         chooseAddSpells('subclass', computedLastSubclass.value.shortName, computedLastSubclass.value.additionalSpells, option);
       }
       if(computedLastSubclass.value.optionalfeatureProgression) {
-        chooseFeatureProgression('subclass', lastClass.value.subclass, computedLastSubclass.value.optionalfeatureProgression, );
+        chooseFeatureProgression('subclass', lastClass.value.subclass, computedLastSubclass.value.optionalfeatureProgression);
       }
     }
 
@@ -1601,6 +1600,7 @@
         if(cpg.expertise) chooseAddExpertise(cpg.origin, cpg.expertise[0], cpg.originName);
         if(cpg.languages) chooseAddLanguage(cpg.origin, cpg.languages, cpg.originName);
         if(cpg.tools) chooseAddTools(cpg.origin, cpg.tools[0], cpg.originName);
+        if(cpg.optionalfeatureProgression) chooseFeatureProgression(cpg.origin, cpg.originName, cpg.optionalfeatureProgression);
         if(cpg.additionalSpells) {
           let option = null;
           if (lastClass.value.option) option = lastClass.value.option;
@@ -1630,6 +1630,7 @@
           featuresNames.push(c);
           chooseFeatureProgression('feature', c, of.optionalfeatureProgression);
           if(of.additionalSpells) chooseAddSpells('feature', of.name, of.additionalSpells);
+          if(of.skillProficiencies) chooseAddSkill('feature', of.skillProficiencies[0], of.name);
         }
       })
     });
@@ -2601,6 +2602,7 @@
           let choices = ft.choices.filter((c: string) => c != option);
           ft.choices = choices;
           resetSpells('feature', option);
+          resetSkills('feature', option);
           return false;
         }
         return true;
@@ -2614,6 +2616,7 @@
         }
         else {
           resetSpells('feature', ft.choices[0]);
+          resetSkills('feature', ft.choices[0]);
           ft.choices = [option];
         }
       }
