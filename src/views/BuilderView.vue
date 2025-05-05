@@ -1292,10 +1292,16 @@
 
     lastClass.value.subclass = subclass;
     const sub = classesStore.findSubclass(lastClass.value.name, subclass);
-    if(sub && sub.casterProgression) {
-      lastClass.value.casterProgression = sub.casterProgression;
-      lastClass.value.preparedSpells = {has: false /*sub.preparedSpells != undefined*/};
-      lastClass.value.spellcastingAbility = sub.spellcastingAbility || null;
+    if(sub) {
+      if(sub.casterProgression) {
+        lastClass.value.casterProgression = sub.casterProgression;
+        lastClass.value.preparedSpells = {has: false /*sub.preparedSpells != undefined*/};
+        lastClass.value.spellcastingAbility = sub.spellcastingAbility || null;
+      }
+      else {
+        lastClass.value.casterProgression = null;
+        lastClass.value.spellcastingAbility = null;
+      }
       calculSpellcasterLevel();
     }
     calcDatasClass(false);

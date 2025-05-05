@@ -1732,6 +1732,38 @@ export const classProficienciesGained: any[] = [
       }
     ]
   },
+  // Rogue
+  {
+    originName: "Assassin",
+    origin: "subclass",
+    level: 3,
+    tools: [{
+      "disguise kit": true,
+      "poisoner's kit": true
+    }]
+  },
+  {
+    originName: "Mastermind",
+    origin: "subclass",
+    level: 3,
+    tools: [{
+      "anyGamingSet": 1,
+      "disguise kit": true,
+      "forgery kit": true
+    }],
+    languages: [{
+      "any": 2
+    }]
+  },
+  {
+    originName: "Scout",
+    origin: "subclass",
+    level: 3,
+    skills: [{
+      "nature": true,
+      "survival": true
+    }]
+  },
 ]
 
 const complementsFeatures: OptionalFeature[] = [
