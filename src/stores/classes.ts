@@ -118,7 +118,7 @@ export const useClassesStore = defineStore("ClassesStore", {
       }
     },
     getFeatures() {
-      return (name: string, subclass: string, level: number): any[]|null => {
+      return (name: string, subclass: string|null, level: number): any[]|null => {
         const cl = this.getClass(name);
         if(!cl) return null;
         let f: any[] = this.getClassFeatures(name, level);
@@ -262,9 +262,8 @@ export const useClassesStore = defineStore("ClassesStore", {
           else {
             if (level in o.progression) count = o.progression[level]
             else {
-              // TODO : change if improve ability score
               let keys = Object.keys(o.progression);
-              if(keys.length > 1) {
+              if(keys.length >= 1) {
                 keys.every(key => {
                   if(parseInt(key) <= level) count = o.progression[key];
                   else return false;
@@ -322,8 +321,20 @@ export const useClassesStore = defineStore("ClassesStore", {
       }
     },
     getProficienciesGained() {
-      return (name: string, subclass: string, level: number): any[] => {
+      return (name: string, subclass: string|null, level: number): any[] => {
         return classProficienciesGained.filter(c => c.level == level && ((c.originName == name && c.origin == 'class') || (c.originName == subclass && c.origin == 'subclass')));
+      }
+    },
+    getOtherProgression() {
+      return (name: string, subclass: string|null, level: number): any[] => {
+        const pr = classOtherProgression.filter(c => (c.originName == name && c.origin == 'class') || (c.originName == subclass && c.origin == 'subclass'));
+        return pr.map(c => {
+          return {
+            ...c,
+            limit: extractProgression(level, c.limit),
+            progression: extractProgression(level, c.progression)
+          }
+        }).filter(c => !!c.progression);
       }
     }
   }
@@ -345,6 +356,20 @@ const extractClassEntries = (fn:string, det: any): any => {
     }).filter((de:any) => de !== null).join('\n');
   }
   return entries;
+}
+
+const extractProgression = (level: number, progression: any) => {
+  if(!progression) return null;
+  if("string" == typeof progression || "number" == typeof progression) return progression;
+  if(progression.formula) {
+    return progression;
+  }
+  let key = null;
+  Object.keys(progression).forEach(k => {
+    if(parseInt(k) <= level) key = k;
+  });
+  if(!key) return null;
+  return progression[key];
 }
 
 export interface RootState {
@@ -873,45 +898,187 @@ export interface Progression2 {
 }
 
 const classOtherProgression: any[] = [
+  // Artificier
   {
+    name: "Infused Items",
     origin: "class",
-    originName: "Fighter",
-    name: "Action Surge",
-    limit: "Rest",
+    originName: "Artificer",
+    parent: "Infusions",
+    limit: "Long Rest", //{formula: "false ? 'Long Rest' : 'Test'"},
     progression: {
-      "1": 1,
-      "17": 2
+      "2":  2,
+      "6":  3,
+      "10": 4,
+      "14": 5,
+      "18": 6
     }
   },
   {
+    name: "Flash of Genius",
     origin: "class",
-    originName: "Fighter",
-    name: "Second Wind",
-    limit: "Rest",
+    originName: "Artificer",
+    parent: "Flash of Genius",
+    limit: "Long Rest",
     progression: {
-      "1": 1
-    },
-    diceProgression: {
-      "1": "d10"
-    },
-    formula: "{{dice}} + {{level}}"
+      "7": {formula: "mod('int')"}
+    }
   },
   {
+    name: "Spell-Storin Item",
+    origin: "class",
+    originName: "Artificer",
+    parent: "Spell-Storin Item",
+    limit: "Use",
+    progression: {
+      "11": {formula: "mod('int') * 2"}
+    }
+  },
+  {
+    name: "Magic Item",
+    origin: "class",
+    originName: "Artificer",
+    parent: null,
+    limit: null,
+    progression: {
+      "14": "+1 item attunement",
+      "18": "+2 items attunement"
+    }
+  },
+  {
+    name: "Elixir",
     origin: "subclass",
-    originName: "Battle Master",
-    name: "Superiority Dice",
+    originName: "Alchemist",
+    parent: "Experimental Elixir",
+    limit: "Long Rest",
+    progression: {
+      "3": 1,
+      "6": 2,
+      "15": 3
+    }
+  },
+  {
+    name: "Arcane Jolt",
+    origin: "subclass",
+    originName: "Battle Smith",
+    parent: "Arcane Jolt",
+    limit: "Long Rest",
+    progression: {
+      "9": {formula: "mod('int')"}
+    }
+  },
+  /*{ TODO : ADD this into class-artificier.json + add keys into optionalfeatures.json
+  "optionalfeatureProgression": [
+				{
+					"name": "Armor Model",
+					"featureType": [
+						"ArmorModel"
+					],
+					"progression": {
+						"3": 1
+					}
+				}
+			]
+			{
+			"name": "Guardian",
+			"featureType": [
+				"ArmorModel"
+			],
+			"entries": [
+				"You design your armor to be in the front line of conflict. It has the following features:",
+				{
+					"type": "entries",
+					"name": "Thunder Gauntlets",
+					"entries": [
+						"Each of the armor's gauntlets counts as a simple melee weapon while you aren't holding anything in it, and it deals {@damage 1d8} thunder damage on a hit. A creature hit by the gauntlet has disadvantage on attack rolls against targets other than you until the start of your next turn, as the armor magically emits a distracting pulse when the creature attacks someone else."
+					]
+				},
+				{
+					"type": "entries",
+					"name": "Defensive Field",
+					"entries": [
+						"As a bonus action, you can gain temporary hit points equal to your level in this class, replacing any temporary hit points you already have. You lose these temporary hit points if you doff the armor. You can use this bonus action a number of times equal to your proficiency bonus, and you regain all expended uses when you finish a long rest."
+					]
+				}
+			]
+		},
+		{
+			"name": "Infiltrator",
+			"featureType": [
+				"ArmorModel"
+			],
+			"entries": [
+				"You customize your armor for subtle undertakings. It has the following features:",
+				{
+					"type": "entries",
+					"name": "Lightning Launcher",
+					"entries": [
+						"A gemlike node appears on one of your armored fists or on the chest (your choice). It counts as a simple ranged weapon, with a normal range of 90 feet and a long range of 300 feet, and it deals {@damage 1d6} lightning damage on a hit. Once on each of your turns when you hit a creature with it, you can deal an extra {@damage 1d6} lightning damage to that target."
+					]
+				},
+				{
+					"type": "entries",
+					"name": "Powered Steps",
+					"entries": [
+						"Your walking speed increases by 5 feet."
+					]
+				},
+				{
+					"type": "entries",
+					"name": "Dampening Field",
+					"entries": [
+						"You have advantage on Dexterity ({@skill Stealth}) checks. If the armor normally imposes disadvantage on such checks, the advantage and disadvantage cancel each other, as normal."
+					]
+				}
+			]
+		}
+    name: "Armor Model",
+    origin: "subclass",
+    originName: "Armorer",
+    parent: "Armor Model",
     limit: "Rest",
     progression: {
-      "3": 4,
-      "7": 5,
-      "15": 6
-    },
-    diceProgression: {
-      "3": "d8",
-      "10": "d10",
-      "18": "d12",
+      "3": 1
     }
-  }
+  }*/
+  // {
+  //   origin: "class",
+  //   originName: "Fighter",
+  //   name: "Action Surge",
+  //   limit: "Rest",
+  //   progression: {
+  //     "1": 1,
+  //     "17": 2
+  //   }
+  // },
+  // {
+  //   origin: "class",
+  //   originName: "Fighter",
+  //   name: "Second Wind",
+  //   limit: "Rest",
+  //   progression: {
+  //     "1": 1
+  //   },
+  //   diceProgression: {
+  //     "1": "d10"
+  //   },
+  //   formula: "{{dice}} + {{level}}"
+  // },
+  // {
+  //   origin: "subclass",
+  //   originName: "Battle Master",
+  //   name: "Superiority Dice",
+  //   limit: "Rest",
+  //   progression: {
+  //     "3": 4,
+  //     "7": 5,
+  //     "15": 6
+  //   },
+  //   diceProgression: {
+  //     "3": "d8",
+  //     "10": "d10",
+  //     "18": "d12",
+  //   }
+  // }
 ]
 
 export const classProficienciesGained: any[] = [
@@ -933,11 +1100,10 @@ export const classProficienciesGained: any[] = [
         "innate": {
           "9": {
             "daily": {
-              "1": [
+              "mod('int')": [
                 "lesser restoration"
               ]
-            },
-            modAbility: "int"
+            }
           }
         }
       }
@@ -972,7 +1138,6 @@ export const classProficienciesGained: any[] = [
       "smith's tools": true
     }],
     armors: ["heavy"]
-    // TODO : add optional feature option like Infusions
   },
   {
     originName: "Artillerist",
@@ -1353,6 +1518,82 @@ export const classProficienciesGained: any[] = [
     }],
     languages: [{
       "any": 1
+    }]
+  },
+  // Monk
+  {
+    originName: "Monk",
+    origin: "class",
+    level: 10,
+    conditionImmune: ["poisoned", "disease"],
+    immune: ["poison"]
+  },
+  {
+    originName: "Mercy",
+    origin: "subclass",
+    level: 3,
+    tools: [{
+      "herbalism kit": true
+    }],
+    skills: [{
+      "insight": true,
+      "medicine": true
+    }]
+  },
+  {
+    originName: "Ascendant Dragon",
+    origin: "subclass",
+    level: 3,
+    languages: [{
+      "draconic": true
+    }]
+  },
+  {
+    originName: "Ascendant Dragon",
+    origin: "subclass",
+    level: 17,
+    blindsight: 10
+  },
+  {
+    originName: "Drunken Master",
+    origin: "subclass",
+    level: 3,
+    skills: [{
+      "performance": true
+    }],
+    tools: [{
+      "brewer's supplies": true
+    }],
+  },
+  {
+    originName: "Kensei",
+    origin: "subclass",
+    level: 3,
+    tools: [{
+      "choose": {
+        "from": [
+          "calligrapher's supplies",
+          "painter's supplies"
+        ],
+        "count": 1
+      }
+    }],
+    weapons: [{from: ["martial","simple"], count: 2}]
+  },
+  // Paladin
+  {
+    originName: "Paladin",
+    origin: "class",
+    level: 3,
+    conditionImmune: ["disease"]
+  },
+  // Ranger
+  {
+    originName: "Drakewarden",
+    origin: "subclass",
+    level: 3,
+    languages: [{
+      "draconic": true
     }]
   },
 ]

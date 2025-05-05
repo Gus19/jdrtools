@@ -99,7 +99,7 @@ export const useTableplop = defineStore('tableplop', () => {
   }
 
   const addMessageSpell = (parentId: number, ex: any) => {
-    let message = "";
+    let message: string;
     if(!ex.spell) {
       message = "Woups it's undefined ...";
     }

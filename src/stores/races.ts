@@ -62,7 +62,7 @@ export const useRacesStore = defineStore("RacesStore", {
     countRaces: (state) => state.racessource && state.racessource.race.length,
     countSubraces: (state) => state.racessource && state.racessource.subrace.length,
     getRaceByName: (state) => {
-      return (n: string) => state.racessource ? state.racessource.race.filter(r =>
+      return (n: string|null) => state.racessource ? state.racessource.race.filter(r =>
         r.name == n
         && !('_copy' in r)
         && r.source != "XPHB"
@@ -70,7 +70,7 @@ export const useRacesStore = defineStore("RacesStore", {
       ).sort((a:any,b:any) => a.name > b.name ? 1 : 0) : null
     },
     getSubraceByName: (state) => {
-      return (n: string, s:string|null = null) => state.racessource ? state.racessource.subrace.filter(r =>
+      return (n: string|null, s:string|null = null) => state.racessource ? state.racessource.subrace.filter(r =>
         r.raceName == n
         && (s == null || r.raceSource == s)
       ).sort((a:any,b:any) => a.name && displaySubrace(a) > displaySubrace(b)) : null

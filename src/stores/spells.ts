@@ -32,10 +32,10 @@ export const useSpellsStore = defineStore("SpellsStore", {
         Object.keys(data[k]).forEach((j) => {
           const classes = [];
           if(data[k][j].class) {
-            classes.push(...data[k][j].class.map((c:any) => c.name));
+            classes.push(...data[k][j].class.map((c:any) => c.name.toLowerCase()));
           }
           if(data[k][j].classVariant) {
-            classes.push(...data[k][j].classVariant.map((c:any) => c.name));
+            classes.push(...data[k][j].classVariant.map((c:any) => c.name.toLowerCase()));
           }
           test.push({
             name: j,
@@ -77,7 +77,7 @@ export const useSpellsStore = defineStore("SpellsStore", {
     spellsChoice() {
       return (className: string|null = null, level: number|null = null, schools: null|string[] = null): SpellInfo[] => {
         let names = []
-        if(className != null) names = this.sources.filter((s:any) => s.classes.includes(className)).map((s:any) => s.name);
+        if(className != null) names = this.sources.filter((s:any) => s.classes.includes(className.toLowerCase())).map((s:any) => s.name);
         return this.spellsSort(this.spells
           .filter(s =>
             (className == null || names.includes(s.name)) &&

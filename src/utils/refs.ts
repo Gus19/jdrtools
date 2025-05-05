@@ -1,5 +1,6 @@
 import type {Duration, EntriesHigherLevel, SpellInfo} from "@/stores/spells";
 import type {Feat} from "@/stores/feats";
+import {Parser} from "expr-eval";
 
 export const CHOOSE = "Choose";
 
@@ -124,6 +125,7 @@ export const Conditions: Condition[] = [
   {name: "blinded", display: "Blinded"},
   {name: "charmed", display: "Charmed"},
   {name: "deafened", display: "Deafened"},
+  {name: "disease", display: "Diseases"},
   {name: "exhaustion", display: "Exhaustion"},
   {name: "frightened", display: "Frightened"},
   {name: "grappled", display: "Grappled"},
@@ -335,9 +337,8 @@ export const rollFormula = (f: string): number => {
     }
   }
   try {
-    const dynamicCode = "return " + e;
-    const sumFunction = new Function(dynamicCode);
-    const r = sumFunction();
+    const parser = new Parser();
+    let r = parser.parse(e).evaluate();
     if(isNaN(r)) return 0;
     return r;
   }
@@ -458,6 +459,10 @@ export const formatOptionalEntries = (entries: any[]) => {
       if("string" == typeof j) return j;
       else return null
     }).filter((j:any) => j != null).join('\n');
+    else if(e.type == "entries") return e.name + ': '+ e.entries.map((j:any) => {
+      if("string" == typeof j) return j;
+      else return null
+    }).filter((j:any) => j != null).join(' ');
     else return null;
     // TODO list object possible
   }).filter((e:any) => e != null).join('\n')

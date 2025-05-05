@@ -142,9 +142,9 @@ export const useItemsStore = defineStore("ItemsStore", {
       }
     },
     getTypeByKey() {
-      return (key: string): string|undefined => {
+      return (key: string): string|null => {
         const it = this.findByKey(key);
-        if(!it) return undefined;
+        if(!it) return null;
         if(it.armor) return "armor";
         if(it.weapon) return "weapon";
         if(it.tool) return "tool";

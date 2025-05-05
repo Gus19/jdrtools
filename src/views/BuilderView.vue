@@ -37,7 +37,7 @@
     inlineTool,
     spellSlotsPact,
     rollFormula,
-    inlineEntries, Damages, cfl, CHOOSE, calculMoney, type Ability, Alignments, messageSpell, damageByKey
+    inlineEntries, Damages, cfl, CHOOSE, calculMoney, type Ability, messageSpell
   } from "@/utils/refs";
   import AccordionItem from "@/components/AccordionItem.vue";
   import CharacterInfo from "@/components/CharacterInfo.vue";
@@ -52,13 +52,14 @@
   import Money from "@/components/Money.vue";
   import FeatList from "@/components/FeatList.vue";
   import Condition from "@/components/Condition.vue";
+  import {Parser} from "expr-eval";
   const spellsStore = useSpellsStore();
   const racesStore = useRacesStore();
   const bgStore = useBackgroundsStore();
   const classesStore = useClassesStore();
   const featsStore = useFeatsStore();
   const itemsStore = useItemsStore();
-  const storagekey: string = 'character-builder';
+  const storagekey: string = 'character-builder-2014';
   const dev: boolean = import.meta.env.DEV;
 
   onMounted(async () => {
@@ -110,7 +111,7 @@
     return character.value.manualSteps.find((ms:any) => ms.step == s);
   }
   const isManualValid = (s: string) => {
-    if(!character.value) return
+    if(!character.value) return false;
     return getManualStep(s)?.valid || false;
   }
   const toggleManualStep = () => {
@@ -344,7 +345,7 @@
           let s = 'features';
           let g1 = true
           if (classFeatures.value.find((cf: any) => cf.chooseSubclass)) {
-            g1 = lastClass.value.subclass;
+            g1 = !!lastClass.value.subclass;
           }
           if(g1) {
             addManualStep(s);
@@ -438,11 +439,25 @@
 
       let i2 = true;
       if(i && (chooses.value.languages.length > 0 || chooses.value.tools.length > 0)) {
-        ['languages', 'tools'].forEach(key => {
-          chooses.value[key] && chooses.value[key].forEach((ch:any) => {
+        ['languages', 'tools'].filter(key => chooses.value[key]).forEach(key => {
+          const chc: any = [];
+          chooses.value[key].forEach((ch:any) => {
+            const c = chc.find((f: any) => f.origin == ch.origin && f.originName == ch.originName);
+            if(c) {
+              c.count += ch.count;
+            }
+            else {
+              chc.push({
+                origin: ch.origin,
+                originName: ch.originName,
+                count: ch.count
+              });
+            }
+          });
+          chc.forEach((ch:any) => {
             if(countProfByOrigin(key, ch.origin, ch.originName) != ch.count) {
               i2 = false; return false;
-            };
+            }
           });
         })
         ss.push({
@@ -529,7 +544,7 @@
           });
         }
         chooses.value.startingEquipment.forEach((c:any) => {
-          c.values.forEach((v:any, i: number) => {
+          c.values.forEach((_:any, i: number) => {
             if(!se[c.origin][i]) k1 = false;
           });
         });
@@ -576,7 +591,9 @@
   const mod = (key: string, onlyPositiv: boolean = false) => {
     if(!character.value) return 0;
     const t = character.value.abilities[key].total;
-    return Math.floor((t - 10) / 2);
+    let m = Math.floor((t - 10) / 2);
+    if(onlyPositiv && m < 0) return 0
+    return m;
   }
   const totalAbility = (key: string) => {
     const t = character.value.abilities[key].total;
@@ -675,6 +692,7 @@
         walk: null
       },
       darkvision: null,
+      blindsight: null,
       size: '',
       spells: [],
       feats: [],
@@ -777,25 +795,22 @@
     json.value = JSON.parse(JSON.stringify(character.value));
   }
 
-  const saveStorage = function() {
+  const saveStorage = () => {
+    if(dev) {
+      console.log('watch character');
+      // console.log(JSON.stringify(nv, null, 2));
+    }
     localStorage.setItem(storagekey, JSON.stringify(character.value));
     calcAllChooses();
     calculStep();
     logJson();
   };
 
-  const getStorage = function() {
+  const getStorage = () => {
     return JSON.parse(localStorage.getItem(storagekey)||'{}');
   };
 
-  watch(character, (nv) => {
-    if(dev) {
-      console.log('watch character');
-      // console.log(JSON.stringify(nv, null, 2));
-    }
-    saveStorage();
-  },{deep: true});
-
+  watch(character, saveStorage,{deep: true});
   watch(() => character.value && character.value.abilities, (newValue) => {
     if(newValue) {
       calcDatasAbilities();
@@ -963,6 +978,7 @@
       if(opt.skillProficiencies !== undefined) c.skillProficiencies = opt.skillProficiencies;
       if(opt.additionalSpells !== undefined) c.additionalSpells = opt.additionalSpells;
       if(opt.darkvision !== undefined) c.darkvision = opt.darkvision;
+      if(opt.blindsight !== undefined) c.blindsight = opt.blindsight;
       if(opt.resist !== undefined) c.resist = opt.resist;
     });
 
@@ -1158,6 +1174,7 @@
         walk: null
       }
       character.value.darkvision = null;
+      character.value.blindsight = null;
       character.value.size = '';
       character.value.resist = [];
       character.value.manualSteps = [];
@@ -1173,7 +1190,8 @@
       else
         chooses.value.size = d.size;
     }
-    /*if(d.darkvision)*/character.value.darkvision = d.darkvision;
+    character.value.darkvision = d.darkvision;
+    character.value.blindsight = d.blindsight;
     if(d.speed) {
       if("number" == typeof d.speed) character.value.speed = {walk: d.speed};
       else character.value.speed = {...character.value.speed, ...d.speed};
@@ -1293,11 +1311,15 @@
             clvl = c.level;
             break;
           case "1/2":
+            if(character.value.level > 1) {
+              clvl = Math.ceil(c.level / 2);
+            }
+            break;
           case "artificer":
-            clvl = Math.round(c.level / 2);
+            clvl = Math.ceil(c.level / 2);
             break;
           case "1/3":
-            clvl = Math.round(c.level / 3);
+            clvl = Math.ceil(c.level / 3);
             break;
           case "pact":
             // Not here
@@ -1372,6 +1394,12 @@
               })
             }
           });
+          if(cpg.darkvision && (!character.value.darkvision || cpg.darkvision >= character.value.darkvision)) {
+            character.value.darkvision = cpg.darkvision;
+          }
+          if(cpg.blindsight && (!character.value.blindsight || cpg.blindsight >= character.value.blindsight)) {
+            character.value.blindsight = cpg.blindsight;
+          }
         });
       }
     });
@@ -1601,6 +1629,7 @@
         if(of) {
           featuresNames.push(c);
           chooseFeatureProgression('feature', c, of.optionalfeatureProgression);
+          if(of.additionalSpells) chooseAddSpells('feature', of.name, of.additionalSpells);
         }
       })
     });
@@ -1682,7 +1711,7 @@
 
   const chooseFeatureProgression = (origin: string, originName: string, optionalfeatureProgression: any) => {
     if(!lastClass.value) return;
-    const level = character.value.level;
+    // const level = character.value.level;
     let progression = classesStore.getProgression(optionalfeatureProgression, lastClass.value);
     if (progression) {
       const ch = chooses.value.features;
@@ -1756,7 +1785,7 @@
           ch.push({
             origin: origin,
             originName: originName,
-            count: l.anyStandard,
+            count: l.anyStandard || 1,
             from: LanguagesStandard.map(l => l.key)
           });
         }
@@ -1764,7 +1793,7 @@
           ch.push({
             origin: origin,
             originName: originName,
-            count: l.any,
+            count: l.any || 1,
             from: LanguagesKey
           });
         }
@@ -1772,6 +1801,7 @@
           ch.push({
             origin: origin,
             originName: originName,
+            count: 1,
             ...l.choose
           });
         }
@@ -1854,13 +1884,12 @@
         })
         if (resLvl != null) {
           if(!isNaN(resLvl)) {
-            const spls = spellsStore.spellsChoice(resClass, resLvl, resSchool);
+            const spls = spellsStore.spellsChoice(resClass, parseInt(resLvl), resSchool);
             from[resLvl].push(...spls);
             spellslots[resLvl] += k.count || 1;
           }
           else {
             resLvl.split(';').forEach((l: string) => {
-              // TODO
               if(from[l].length == 0) {
                 const spls = spellsStore.spellsChoice(resClass, parseInt(l), resSchool);
                 from[l].push(...spls);
@@ -1959,6 +1988,11 @@
             if (innate.rest) {
               Object.keys(innate.rest).forEach((o: any) => {
                 innate.rest[o].forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin, originName, "rest", o));
+              })
+            }
+            if (innate.resource) {
+              Object.keys(innate.resource).forEach((o: any) => {
+                innate.resource[o].forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin, originName, c.resourceName || "resource", o));
               })
             }
           }
@@ -2268,7 +2302,7 @@
     }
 
     let hp = 0;
-    character.value.class.forEach((c:any, i:number) => {
+    character.value.class.forEach((c:any) => {
       c.hps.forEach((d:number) => hp += Math.max(d+modCon.value,1));
     });
     character.value.hp.max = hp;
@@ -2278,13 +2312,17 @@
     const from: string[] = [];
     if (chooses.value[key]) {
       chooses.value[key].forEach((ch: any) => {
+        let multiple = 0;
+        chooses.value[key].filter((f:any) => f.origin == ch.origin && f.originName == ch.originName).forEach((f:any) => {
+          multiple += f.count;
+        });
         const count = countProfByOrigin(key, ch.origin, ch.originName);
         if(ch.from) {
           if (readonly) {
             from.push(...ch.from);
           }
-          else {
-            ch.count > count && from.push(...ch.from);
+          else if(ch.count > count || multiple > count) {
+            from.push(...ch.from);
           }
         }
       });
@@ -2323,7 +2361,7 @@
       expDisabled: expDisabled,
       profSelected: profSelected,
       expSelected: expSelected,
-      mod: fn(mod(s.attribute.substring(0,3)) + (!profSelected && jackofAllTrades.value ? Math.round(prof.value / 2) : 0) + (profSelected?prof.value:0) + (expSelected?prof.value:0) )
+      mod: fn(mod(s.attribute.substring(0,3)) + (!profSelected && jackofAllTrades.value ? Math.floor(prof.value / 2) : 0) + (profSelected?prof.value:0) + (expSelected?prof.value:0) )
     }
   }))
   const changeProf = (key:string, name:string) => {
@@ -2342,7 +2380,11 @@
       if(chk.length == 0) return
       chk.every((ch:any) => {
         const count = countProfByOrigin(key,ch.origin,ch.originName);
-        if(count >= ch.count) return true;
+        let multiple = 0;
+        chooses.value[key].filter((f:any) => f.origin == ch.origin && f.originName == ch.originName).forEach((f:any) => {
+          multiple += f.count;
+        });
+        if(count >= ch.count && count >= multiple) return true;
         addSkillProf(key, ch.origin, name, true, ch.originName);
         return false;
       })
@@ -2353,7 +2395,11 @@
   }
   const displayChoosesProf = (key: string, origin: string, originName: string|null = null) => {
     const c = chooses.value[key].find((sk:any) => sk.origin == origin && (originName == null || sk.originName == originName))
-    if(c && countProfByOrigin(key, origin, originName) != c.count) {
+    let multiple = 0;
+    chooses.value[key].filter((f:any) => f.origin == origin && (originName == null || f.originName == originName)).forEach((f:any) => {
+      multiple += f.count;
+    });
+    if(c && countProfByOrigin(key, origin, originName) != multiple) {
       return null;
     };
     const s: string[] = [];
@@ -2554,6 +2600,7 @@
         if(ft && ft.choices.includes(option)) {
           let choices = ft.choices.filter((c: string) => c != option);
           ft.choices = choices;
+          resetSpells('feature', option);
           return false;
         }
         return true;
@@ -2566,6 +2613,7 @@
           });
         }
         else {
+          resetSpells('feature', ft.choices[0]);
           ft.choices = [option];
         }
       }
@@ -2651,8 +2699,8 @@
       return r.sort((a:any, b:any) => a.spellslot - b.spellslot);
     }
   });
-  const resetSpells = (origin: string) => {
-    character.value.spells = character.value.spells.filter((sk:any) => !(sk.origin == origin && sk.level == character.value.level));
+  const resetSpells = (origin: string, originName: string|null = null) => {
+    character.value.spells = character.value.spells.filter((sk:any) => !(sk.origin == origin && sk.level == character.value.level && (originName == null || sk.originName == originName)));
   }
   const changeSpell = (e: any, spellSlot: number, prepared:boolean = true, origin:string = "class", originName:string|null = null) => {
     if (!e.target.value) return;
@@ -2787,7 +2835,7 @@
     const se = character.value.startingEquipment;
     if(se.option == 'gold') {
       se.rest = se.gp * 100;
-      se.manuals.forEach((e: any, i: number) => {
+      se.manuals.forEach((e: any) => {
         if(e != null && e.key != null) {
           const it = itemsStore.findByKey(e.key);
           if(!it || !it.value || e.quantity <= 0) return;
@@ -2833,7 +2881,7 @@
   watch(() => character.value && character.value.equipment.items, (nv) => {
     if(nv) {
       character.value.equipment.weight = 0;
-      character.value.equipment.items.forEach((e: any, i: number) => {
+      character.value.equipment.items.forEach((e: any) => {
         const it = itemsStore.findByKey(e.key);
         if(it && it.weight) {
           character.value.equipment.weight += it.weight * e.quantity;
@@ -2880,7 +2928,6 @@
       character.value.level += 1;
       character.value.leveling.push('');
       character.value.manualSteps = [];
-      // step.value = 'levelup';
     }
   }
 
@@ -2891,11 +2938,11 @@
   });
   const changeImprovement = (e: any = null) => {
     const level = character.value.level;
-    
+
     character.value.abilities.improvments = character.value.abilities.improvments.filter((ip: any) => !(ip.level == level));
     resetFeat('class');
-    
-    let option = e ? e.target.value : '';    
+
+    let option = e ? e.target.value : '';
     if(improvement.value) {
       improvement.value.option = option;
     }
@@ -2926,9 +2973,8 @@
   const tableplop = useTableplop();
   const jsonTableplop = ref('');
 
-  const Character = "Character", Throws = "Throws", Actions = "Actions", Spells = "Spells", Equipment = "Equipment", Features = "Features";
-
-  const handleTableplop = () => {
+  const TpCharacter = "Character", TpThrows = "Throws", TpActions = "Actions", TpSpells = "Spells", TpEquipment = "Equipment", TpFeatures = "Features";
+  const handleTableplop = (withdownload: boolean = true) => {
     jsonTableplop.value = '';
     tableplop.resetData();
 
@@ -2939,10 +2985,10 @@
     }
 
     // addSections()
-    const sections = [Character, Throws, Actions];
-    if(char.spells.length > 0) sections.push(Spells);
-    sections.push(Equipment);
-    sections.push(Features);
+    const sections = [TpCharacter, TpThrows, TpActions];
+    if(char.spells.length > 0) sections.push(TpSpells);
+    sections.push(TpEquipment);
+    sections.push(TpFeatures);
 
     sections.forEach(s => {
       const id = tableplop.addParent(s);
@@ -2954,7 +3000,7 @@
     });
 
     // Character
-    const parentId = tableplop.getParent(Character);
+    const parentId = tableplop.getParent(TpCharacter);
     addAbilities(parentId);
     const [sectionId, section2Id] = tableplop.addHorizontalSection(parentId, "infos");
     addInfos(sectionId);
@@ -2964,7 +3010,7 @@
     addDetails(parentId);
 
     // Throws
-    const throwsId = tableplop.getParent(Throws);
+    const throwsId = tableplop.getParent(TpThrows);
     tableplop.addProperty({
       parentId: throwsId,
       type: "number",
@@ -2980,17 +3026,16 @@
     // Spells
     addSpells();
     // Equipment
-    const equipmentId = tableplop.getParent(Equipment);
+    const equipmentId = tableplop.getParent(TpEquipment);
     addMoney(equipmentId);
     addBagpack(equipmentId);
     // Features
     addFeatures();
 
     jsonTableplop.value = JSON.stringify(tableplop.character, null, 2);
-    download(jsonTableplop.value, tableplop.character.name + "_tableplop_import.json", "application/json");
+    if(withdownload) download(jsonTableplop.value, tableplop.character.name + "_tableplop_import.json", "application/json");
     if(dev) json.value = tableplop.character;
   }
-
   const makeScore = (a:Ability, parentId:number) => {
     const e = a.name;
     const t = a.key, v = character.value.abilities[t].total;
@@ -3011,7 +3056,6 @@
       value: v
     });
   }
-
   const addAbilities = (parentId:number) => {
     const name = "Abilities"
     const id = tableplop.addParent(name);
@@ -3048,7 +3092,6 @@
       value: ""
     });
   }
-
   const addInfos = (sectionId: number) => {
     const char = character.value;
     const name = "Infos"
@@ -3168,9 +3211,7 @@
         });
       }
     });
-
   }
-
   const addSenses = (sectionId: number) => {
     const name = "Senses"
     const parentId = tableplop.addParent(name);
@@ -3184,7 +3225,13 @@
       parentId: parentId,
       type: "text",
       name: "dark-vision",
-      value: character.value.darkvision
+      value: character.value.darkvision || 0
+    })
+    character.value.blindsight && tableplop.addProperty({
+      parentId: parentId,
+      type: "text",
+      name: "blindsight",
+      value: character.value.blindsight
     })
     tableplop.addProperty({
       parentId: parentId,
@@ -3199,7 +3246,6 @@
       formula: "10 + stealth"
     });
   }
-
   const addProfs = (sectionId: number) => {
     const name = "Profs"
     const parentId = tableplop.addParent(name);
@@ -3219,7 +3265,6 @@
       });
     })
   }
-
   const addAppearance = (parentId: number) => {
     const name = "appearance"
     const id = tableplop.addParent(name);
@@ -3241,7 +3286,6 @@
       }
     });
   }
-
   const addDetails = (parentId: number) => {
     const name = "Details"
     const id = tableplop.addParent(name);
@@ -3260,7 +3304,6 @@
       parentId: id
     });
   }
-
   const addSavingThrows = (parentId: number) => {
     const name = "Saving Throws"
     const id = tableplop.addParent(name);
@@ -3335,10 +3378,9 @@
       value: jackofAllTrades.value
     })
   }
-
   const addActions = () => {
     const char = character.value;
-    const parentId = tableplop.getParent(Actions);
+    const parentId = tableplop.getParent(TpActions);
 
     const nw = "Weapons";
     const wid = tableplop.addParent(nw);
@@ -3412,11 +3454,10 @@
       message: `Short rest : {d${char.class[0].dice} + constitution}`,
     });
   }
-
   const addSpells = () => {
     const char = character.value;
     if(char.spells.length == 0) return;
-    const parentId = tableplop.getParent(Spells);
+    const parentId = tableplop.getParent(TpSpells);
 
     if(spellSlotsPactInfo.value) {
       tableplop.addCheckboxes(parentId, `spell-slots-pact`, `Spell slots from pact magic lvl${spellSlotsPactInfo.value.max}`, spellSlotsPactInfo.value.slot, false);
@@ -3444,9 +3485,9 @@
           const l = char.spellsLimit && char.spellsLimit.find((l:any) => l.name == s.name);
           if(l) {
             if(l.limitNumber) {
-              const split = l.limitNumber.split('');
+              // const split = l.limitNumber.split('');
               // const each = split.length == 2 && split[1] == "e";
-              const nb = parseInt(split[0]);
+              const nb = evalFormula(l.limitNumber);
               tableplop.addCheckboxes(spid, `${l.name}-limit`, `${l.name}/${cfl(l.limit)}`, nb, false);
             }
             else {
@@ -3464,7 +3505,6 @@
       })
     })
   }
-
   const addMoney = (parentId: number) => {
     const money = character.value.money;
     const name = "Money";
@@ -3499,7 +3539,6 @@
       parentId: id
     })
   }
-
   const addBagpack = (parentId: number) => {
     const e = character.value.equipment;
     const id = tableplop.addParent('Bagpack');
@@ -3551,10 +3590,9 @@
       parentId: id
     })
   }
-
   const addFeatures = () => {
     const char = character.value;
-    const parentId = tableplop.getParent(Features);
+    const parentId = tableplop.getParent(TpFeatures);
 
     if(computedRaceEntries.value.length > 0) {
       let name = `${ char.race.name }${ char.subrace ? ` ${char.subrace.name} ` : ``}`;
@@ -3627,7 +3665,20 @@
         });
       }
     })
+  }
 
+  const evalFormula = (s: string, values:any = {}) => {
+    const parser = new Parser();
+    parser.functions.mod = mod;
+    if(s.length == 2 && s.split('')[1] == "e") {
+      s = s.substring(0, s.length - 1);
+    }
+    const expr = parser.parse(s);
+    return expr.evaluate({character: character.value, ...values});
+  }
+  const evalProgression = (pr: any) => {
+    if(pr.formula) return evalFormula(pr.formula);
+    return pr;
   }
 </script>
 
@@ -3647,8 +3698,10 @@
       <div class="btn-group btn-group-sm mb-1 d-flex align-items-center">
         <button class="btn btn-secondary" @click="logJson">logJson</button>
         <button class="btn btn-secondary" @click="json = steps">steps</button>
-        <button class="btn btn-secondary" @click="json = chooses.additionalSpells">chooses</button>
-        <button class="btn btn-secondary" @click="json = classProficienciesGained">classProficienciesGained</button>
+        <button class="btn btn-secondary" @click="json = chooses">chooses</button>
+        <button class="btn btn-secondary" @click="() => handleTableplop(false)">handleTableplop</button>
+<!--        <button class="btn btn-secondary" @click="json = evalFormula(`2e`)">evalFormula</button>-->
+        <button class="btn btn-secondary" @click="json = spellsStore.spellsChoice('cleric', 0, null)">cantrip cleric</button>
       </div>
     </template>
 
@@ -3720,7 +3773,7 @@
             <i class="fa-solid fa-file-arrow-up" />
             Import
           </button>
-          <button type="button" class="btn btn-success" @click="handleTableplop">
+          <button type="button" class="btn btn-success" @click="() => handleTableplop()">
             <i class="fa-solid fa-gears" />
             Convert
           </button>
@@ -3735,7 +3788,7 @@
               <template v-for="b in racesStore.builder" :key="b.name">
                 <span>{{b.name}}</span>
                 <div class="mb-1">
-                  <template v-for="(r,i) in b.races" :key="i">
+                  <template v-for="r in b.races" :key="r">
                     <button type="button" class="btn me-1 mb-1" @click="changeRace(r)" :class="[
                       r.name === character.race.name ? 'btn-primary' : 'btn-outline-secondary',
                       r.version === 0 && r.subrace === 0 ? 'btn-outline-danger' : ''
@@ -3753,7 +3806,7 @@
             <template v-slot:header-label>Version</template>
             <template v-slot:header-value>{{ character.race.version || CHOOSE }}</template>
             <template v-slot:body>
-              <template v-for="(v,i) in versions" :key="i">
+              <template v-for="v in versions" :key="v">
                 <button type="button" class="btn me-1 mb-1" @click="changeRaceSource(v)" :class="[
                   v.source === character.race.source ? 'btn-primary' : 'btn-outline-secondary',
                 ]">
@@ -3767,7 +3820,7 @@
             <template v-slot:header-label>Subrace</template>
             <template v-slot:header-value>{{ character.subrace.name || CHOOSE }}</template>
             <template v-slot:body>
-              <template v-for="(s,i) in subraces" :key="i">
+              <template v-for="s in subraces" :key="s">
                 <button type="button" class="btn me-1 mb-1" @click="changeSubrace(s)" :class="[
                     displaySubrace(s) === character.subrace.name ? 'btn-primary' : 'btn-outline-secondary',
                   ]">
@@ -3837,7 +3890,7 @@
             <template v-slot:header-value>{{ character.background || CHOOSE }}</template>
             <template v-slot:body>
               <div>
-                <template v-for="(b,i) in backgrounds" :key="i">
+                <template v-for="b in backgrounds" :key="b">
                   <button type="button" class="btn me-1 mb-1" @click="changeBG(b)" :class="[
                       b.name === character.background ? 'btn-primary' : classBackground[character.class[0].name] === b.name ? 'btn-outline-primary' : 'btn-outline-secondary',
                     ]">
@@ -4491,6 +4544,10 @@
               <template v-slot:label>Darkvision:</template>
               {{ character.darkvision }} ft.
             </CharacterInfo>
+            <CharacterInfo v-if="character.blindsight">
+              <template v-slot:label>Blindsight:</template>
+              {{ character.blindsight }} ft.
+            </CharacterInfo>
           </div>
 
           <CharacterInfo v-if="character.resist.length">
@@ -4578,13 +4635,7 @@
                     </template>
                   </div>
                 </CharacterInfo>
-                <CharacterInfo v-for="ft in computedFeatures('class', cl.name)" :key="ft.feature">
-                  <template v-slot:label>{{ ft.name }}:</template>
-                  <template v-for="(ftc,i) in ft.choices.sort()" :key="ftc">
-                    <template v-if="i>0">,&#160;</template>
-                    <span :title="S(classesStore.getOptionalInfo(ftc))" v-tooltip>{{ftc}}</span>
-                  </template>
-                </CharacterInfo>
+
                 <CharacterInfo v-if="cl.subclass" flex>
                   <template v-slot:label>Subclass features:</template>
                   <div class="d-flex flex-column flex-grow-1">
@@ -4599,6 +4650,14 @@
                     </template>
                   </div>
                 </CharacterInfo>
+
+                <CharacterInfo v-for="ft in computedFeatures('class', cl.name)" :key="ft.feature">
+                  <template v-slot:label>{{ ft.name }}:</template>
+                  <template v-for="(ftc,i) in ft.choices.sort()" :key="ftc">
+                    <template v-if="i>0">,&#160;</template>
+                    <span :title="S(classesStore.getOptionalInfo(ftc))" v-tooltip>{{ftc}}</span>
+                  </template>
+                </CharacterInfo>
                 <CharacterInfo v-if="cl.subclass" v-for="ft in computedFeatures('subclass', cl.subclass)" :key="ft.feature">
                   <template v-slot:label>{{ ft.name }}:</template>
                   <template v-for="(ftc,i) in ft.choices.sort()" :key="ftc">
@@ -4606,6 +4665,12 @@
                     <span :title="S(classesStore.getOptionalInfo(ftc))" v-tooltip>{{ftc}}</span>
                   </template>
                 </CharacterInfo>
+
+                <CharacterInfo v-for="pr in classesStore.getOtherProgression(cl.name, cl.subclass, cl.level)" :key="pr">
+                  <template v-slot:label>{{ pr.name }}:</template>
+                  {{ evalProgression(pr.progression) }}<template v-if="pr.limit"> / {{ evalProgression(pr.limit) }}</template>
+                </CharacterInfo>
+
               </ClassInfo>
             </template>
           </template>
