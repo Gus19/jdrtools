@@ -343,11 +343,11 @@
       if(f) {
         if(classFeatures.value) {
           let s = 'features';
-          let g1 = true
           if (classFeatures.value.find((cf: any) => cf.chooseSubclass)) {
-            g1 = !!lastClass.value.subclass;
+            removeManualStep(s);
+            g = !!lastClass.value.subclass;
           }
-          if(g1) {
+          else {
             addManualStep(s);
             g = isManualValid(s);
           }
@@ -1298,7 +1298,7 @@
         lastClass.value.preparedSpells = {has: false /*sub.preparedSpells != undefined*/};
         lastClass.value.spellcastingAbility = sub.spellcastingAbility || null;
       }
-      else {
+      else if (computedLastClass.value && !computedLastClass.value.casterProgression) {
         lastClass.value.casterProgression = null;
         lastClass.value.spellcastingAbility = null;
       }
@@ -1404,6 +1404,12 @@
           }
           if(cpg.blindsight && (!character.value.blindsight || cpg.blindsight >= character.value.blindsight)) {
             character.value.blindsight = cpg.blindsight;
+          }
+          if(cpg.speed) {
+            character.value.speed = {
+              ...character.value.speed,
+              ...cpg.speed
+            }
           }
         });
       }
@@ -2307,11 +2313,14 @@
       character.value.hp.max = 0;
       return;
     }
-
     let hp = 0;
     character.value.class.forEach((c:any) => {
       c.hps.forEach((d:number) => hp += Math.max(d+modCon.value,1));
+      if(c.name == "Sorcerer" && c.subclass == "Draconic") hp += c.level
     });
+    if(character.value.feats.find((f:any) => f.name == "Tough")) {
+      hp += (character.value.level * 2);
+    }
     character.value.hp.max = hp;
   }
 
@@ -2342,6 +2351,7 @@
   }
   const jackofAllTrades = computed(() => character.value && character.value.class.find((cl:any) => cl.name == 'Bard' && cl.level >= 2) != null);
   const unarmoredDefense = computed(() => character.value && character.value.class.find((cl:any) => (cl.name == 'Monk' || cl.name == 'Barbarian') && cl.level >= 1) != null)
+  const draconicResilience = computed(() => character.value && character.value.class.find((cl:any) => cl.name == 'Sorcerer' && cl.subclass == 'Draconic' && cl.level >= 1) != null)
   const calculSkills = computed(() => Skills.map(s => {
     const level = character.value.level;
     const skill = character.value.skills.find((c:any) => c.name == s.name);
@@ -2916,7 +2926,12 @@
       else ac = armor.ac;
     }
     else {
-      ac = 10 + modDex.value;
+      if(draconicResilience.value) {
+        ac = 13 + modDex.value;
+      }
+      else {
+        ac = 10 + modDex.value;
+      }
       if(unarmoredDefense.value) {
         ac += modCon.value;
       }
@@ -3683,7 +3698,7 @@
       s = s.substring(0, s.length - 1);
     }
     const expr = parser.parse(s);
-    return expr.evaluate({character: character.value, ...values});
+    return expr.evaluate({character: character.value, prof: prof.value, ...values});
   }
   const evalProgression = (pr: any) => {
     if(pr.formula) return evalFormula(pr.formula);

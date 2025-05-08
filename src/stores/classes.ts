@@ -43,6 +43,15 @@ export const useClassesStore = defineStore("ClassesStore", {
             local1.push(...data.class);
           }
           if (data.subclass) {
+            data.subclass.filter((s:any) => s.name == 'Purple Dragon Knight (Banneret)').forEach((s:any) => {
+              s.name = 'Banneret';
+              s.shortName = 'Banneret';
+            });
+            data.subclass.filter((s:any) => s.name == 'Pyromancer (PSK)').forEach((s:any) => {
+              s.name = 'Pyromancer';
+              s.shortName = 'Pyromancer';
+            });
+
             local2.push(...data.subclass.filter((s:any) =>
               !["TDCSR"].includes(s.source) &&
               s.name != "Knowledge Domain (PSA)"
@@ -52,6 +61,12 @@ export const useClassesStore = defineStore("ClassesStore", {
             local3.push(...data.classFeature);
           }
           if (data.subclassFeature) {
+            data.subclassFeature.filter((s:any) => s.subclassShortName == 'Purple Dragon Knight (Banneret)').forEach((s:any) => {
+              s.subclassShortName = 'Banneret'
+            });
+            data.subclassFeature.filter((s:any) => s.subclassShortName == 'Pyromancer (PSK)').forEach((s:any) => {
+              s.subclassShortName = 'Pyromancer'
+            });
             local4.push(...data.subclassFeature);
           }
         }
@@ -331,7 +346,7 @@ export const useClassesStore = defineStore("ClassesStore", {
     },
     getProficienciesGained() {
       return (name: string, subclass: string|null, level: number): any[] => {
-        return classProficienciesGained.filter(c => c.level == level && ((c.originName == name && c.origin == 'class') || (c.originName == subclass && c.origin == 'subclass')));
+        return classProficienciesGained.filter(c => c.level <= level && ((c.originName == name && c.origin == 'class') || (c.originName == subclass && c.origin == 'subclass')));
       }
     },
     getOtherProgression() {
@@ -975,6 +990,261 @@ const classOtherProgression: any[] = [
       "9": {formula: "mod('int')"}
     }
   },
+  {
+    name: "Armor Model",
+    origin: "subclass",
+    originName: "Armorer",
+    parent: "Armor Model",
+    limit: "Rest",
+    progression: {
+      "3": 1
+    }
+  },
+  // Barbarian
+  {
+    name: "Rages",
+    origin: "class",
+    originName: "Barbarian",
+    parent: "Rages",
+    limit: "Long Rest", //{formula: "false ? 'Long Rest' : 'Test'"},
+    progression: {
+      "1":  2,
+      "3":  3,
+      "6":  4,
+      "12": 5,
+      "17": 6,
+      "20": null
+    }
+  },
+  {
+    name: "Rage Damage",
+    origin: "class",
+    originName: "Barbarian",
+    parent: "Rages",
+    limit: null, //{formula: "false ? 'Long Rest' : 'Test'"},
+    progression: {
+      "1" : "+2",
+      "9" : "+3",
+      "16": "+4"
+    }
+  },
+  {
+    name: "Bestial Soul",
+    origin: "subclass",
+    originName: "Beast",
+    parent: "Bestial Soul",
+    limit: "Rest",
+    progression: {
+      "6": 1
+    }
+  },
+  {
+    name: "Infectious Fury",
+    origin: "subclass",
+    originName: "Beast",
+    parent: "Infectious Fury",
+    limit: "Rest",
+    progression: {
+      "10": {formula: "prof"}
+    }
+  },
+  {
+    name: "Call the Hunt",
+    origin: "subclass",
+    originName: "Beast",
+    parent: "Call the Hunt",
+    limit: "Rest",
+    progression: {
+      "14": {formula: "prof"}
+    }
+  },
+  {
+    name: "Intimidating Presence",
+    origin: "subclass",
+    originName: "Berserker",
+    parent: "Intimidating Presence",
+    limit: "Daily",
+    progression: {
+      "10": 1
+    }
+  },
+  {
+    name: "Magic Awareness",
+    origin: "subclass",
+    originName: "Wild Magic",
+    parent: "Magic Awareness",
+    limit: "Long Rest",
+    progression: {
+      "3": {formula: "prof"}
+    }
+  },
+  {
+    name: "Bolstering Magic",
+    origin: "subclass",
+    originName: "Wild Magic",
+    parent: "Bolstering Magic",
+    limit: "Long Rest",
+    progression: {
+      "6": {formula: "prof"}
+    }
+  },
+  {
+    name: "Fanatical Focus",
+    origin: "subclass",
+    originName: "Zealot",
+    parent: "Fanatical Focus",
+    limit: "Rage",
+    progression: {
+      "6": 1
+    }
+  },
+  {
+    name: "Zealous presence",
+    origin: "subclass",
+    originName: "Zealot",
+    parent: "Zealous presence",
+    limit: "Long Rest",
+    progression: {
+      "10": 1
+    }
+  },
+  // Sorcerer
+  {
+    name: "Warping Implosion",
+    origin: "subclass",
+    originName: "Aberrant Mind",
+    parent: "Warping Implosion",
+    limit: "Long Rest",
+    progression: {
+      "18": 1
+    },
+    consumes: {
+      name: "Sorcery Point",
+      amount: 5
+    }
+  },
+  {
+    name: "Restore Balance",
+    origin: "subclass",
+    originName: "Clockwork Soul",
+    parent: "Restore Balance",
+    limit: "Long Rest",
+    progression: {
+      "1": {formula: "prof"}
+    }
+  },
+  {
+    name: "Trance of Order",
+    origin: "subclass",
+    originName: "Clockwork Soul",
+    parent: "Trance of Order",
+    limit: "Long Rest",
+    progression: {
+      "14": 1
+    },
+    consumes: {
+      name: "Sorcery Point",
+      amount: 5
+    }
+  },
+  {
+    name: "Clockwork Cavalcade",
+    origin: "subclass",
+    originName: "Clockwork Soul",
+    parent: "Clockwork Cavalcade",
+    limit: "Long Rest",
+    progression: {
+      "18": 1
+    },
+    consumes: {
+      name: "Sorcery Point",
+      amount: 7
+    }
+  },
+  {
+    name: "Favored by the Gods",
+    origin: "subclass",
+    originName: "Divine Soul",
+    parent: "Favored by the Gods",
+    limit: "Rest",
+    progression: {
+      "1": 1
+    }
+  },
+  {
+    name: "Unearthly Recovery",
+    origin: "subclass",
+    originName: "Divine Soul",
+    parent: "Unearthly Recovery",
+    limit: "Long Rest",
+    progression: {
+      "18": 1
+    }
+  },
+  {
+    name: "Lunar Embodiment",
+    origin: "subclass",
+    originName: "Lunar",
+    parent: "Lunar Embodiment",
+    limit: "Long Rest",
+    progression: {
+      "1": 1
+    }
+  },
+  {
+    name: "Lunar Boons",
+    origin: "subclass",
+    originName: "Lunar",
+    parent: "Lunar Boons",
+    limit: "Long Rest",
+    progression: {
+      "6": {formula: "prof"}
+    }
+  },
+  {
+    name: "Lunar Phenomenon",
+    origin: "subclass",
+    originName: "Lunar",
+    parent: "Lunar Phenomenon",
+    limit: "Long Rest",
+    progression: {
+      "18": 1
+    },
+    consumes: {
+      name: "Sorcery Point",
+      amount: 5
+    }
+  },
+  {
+    name: "Strength of the Grave",
+    origin: "subclass",
+    originName: "Shadow",
+    parent: "Strength of the Grave",
+    limit: "Long Rest",
+    progression: {
+      "1": 1
+    }
+  },
+  {
+    name: "Wind Soul",
+    origin: "subclass",
+    originName: "Storm",
+    parent: "Wind Soul",
+    limit: "Rest",
+    progression: {
+      "18": 1
+    }
+  },
+  {
+    name: "Tides of Chaos",
+    origin: "subclass",
+    originName: "Wild",
+    parent: "Tides of Chaos",
+    limit: "Long Rest",
+    progression: {
+      "1": 1
+    }
+  },
   // {
   //   origin: "class",
   //   originName: "Fighter",
@@ -1146,7 +1416,7 @@ export const classProficienciesGained: any[] = [
     additionalSpells: [{
       "innate": {
         "10": {
-          "daily": {
+          "rest": {
             "1": [
               "augury",
               "clairvoyance"
@@ -1155,6 +1425,22 @@ export const classProficienciesGained: any[] = [
         }
       }
     }]
+  },
+  {
+    originName: "Beast",
+    origin: "subclass",
+    level: 6,
+    optionalfeatureProgression: [
+      {
+        name: "Bestial Soul",
+        featureType: [
+          "BestialSoul"
+        ],
+        progression: {
+          "6": 1
+        }
+      }
+    ]
   },
   {
     originName: "Giant",
@@ -1208,6 +1494,22 @@ export const classProficienciesGained: any[] = [
         ],
         progression: {
           "14": 1
+        }
+      }
+    ]
+  },
+  {
+    originName: "Storm Herald",
+    origin: "subclass",
+    level: 3,
+    optionalfeatureProgression: [
+      {
+        name: "Storm Aura",
+        featureType: [
+          "StormAura"
+        ],
+        progression: {
+          "3": 1
         }
       }
     ]
@@ -1439,10 +1741,10 @@ export const classProficienciesGained: any[] = [
     }]
   },
   {
-    originName: "Purple Dragon Knight (Banneret)",
+    originName: "Banneret", // Purple Dragon Knight (Banneret)
     origin: "subclass",
     level: 7,
-    skills: [{
+    skills: [{"persuasion": true}, {
       "choose": {
         "from": [
           "persuasion",
@@ -1762,11 +2064,136 @@ export const classProficienciesGained: any[] = [
     skills: [{
       "nature": true,
       "survival": true
+    }],
+    expertises: [{
+      "nature": true,
+      "survival": true
     }]
+  },
+  // Sorcerer
+  {
+    originName: "Aberrant Mind",
+    origin: "subclass",
+    level: 6,
+    resist: ["psychic"],
+  },
+  {
+    originName: "Draconic",
+    origin: "subclass",
+    level: 1,
+    languages: [{
+      "draconic": true
+    }]
+  },
+  {
+    originName: "Lunar",
+    origin: "subclass",
+    level: 1,
+    additionalSpells: [{ known: { _: [ "sacred flame" ] } }]
+  },
+  {
+    originName: "Shadow",
+    origin: "subclass",
+    level: 1,
+    darkvision: 120
+  },
+  {
+    originName: "Storm",
+    origin: "subclass",
+    level: 1,
+    languages: [{
+      "primordial": true, "aquan": true, "auran": true, "ignan": true, "terran": true
+    }]
+  },
+  {
+    originName: "Storm",
+    origin: "subclass",
+    level: 6,
+    resist: ["lightning", "thunder"]
+  },
+  {
+    originName: "Storm",
+    origin: "subclass",
+    level: 18,
+    immune: ["lightning", "thunder"],
+    speed: {
+      fly: 60
+    }
+  },
+  {
+    originName: "Pyromancer",
+    origin: "subclass",
+    level: 6,
+    resist: ["fire"]
+  },
+  {
+    originName: "Pyromancer",
+    origin: "subclass",
+    level: 18,
+    immune: ["fire"]
   },
 ]
 
 const complementsFeatures: OptionalFeature[] = [
+  // Barbarian = Beast = BestialSoul
+  {
+    "name": "You gain a swimming speed equal to your walking speed, and you can breathe underwater.",
+    "featureType": [
+      "BestialSoul"
+    ],
+    "entries": [
+    ]
+  },
+  {
+    "name": "You gain a climbing speed equal to your walking speed, and you can climb difficult surfaces, including upside down on ceilings, without needing to make an ability check.",
+    "featureType": [
+      "BestialSoul"
+    ],
+    "entries": [
+    ]
+  },
+  {
+    "name": "When you jump, you can make a Strength ({@skill Athletics}) check and extend your jump by a number of feet equal to the check's total. You can make this special check only once per turn.",
+    "featureType": [
+      "BestialSoul"
+    ],
+    "entries": [
+    ]
+  },
+  // Barbarian = Storm Herald = StormAura
+  {
+    "name": "Desert",
+    "featureType": [
+      "StormAura"
+    ],
+    entries: [
+      "When this effect is activated, all other creatures in your aura take 2 fire damage each. The damage increases when you reach certain levels in this class, increasing to 3 at 5th level, 4 at 10th level, 5 at 15th level, and 6 at 20th level.",
+      "At 6th level, you gain resistance to fire damage, and you don't suffer the effects of extreme heat, as described in the Dungeon Master's Guide. Moreover, as an action, you can touch a flammable object that isn't being worn or carried by anyone else and set it on fire.",
+      "At 14th level, immediately after a creature in your aura hits you with an attack, you can use your reaction to force that creature to make a Dexterity saving throw. On a failed save, the creature takes fire damage equal to half your barbarian level."
+    ]
+  },
+  {
+    "name": "Sea",
+    "featureType": [
+      "StormAura"
+    ],
+    entries: [
+      "When this effect is activated, you can choose one other creature you can see in your aura. The target must make a Dexterity saving throw. The target takes 1d6 lightning damage on a failed save, or half as much damage on a successful one. The damage increases when you reach certain levels in this class, increasing to 2d6 at 10th level, 3d6 at 15th level, and 4d6 at 20th level.",
+      "At 6th level, you gain resistance to lightning damage, and you can breathe underwater. You also gain a swimming speed of 30 feet.",
+      "At 14th level, when you hit a creature in your aura with an attack, you can use your reaction to force that creature to make a Strength saving throw. On a failed save, the creature is knocked prone, as if struck by a wave."
+    ]
+  },
+  {
+    "name": "Tundra",
+    "featureType": [
+      "StormAura"
+    ],
+    entries: [
+      "When this effect is activated, each creature of your choice in your aura gains 2 temporary hit points, as icy spirits inure it to suffering. The temporary hit points increase when you reach certain levels in this class, increasing to 3 at 5th level, 4 at 10th level, 5 at 15th level, and 6 at 20th level.",
+      "At 6th level, you gain resistance to cold damage, and you don't suffer the effects of extreme cold, as described in the Dungeon Master's Guide. Moreover, as an action, you can touch water and turn a 5-foot cube of it into ice, which melts after 1 minute. This action fails if a creature is in the cube.",
+      "At 14th level, whenever the effect of your Storm Aura is activated, you can choose one creature you can see in the aura. That creature must succeed on a Strength saving throw, or its speed is reduced to 0 until the start of your next turn, as magical frost covers it."
+    ]
+  },
   // Barbarian = Totem Warrior = Totem Spirit
   {
     "name": "Bear Totem",
