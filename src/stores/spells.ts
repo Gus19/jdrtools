@@ -104,7 +104,7 @@ export const useSpellsStore = defineStore("SpellsStore", {
     },
     findByName() {
       return (name: string): SpellInfo|undefined => {
-        return this.spells.find(f => f.name.toLowerCase() == name.toLowerCase());
+        return this.spells.find(f => f.name.toLowerCase() == name.split('|')[0].toLowerCase());
       }
     }
   }

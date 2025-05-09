@@ -438,8 +438,8 @@
       }
 
       let i2 = true;
-      if(i && (chooses.value.languages.length > 0 || chooses.value.tools.length > 0)) {
-        ['languages', 'tools'].filter(key => chooses.value[key]).forEach(key => {
+      if(i && (chooses.value.languages.length > 0 || chooses.value.tools.length > 0 || chooses.value.weapon.length > 0)) {
+        ['languages', 'tools', 'weapon'].filter(key => chooses.value[key]).forEach(key => {
           const chc: any = [];
           chooses.value[key].forEach((ch:any) => {
             const c = chc.find((f: any) => f.origin == ch.origin && f.originName == ch.originName);
@@ -782,6 +782,7 @@
     languages: [],
     tools: [],
     skills: [],
+    weapon: [],
     expertises: [],
     cantrips: {},
     spells: {},
@@ -1279,6 +1280,7 @@
     resetSkills('subclass');
     resetLanguages('subclass');
     resetTools('subclass');
+    resetWeapons('subclass');
     resetSpells('subclass');
     resetEquipmentProf('weapon', 'subclass');
     resetEquipmentProf('armor', 'subclass');
@@ -1348,6 +1350,7 @@
       resetSkills('class');
       resetLanguages('class');
       resetTools('class');
+      resetWeapons('class');
       resetSpells('class');
       resetEquipmentProf('weapon', 'class');
       resetEquipmentProf('armor', 'class');
@@ -1612,6 +1615,7 @@
         if(cpg.expertise) chooseAddExpertise(cpg.origin, cpg.expertise[0], cpg.originName);
         if(cpg.languages) chooseAddLanguage(cpg.origin, cpg.languages, cpg.originName);
         if(cpg.tools) chooseAddTools(cpg.origin, cpg.tools[0], cpg.originName);
+        if(cpg.weapons) chooseAddWeapons(cpg.origin, cpg.weapons[0], cpg.originName)
         if(cpg.optionalfeatureProgression) chooseFeatureProgression(cpg.origin, cpg.originName, cpg.optionalfeatureProgression);
         if(cpg.additionalSpells) {
           let option = null;
@@ -1868,15 +1872,39 @@
     character.value.tools = character.value.tools.filter((sk:any) => !(sk.origin == origin && sk.level == character.value.level));
   }
 
+  const chooseAddWeapons = (origin:string, l: any, originName:string) => {
+    if(!l) return;
+    const ch = chooses.value.weapon;
+    Object.keys(l).filter(k => k == "choose").forEach(_ => {
+      const from: string[] = [];
+      l.choose.from.forEach((f:string) => {
+        equipmentProf.filter(ep => ep.key == f).forEach(ep => {
+          from.push(...itemsStore.search(ep.search).map(sl => itemKeyToValue(sl)))
+        });
+      });
+      ch.push({
+        origin: origin,
+        originName: originName,
+        count: l.choose.count || 1,
+        from: from
+      });
+    });
+  }
+  const resetWeapons = (origin: string) => {
+    character.value.weapon = character.value.weapon.filter((sk:any) => !(sk.origin == origin && sk.level == character.value.level));
+  }
+
   const extractSpellslotsFrom = (k: any, spellslots: any, from: any, origin: string, originName: string, limit: string|null = null, limitNumber: string|null = null) => {
     if ("string" == typeof k) {
       const n = k.indexOf('#') == -1 ? k : k.substring(0, k.indexOf('#'));
       const s = spellsStore.findByName(n);
       if (s) {
         from[s.level].push(s);
-        // spellslots[s.level]++;
         addSpell(s.name, s.level, false, true, origin, originName);
         addSpellLimit(s.name, origin, originName, limit, limitNumber);
+      }
+      else {
+        console.error(`Spell ${n} not found`);
       }
     }
     else if (k.choose) {
@@ -1974,7 +2002,7 @@
             else if(c.known[kn]._) {
               c.known[kn]._.forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin, originName));
             }
-            else {
+            else if(Array.isArray(c.known[kn])) {
               c.known[kn].forEach((k: any) => extractSpellslotsFrom(k, spellslots, from, origin, originName));
             }
           }
@@ -3694,11 +3722,19 @@
   const evalFormula = (s: string, values:any = {}) => {
     const parser = new Parser();
     parser.functions.mod = mod;
+    parser.functions.ceil = Math.ceil;
     if(s.length == 2 && s.split('')[1] == "e") {
       s = s.substring(0, s.length - 1);
     }
+    character.value.class.forEach((cl:any) => {
+      values[cl.name.toLowerCase()] = cl;
+    })
     const expr = parser.parse(s);
-    return expr.evaluate({character: character.value, prof: prof.value, ...values});
+    return expr.evaluate({
+      character: character.value,
+      prof: prof.value,
+      ...values
+    });
   }
   const evalProgression = (pr: any) => {
     if(pr.formula) return evalFormula(pr.formula);
@@ -3725,7 +3761,7 @@
         <button class="btn btn-secondary" @click="json = chooses">chooses</button>
         <button class="btn btn-secondary" @click="() => handleTableplop(false)">handleTableplop</button>
 <!--        <button class="btn btn-secondary" @click="json = evalFormula(`2e`)">evalFormula</button>-->
-        <button class="btn btn-secondary" @click="json = spellsStore.spellsChoice('cleric', 0, null)">cantrip cleric</button>
+        <button class="btn btn-secondary" @click="json = classProficienciesGained">classProficienciesGained</button>
       </div>
     </template>
 
@@ -4199,7 +4235,7 @@
                              :checked="isOtherProfCheck(cl, l.key)"
                              :disabled="isOtherProfDisabled(cl, l.key)" />
                       <label class="form-check-label fst-italic">{{cfl(l.key) }} {{ cl }}</label>
-                      <div v-if="l.parent == 'weapon'" v-for="sl in itemsStore.search(l.search) " class="form-check pb-1" :key="sl">
+                      <div v-if="l.parent == 'weapon'" v-for="sl in itemsStore.search(l.search)" class="form-check pb-1" :key="sl">
                         <input class="form-check-input" type="checkbox" :value="itemKeyToValue(sl)" @click="changeProf(cl, itemKeyToValue(sl))"
                                :checked="isOtherProfCheck(cl, itemKeyToValue(sl))" :indeterminate="isOtherProfCheck(cl, l.key)"
                                :disabled="isOtherProfDisabled(cl, itemKeyToValue(sl))" />

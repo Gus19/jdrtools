@@ -924,6 +924,16 @@ export interface Progression2 {
 const classOtherProgression: any[] = [
   // Artificier
   {
+    name: "Magical Tinkering",
+    origin: "class",
+    originName: "Artificer",
+    parent: "Magical Tinkering",
+    limit: "Use",
+    progression: {
+      "1": {formula: "mod('int')"}
+    }
+  },
+  {
     name: "Infused Items",
     origin: "class",
     originName: "Artificer",
@@ -1021,7 +1031,7 @@ const classOtherProgression: any[] = [
     origin: "class",
     originName: "Barbarian",
     parent: "Rages",
-    limit: null, //{formula: "false ? 'Long Rest' : 'Test'"},
+    limit: null,
     progression: {
       "1" : "+2",
       "9" : "+3",
@@ -1245,6 +1255,449 @@ const classOtherProgression: any[] = [
       "1": 1
     }
   },
+  // Warlock
+  {
+    name: "Mystic Arcanum (6th level)",
+    origin: "class",
+    originName: "Warlock",
+    parent: "Level 6",
+    limit: "Long Rest",
+    progression: {
+      "11": 1
+    }
+  },
+  {
+    name: "Mystic Arcanum (7th level)",
+    origin: "class",
+    originName: "Warlock",
+    parent: "Level 7",
+    limit: "Long Rest",
+    progression: {
+      "13": 1
+    }
+  },
+  {
+    name: "Mystic Arcanum (8th level)",
+    origin: "class",
+    originName: "Warlock",
+    parent: "Level 6",
+    limit: "Long Rest",
+    progression: {
+      "15": 1
+    }
+  },
+  {
+    name: "Mystic Arcanum (9th level)",
+    origin: "class",
+    originName: "Warlock",
+    parent: "Level 6",
+    limit: "Long Rest",
+    progression: {
+      "17": 1
+    }
+  },
+  {
+    name: "Eldritch Master",
+    origin: "class",
+    originName: "Warlock",
+    parent: "Eldritch Master",
+    limit: "Long Rest",
+    progression: {
+      "20": 1
+    }
+  },
+  {
+    name: "Fey Presence",
+    origin: "subclass",
+    originName: "Archfey",
+    parent: "Fey Presence",
+    limit: "Rest",
+    progression: {
+      "1": 1
+    }
+  },
+  {
+    name: "Misty Escape",
+    origin: "subclass",
+    originName: "Archfey",
+    parent: "Misty Escape",
+    limit: "Rest",
+    progression: {
+      "6": 1
+    }
+  },
+  {
+    name: "Dark Delirium",
+    origin: "subclass",
+    originName: "Archfey",
+    parent: "Dark Delirium",
+    limit: "Rest",
+    progression: {
+      "14": 1
+    }
+  },
+  {
+    name: "Healing Light",
+    origin: "subclass",
+    originName: "Celestial",
+    parent: "Healing Light",
+    limit: "Long Rest",
+    progression: {
+      "1": {formula: "warlock.level+1"}
+    }
+  },
+  {
+    name: "Searing Vengeance",
+    origin: "subclass",
+    originName: "Celestial",
+    parent: "Searing Vengeance",
+    limit: "Long Rest",
+    progression: {
+      "14": 1
+    }
+  },
+  {
+    name: "Tentacle of the Deep",
+    origin: "subclass",
+    originName: "Fathomless",
+    parent: "Tentacle of the Deep",
+    limit: "Long Rest",
+    progression: {
+      "1": 1
+    }
+  },
+  {
+    name: "Fathomless Plunge",
+    origin: "subclass",
+    originName: "Fathomless",
+    parent: "Fathomless Plunge",
+    limit: "Rest",
+    progression: {
+      "14": 1
+    }
+  },
+  {
+    name: "Dark One's Own Luck",
+    origin: "subclass",
+    originName: "Fiend",
+    parent: "Dark One's Own Luck",
+    limit: "Rest",
+    progression: {
+      "6": 1
+    }
+  },
+  {
+    name: "Hurl Through Hell",
+    origin: "subclass",
+    originName: "Fiend",
+    parent: "Hurl Through Hell",
+    limit: "Long Rest",
+    progression: {
+      "14": 1
+    }
+  },
+  {
+    name: "Genie's Vessel",
+    origin: "subclass",
+    originName: "Genie",
+    parent: "Genie's Vessel",
+    limit: "Long Rest",
+    progression: {
+      "1": 1
+    }
+  },
+  {
+    name: "Elemental Gift",
+    origin: "subclass",
+    originName: "Genie",
+    parent: "Elemental Gift",
+    limit: "Long Rest",
+    progression: {
+      "6": {formula: "prof"}
+    }
+  },
+  {
+    name: "Limited Wish",
+    origin: "subclass",
+    originName: "Genie",
+    parent: "Limited Wish",
+    limit: "Long Rest",
+    progression: {
+      "14": "1d4"
+    }
+  },
+  {
+    name: "Entropic Ward",
+    origin: "subclass",
+    originName: "Great Old One",
+    parent: "Entropic Ward",
+    limit: "Rest",
+    progression: {
+      "6": 1
+    }
+  },
+  {
+    name: "Hexblade's Curse",
+    origin: "subclass",
+    originName: "Hexblade",
+    parent: "Hexblade's Curse",
+    limit: "Rest",
+    progression: {
+      "1": 1
+    }
+  },
+  {
+    name: "Accursed Specter",
+    origin: "subclass",
+    originName: "Hexblade",
+    parent: "Accursed Specter",
+    limit: "Long Rest",
+    progression: {
+      "6": 1
+    }
+  },
+  {
+    name: "Form of Dread",
+    origin: "subclass",
+    originName: "Undead",
+    parent: "Form of Dread",
+    limit: "Long Rest",
+    progression: {
+      "1": {formula: "prof"}
+    }
+  },
+  {
+    name: "Necrotic Husk",
+    origin: "subclass",
+    originName: "Undead",
+    parent: "Necrotic Husk",
+    limit: "Long Rest",
+    progression: {
+      "10": "1d4"
+    }
+  },
+  {
+    name: "Spirit Projection",
+    origin: "subclass",
+    originName: "Undead",
+    parent: "Spirit Projection",
+    limit: "Long Rest",
+    progression: {
+      "14": 1
+    }
+  },
+  {
+    name: "Defy Death",
+    origin: "subclass",
+    originName: "Undying",
+    parent: "Defy Death",
+    limit: "Long Rest",
+    progression: {
+      "6": 1
+    }
+  },
+  {
+    name: "Indestructible Life",
+    origin: "subclass",
+    originName: "Undying",
+    parent: "Indestructible Life",
+    limit: "Rest",
+    progression: {
+      "14": 1
+    }
+  },
+  // Wizard
+  {
+    name: "Arcane Recovery",
+    origin: "class",
+    originName: "Wizard",
+    parent: "Spells",
+    limit: "Rest",
+    progression: {
+      "1": {formula: "ceil(wizard.level/2)"}
+    }
+  },
+  {
+    name: "Signature Spells",
+    origin: "class",
+    originName: "Wizard",
+    parent: "Signature Spells",
+    limit: "Rest",
+    progression: {
+      "20": 1
+    }
+  },
+  {
+    name: "Arcane Ward",
+    origin: "subclass",
+    originName: "Abjuration",
+    parent: "Arcane Ward",
+    limit: "Long Rest",
+    progression: {
+      "2": 1
+    }
+  },
+  {
+    name: "Bladesong",
+    origin: "subclass",
+    originName: "Bladesinging",
+    parent: "Bladesong",
+    limit: "Long Rest",
+    progression: {
+      "2": {formula: "prof"}
+    }
+  },
+  {
+    name: "Chronal Shift",
+    origin: "subclass",
+    originName: "Chronurgy",
+    parent: "Chronal Shift",
+    limit: "Long Rest",
+    progression: {
+      "2": 2
+    }
+  },
+  {
+    name: "Momentary Stasis",
+    origin: "subclass",
+    originName: "Chronurgy",
+    parent: null,
+    limit: "Long Rest",
+    progression: {
+      "6": {formula: "max(mod('int'),1)"}
+    }
+  },
+  {
+    name: "Arcane Abeyance",
+    origin: "subclass",
+    originName: "Chronurgy",
+    parent: null,
+    limit: "Rest",
+    progression: {
+      "10": 1
+    }
+  },
+  {
+    name: "Benign Transportation",
+    origin: "subclass",
+    originName: "Conjuration",
+    parent: null,
+    limit: "Long Rest",
+    progression: {
+      "6": 1
+    }
+  },
+  {
+    name: "The Third Eye",
+    origin: "subclass",
+    originName: "Divination",
+    parent: null,
+    limit: "Rest",
+    progression: {
+      "10": 1
+    }
+  },
+  {
+    name: "Hypnotic Gaze",
+    origin: "subclass",
+    originName: "Enchantment",
+    parent: null,
+    limit: "Long Rest",
+    progression: {
+      "2": 1
+    }
+  },
+  {
+    name: "Overchannel",
+    origin: "subclass",
+    originName: "Evocation",
+    parent: null,
+    limit: "Long Rest",
+    progression: {
+      "14": 1
+    }
+  },
+  {
+    name: "Violent Attraction",
+    origin: "subclass",
+    originName: "Graviturgy",
+    parent: null,
+    limit: "Long Rest",
+    progression: {
+      "10": {formula: "max(mod('int'),1)"}
+    }
+  },
+  {
+    name: "Event Horizon",
+    origin: "subclass",
+    originName: "Graviturgy",
+    parent: null,
+    limit: "Long Rest",
+    progression: {
+      "14": 1
+    }
+  },
+  {
+    name: "Illusory Self",
+    origin: "subclass",
+    originName: "Illusion",
+    parent: null,
+    limit: "Rest",
+    progression: {
+      "10": 1
+    }
+  },
+  {
+    name: "Manifest Mind",
+    origin: "subclass",
+    originName: "Scribes",
+    parent: null,
+    limit: "Long Rest",
+    progression: {
+      "6": 1
+    }
+  },
+  {
+    name: "Manifest Mind cast spell",
+    origin: "subclass",
+    originName: "Scribes",
+    parent: null,
+    limit: "Long Rest",
+    progression: {
+      "6": {formula: "prof"}
+    }
+  },
+  {
+    name: "Master Scriviner",
+    origin: "subclass",
+    originName: "Scribes",
+    parent: null,
+    limit: "Long Rest",
+    progression: {
+      "10": 1
+    }
+  },
+  {
+    name: "One with the Word",
+    origin: "subclass",
+    originName: "Scribes",
+    parent: null,
+    limit: "Long Rest",
+    progression: {
+      "14": 1
+    }
+  },
+  {
+    name: "Master Transmuter",
+    origin: "subclass",
+    originName: "Transmutation",
+    parent: null,
+    limit: "Long Rest",
+    progression: {
+      "14": 1
+    }
+  },
+
   // {
   //   origin: "class",
   //   originName: "Fighter",
@@ -1874,7 +2327,14 @@ export const classProficienciesGained: any[] = [
         "count": 1
       }
     }],
-    weapons: [{from: ["martial","simple"], count: 2}]
+    weapons: [{
+      "choose": {
+        "from": [
+          "martial"
+        ],
+        "count": 2
+      }
+    }]
   },
   // Paladin
   {
@@ -2131,6 +2591,177 @@ export const classProficienciesGained: any[] = [
     origin: "subclass",
     level: 18,
     immune: ["fire"]
+  },
+  // Warlock
+  {
+    originName: "Warlock",
+    origin: "class",
+    level: 11,
+    additionalSpells: [
+      {
+        "innate": {
+          "11": {
+            "daily": {
+              "1": [
+                {"choose": "level=6|class=Warlock"}
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    originName: "Warlock",
+    origin: "class",
+    level: 13,
+    additionalSpells: [
+      {
+        "innate": {
+          "13": {
+            "daily": {
+              "1": [
+                {"choose": "level=7|class=Warlock"}
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    originName: "Warlock",
+    origin: "class",
+    level: 15,
+    additionalSpells: [
+      {
+        "innate": {
+          "15": {
+            "daily": {
+              "1": [
+                {"choose": "level=8|class=Warlock"}
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    originName: "Warlock",
+    origin: "class",
+    level: 17,
+    additionalSpells: [
+      {
+        "innate": {
+          "17": {
+            "daily": {
+              "1": [
+                {"choose": "level=9|class=Warlock"}
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    originName: "Archfey",
+    origin: "subclass",
+    level: 10,
+    conditionImmune: ['charmed']
+  },
+  {
+    originName: "Celestial",
+    origin: "subclass",
+    level: 6,
+    resist: ['radiant']
+  },
+  {
+    originName: "Fathomless",
+    origin: "subclass",
+    level: 1,
+    speed: {
+      swin: 40
+    }
+  },
+  {
+    originName: "Fathomless",
+    origin: "subclass",
+    level: 6,
+    resist: ['cold']
+  },
+  {
+    originName: "Fathomless",
+    origin: "subclass",
+    level: 10,
+    additionalSpells: [
+      {
+        "innate": {
+          "10": {
+            "daily": {
+              "1": [
+                "evard's black tentacles"
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    originName: "Great Old One",
+    origin: "subclass",
+    level: 10,
+    resist: ['psychic']
+  },
+  {
+    originName: "Hexblade",
+    origin: "subclass",
+    level: 1,
+    armors: ["medium","shield"],
+    weapons: ["martial"]
+  },
+  {
+    originName: "Undead",
+    origin: "subclass",
+    level: 10,
+    resist: ['necrotic']
+  },
+  // Wizard
+  {
+    originName: "Bladesinging",
+    origin: "subclass",
+    level: 2,
+    armors: ["light"],
+    weapons: [{choose: {from: ["martial", "simple"], count: 1}}],
+    skills: [{
+      performance: true
+    }]
+  },
+  {
+    originName: "Necromancy",
+    origin: "subclass",
+    level: 10,
+    resist: ['necrotic']
+  },
+  {
+    originName: "Transmutation",
+    origin: "subclass",
+    level: 10,
+    additionalSpells: [
+      {
+        "innate": {
+          "10": {
+            "rest": {
+              "1": [
+                "polymorph"
+              ]
+            }
+          }
+        }
+      }
+    ]
   },
 ]
 
