@@ -3728,13 +3728,11 @@
     }
     character.value.class.forEach((cl:any) => {
       values[cl.name.toLowerCase()] = cl;
-    })
-    const expr = parser.parse(s);
-    return expr.evaluate({
-      character: character.value,
-      prof: prof.value,
-      ...values
     });
+    values['character'] = character.value;
+    values['prof'] = prof.value;
+    const expr = parser.parse(s);
+    return expr.evaluate(values);
   }
   const evalProgression = (pr: any) => {
     if(pr.formula) return evalFormula(pr.formula);
@@ -4728,7 +4726,10 @@
 
                 <CharacterInfo v-for="pr in classesStore.getOtherProgression(cl.name, cl.subclass, cl.level)" :key="pr">
                   <template v-slot:label>{{ pr.name }}:</template>
-                  {{ evalProgression(pr.progression) }}<template v-if="pr.limit"> / {{ evalProgression(pr.limit) }}</template>
+                  <template v-if="pr.progression">{{ evalProgression(pr.progression) }}</template>
+                  <template v-if="pr.diceProgression"> {<template v-if="true">{{pr.diceProgression}}</template>}</template>
+                  <template v-if="pr.limit"> / {{ evalProgression(pr.limit) }}</template>
+<!--                  <i v-if="pr.formula" class="fa-solid fa-dice-d20 ps-2" @click="() => console.log(evalFormula(pr.formula, {diceProgression: pr.diceProgression}))" v-tooltip  data-bs-placement="right" />-->
                 </CharacterInfo>
 
               </ClassInfo>

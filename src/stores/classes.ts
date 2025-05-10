@@ -346,7 +346,18 @@ export const useClassesStore = defineStore("ClassesStore", {
     },
     getProficienciesGained() {
       return (name: string, subclass: string|null, level: number): any[] => {
-        return classProficienciesGained.filter(c => c.level <= level && ((c.originName == name && c.origin == 'class') || (c.originName == subclass && c.origin == 'subclass')));
+        return classProficienciesGained.filter(c =>
+          (
+            (c.level == level && !c.optionalfeatureProgression)
+            ||
+            (c.level <= level && c.optionalfeatureProgression)
+          )
+          && (
+            (c.originName == name && c.origin == 'class')
+            ||
+            (c.originName == subclass && c.origin == 'subclass')
+          )
+        );
       }
     },
     getOtherProgression() {
@@ -356,9 +367,10 @@ export const useClassesStore = defineStore("ClassesStore", {
           return {
             ...c,
             limit: extractProgression(level, c.limit),
-            progression: extractProgression(level, c.progression)
+            progression: extractProgression(level, c.progression),
+            diceProgression: c.diceProgression ? extractProgression(level, c.diceProgression) : null
           }
-        }).filter(c => !!c.progression);
+        }).filter(c => !!c.progression || !!c.diceProgression);
       }
     }
   }
@@ -1118,6 +1130,1087 @@ const classOtherProgression: any[] = [
       "10": 1
     }
   },
+  // Bard
+  {
+    name: "Bardic Inspiration",
+    originName: "Bard",
+    origin: "class",
+    parent: "Actions",
+    limit: {formula: "bard.level >= 5 ? 'Rest' : 'Long Rest'"},
+    progression: {
+      "1": {formula: "max(mod('cha'),1)"}
+    },
+    diceProgression: {
+      "1": "d6",
+      "5": "d8",
+      "10": "d10",
+      "15": "d12",
+    }
+  },
+  {
+    name: "Song of Rest",
+    originName: "Bard",
+    origin: "class",
+    parent: "Actions",
+    limit: "Short Rest",
+    progression: {
+      "2": 1
+    },
+    diceProgression: {
+      "2": "d6",
+      "9": "d8",
+      "13": "d10",
+      "17": "d12",
+    }
+  },
+  {
+    name: "Performance of Creation",
+    originName: "Creation",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "3": 1
+    }
+  },
+  {
+    name: "Animating Performance",
+    originName: "Creation",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "6": 1
+    }
+  },
+  {
+    name: "Universal Speech",
+    originName: "Eloquence",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "6": 1
+    }
+  },
+  {
+    name: "Infectious Inspiration",
+    originName: "Eloquence",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "14": {formula: "max(mod('cha'),1)"}
+    }
+  },
+  {
+    name: "Enthralling Performance",
+    originName: "Glamour",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Rest",
+    progression: {
+      "3": 1
+    }
+  },
+  {
+    name: "Mantle of Majesty",
+    originName: "Glamour",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "6": 1
+    }
+  },
+  {
+    name: "Unbreakable Majesty",
+    originName: "Glamour",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "14": 1
+    }
+  },
+  {
+    name: "Spirit Session",
+    originName: "Spirits",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "6": 1
+    }
+  },
+  {
+    name: "Words of Terror",
+    originName: "Whispers",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Rest",
+    progression: {
+      "3": 1
+    }
+  },
+  {
+    name: "Mantle of Whispers",
+    originName: "Whispers",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Rest",
+    progression: {
+      "6": 1
+    }
+  },
+  {
+    name: "Shadow Lore",
+    originName: "Whispers",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "14": 1
+    }
+  },
+  // Cleric
+  {
+    name: "Channel Divinity",
+    origin: "class",
+    originName: "Cleric",
+    limit: "Rest",
+    progression: {
+      "1": 1,
+      "6": 2,
+      "18": 3
+    }
+  },
+  {
+    name: "Divine Strike",
+    originName: "Death",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Turn",
+    progression: {
+      "8": 1
+    },
+    diceProgression: {
+      "8": "1d8",
+      "14": "2d8"
+    },
+    formula: "'+{' || diceProgression || '} necrotic damage'"
+  },
+  {
+    name: "Blessing of the Forge",
+    originName: "Forge",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "1": 1
+    }
+  },
+  {
+    name: "Eyes of the Grave",
+    originName: "Grave",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "1": {formula: "max(mod('wis'),1)"}
+    }
+  },
+  {
+    name: "Sentinel at Death's Door",
+    originName: "Grave",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "6": {formula: "max(mod('wis'),1)"}
+    }
+  },
+  {
+    name: "Visions of the Past",
+    originName: "Knowledge",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Rest",
+    progression: {
+      "17": 1
+    }
+  },
+  {
+    name: "Warding Flare",
+    originName: "Light",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "1": {formula: "max(mod('wis'),1)"}
+    }
+  },
+  {
+    name: "Embodiment of the Law",
+    originName: "Order",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "6": {formula: "max(mod('wis'),1)"}
+    }
+  },
+  {
+    name: "Emboldening Bond",
+    originName: "Peace",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "1": {formula: "prof"}
+    }
+  },
+  {
+    name: "Wrath of the Storm",
+    originName: "Tempest",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "1": {formula: "max(mod('wis'),1)"}
+    }
+  },
+  {
+    name: "Eyes of Night",
+    originName: "Twilight",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "1": 1
+    }
+  },
+  {
+    name: "Steps of the Night",
+    originName: "Twilight",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "6": {formula: "prof"}
+    }
+  },
+  {
+    name: "War Priest",
+    originName: "War",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "1": {formula: "max(mod('wis'),1)"}
+    }
+  },
+  {
+    name: "Warding Flare",
+    originName: "Ambition (PSA)",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "1": {formula: "max(mod('wis'),1)"}
+    }
+  },
+  {
+    name: "Solidarity's Action",
+    originName: "Solidarity (PSA)",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "1": {formula: "max(mod('wis'),1)"}
+    }
+  },
+  {
+    name: "Priest of Zeal",
+    originName: "Zeal (PSA)",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "1": {formula: "max(mod('wis'),1)"}
+    }
+  },
+  {
+    name: "Blaze of Glory",
+    originName: "Zeal (PSA)",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "17": 1
+    }
+  },
+  //Druid
+  {
+    name: "Wild Shape",
+    originName: "Druid",
+    origin: "class",
+    parent: "Actions",
+    limit: "Rest",
+    progression: {
+      "2": 2,
+      "20": null
+    }
+  },
+  {
+    name: "Balm of the Summer Court",
+    originName: "Dreams",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "2": {formula: "druid.level"}
+    }
+  },
+  {
+    name: "Hidden Paths",
+    originName: "Dreams",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "10": {formula: "max(mod('wis'),1)"}
+    }
+  },
+  {
+    name: "Walker in Dreams",
+    originName: "Dreams",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "14": 1
+    }
+  },
+  {
+    name: "Natural Recovery",
+    originName: "Land",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "2": 1
+    }
+  },
+  {
+    name: "Spirit Totem",
+    originName: "Shepherd",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Rest",
+    progression: {
+      "2": 1
+    }
+  },
+  {
+    name: "Faithful Summons",
+    originName: "Shepherd",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "14": 1
+    }
+  },
+  {
+    name: "Fungal Infestation",
+    originName: "Spores",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "6": {formula: "max(mod('wis'),1)"}
+    }
+  },
+  {
+    name: "Star Map",
+    originName: "Stars",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "2": {formula: "prof"}
+    }
+  },
+  {
+    name: "Cosmic Omen",
+    originName: "Stars",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "6": {formula: "prof"}
+    }
+  },
+  {
+    name: "Cauterizing Flames",
+    originName: "Wildfire",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "10": {formula: "prof"}
+    }
+  },
+  {
+    name: "Blazing Revival",
+    originName: "Wildfire",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "14": 1
+    }
+  },
+  // Fighter
+  {
+    name: "Second Wind",
+    origin: "class",
+    originName: "Fighter",
+    limit: "Rest",
+    progression: {
+      "1": 1
+    },
+    diceProgression: {
+      "1": "d10"
+    },
+    formula: "'+{' || diceProgression || ' + ' || fighter.level || '} HP'"
+  },
+  {
+    name: "Action Surge",
+    origin: "class",
+    originName: "Fighter",
+    limit: "Rest",
+    progression: {
+      "2": 1,
+      "17": 2
+    }
+  },
+  {
+    name: "Indomitable",
+    origin: "class",
+    originName: "Fighter",
+    limit: "Long Rest",
+    progression: {
+      "9": 1,
+      "13": 2,
+      "17": 3
+    }
+  },
+  {
+    name: "Arcane Shot",
+    origin: "subclass",
+    originName: "Arcane Archer",
+    limit: "Rest",
+    progression: {
+      "3": 2
+    }
+  },
+  {
+    name: "Superiority Die",
+    origin: "subclass",
+    originName: "Battle Master",
+    limit: "Rest",
+    progression: {
+      "3": 4,
+      "7": 5,
+      "15": 6,
+    },
+    diceProgression: {
+      "3": "d8",
+      "10": "d10",
+      "18": "d12"
+    },
+    consumes: {
+      "name": "Superiority Die"
+    }
+  },
+  {
+    name: "Unwavering Mark",
+    origin: "subclass",
+    originName: "Cavalier",
+    limit: "Long Rest",
+    progression: {
+      "3": {formula: "max(mod('str'),1)"}
+    }
+  },
+  {
+    name: "Warding Maneuver",
+    origin: "subclass",
+    originName: "Cavalier",
+    limit: "Long Rest",
+    progression: {
+      "6": {formula: "max(mod('con'),1)"}
+    }
+  },
+  {
+    name: "Unleash Incarnation",
+    origin: "subclass",
+    originName: "Echo Knight",
+    limit: "Long Rest",
+    progression: {
+      "3": {formula: "max(mod('con'),1)"}
+    }
+  },
+  {
+    name: "Shadow Martyr",
+    origin: "subclass",
+    originName: "Echo Knight",
+    limit: "Rest",
+    progression: {
+      "10": 1
+    }
+  },
+  {
+    name: "Reclaim Potential",
+    origin: "subclass",
+    originName: "Echo Knight",
+    limit: "Long Rest",
+    progression: {
+      "15": {formula: "max(mod('con'),1)"}
+    }
+  },
+  {
+    name: "Weapon Bond",
+    origin: "subclass",
+    originName: "Eldritch Knight",
+    limit: "Time",
+    progression: {
+      "3": 2
+    }
+  },
+  {
+    name: "Psionic Die",
+    origin: "subclass",
+    originName: "Psi Warrior",
+    limit: "Long Rest",
+    progression: {
+      "3": {formula: "prof * 2"}
+    },
+    diceProgression: {
+      "3": "d6",
+      "5": "d8",
+      "11": "d10",
+      "17": "d12"
+    }
+  },
+  {
+    name: "Regain Psionic Die",
+    origin: "subclass",
+    originName: "Psi Warrior",
+    limit: "Rest",
+    progression: {
+      "3": 1
+    }
+  },
+  {
+    name: "Bulwark of Force",
+    origin: "subclass",
+    originName: "Psi Warrior",
+    limit: "Long Rest",
+    progression: {
+      "15": 1
+    }
+  },
+  {
+    name: "Telekinetic Master",
+    origin: "subclass",
+    originName: "Psi Warrior",
+    limit: "Long Rest",
+    progression: {
+      "18": 1
+    }
+  },
+  {
+    name: "Giant's Might",
+    origin: "subclass",
+    originName: "Rune Knight",
+    limit: "Long Rest",
+    progression: {
+      "3": {formula: "prof"}
+    }
+  },
+  {
+    name: "Runic Shield",
+    origin: "subclass",
+    originName: "Rune Knight",
+    limit: "Long Rest",
+    progression: {
+      "7": {formula: "prof"}
+    }
+  },
+  {
+    name: "Fighting Spirit",
+    origin: "subclass",
+    originName: "Samurai",
+    limit: "Long Rest",
+    progression: {
+      "3": 3
+    }
+  },
+  {
+    name: "Rapid Strike",
+    origin: "subclass",
+    originName: "Samurai",
+    limit: "Turn",
+    progression: {
+      "15": 1
+    }
+  },
+  {
+    name: "Strength Before Death",
+    origin: "subclass",
+    originName: "Samurai",
+    limit: "Long Rest",
+    progression: {
+      "18": 1
+    }
+  },
+  // Monk
+  {
+    name: "Martial Arts",
+    origin: "class",
+    originName: "Monk",
+    limit: null,
+    diceProgression: {
+      "1": "d4",
+      "5": "d6",
+      "11": "d8",
+      "17": "d10"
+    }
+  },
+  {
+    name: "Ki Points",
+    origin: "class",
+    originName: "Monk",
+    limit: "Rest",
+    progression: {
+      "2": {formula: "monk.level"}
+    }
+  },
+  {
+    name: "Unarmored Movement",
+    origin: "class",
+    originName: "Monk",
+    limit: null,
+    progression: {
+      "2": "+10 fts",
+      "6": "+15 fts",
+      "10": "+20 fts",
+      "14": "+25 fts",
+      "18": "+30 fts"
+    }
+  },
+  {
+    name: "Dedicated Weapon",
+    origin: "class",
+    originName: "Monk",
+    limit: "Rest",
+    progression: {
+      "2": 1
+    }
+  },
+  {
+    name: "Hand of Ultimate Mercy",
+    origin: "subclass",
+    originName: "Mercy",
+    limit: "Long Rest",
+    progression: {
+      "15": 1
+    }
+  },
+  {
+    name: "Draconic Presence",
+    origin: "subclass",
+    originName: "Ascendant Dragon",
+    limit: "Long Rest",
+    progression: {
+      "3": 1
+    }
+  },
+  {
+    name: "Breath of the Dragon",
+    origin: "subclass",
+    originName: "Ascendant Dragon",
+    limit: "Long Rest",
+    progression: {
+      "3": {formula: "prof"}
+    }
+  },
+  {
+    name: "Wings Unfurled",
+    origin: "subclass",
+    originName: "Ascendant Dragon",
+    limit: "Long Rest",
+    progression: {
+      "6": {formula: "prof"}
+    }
+  },
+  {
+    name: "Aspect of the Wyrm",
+    origin: "subclass",
+    originName: "Ascendant Dragon",
+    limit: "Long Rest",
+    progression: {
+      "11": {formula: "prof"}
+    }
+  },
+  // Paladin
+  {
+    name: "Divine Sense",
+    origin: "class",
+    originName: "Paladin",
+    limit: "Long Rest",
+    progression: {
+      "1": {formula: "max(mod('cha'),0) + 1"}
+    }
+  },
+  {
+    name: "Lay on Hands",
+    origin: "class",
+    originName: "Paladin",
+    limit: "Long Rest",
+    progression: {
+      "1": {formula: "paladin.level * 5"}
+    }
+  },
+  {
+    name: "Channel Divinity",
+    origin: "class",
+    originName: "Paladin",
+    limit: "Rest",
+    progression: {
+      "3": 1
+    }
+  },
+  {
+    name: "Harness Divine Power",
+    origin: "class",
+    originName: "Paladin",
+    limit: "Long Rest",
+    progression: {
+      "3": 1,
+      "7": 2,
+      "15": 3
+    }
+  },
+  {
+    name: "Cleansing Touch",
+    origin: "class",
+    originName: "Paladin",
+    limit: "Long Rest",
+    progression: {
+      "14": {formula: "max(mod('cha'),1)"}
+    }
+  },
+  {
+    name: "Undying Sentinel",
+    origin: "subclass",
+    originName: "Ancients",
+    limit: "Long Rest",
+    progression: {
+      "14": 1
+    }
+  },
+  {
+    name: "Elder Champion",
+    origin: "subclass",
+    originName: "Ancients",
+    limit: "Long Rest",
+    progression: {
+      "20": 1
+    }
+  },
+  {
+    name: "Invincible Conqueror",
+    origin: "subclass",
+    originName: "Conquest",
+    limit: "Long Rest",
+    progression: {
+      "20": 1
+    }
+  },
+  {
+    name: "Exalted Champion",
+    origin: "subclass",
+    originName: "Crown",
+    limit: "Long Rest",
+    progression: {
+      "20": 1
+    }
+  },
+  {
+    name: "Holy Nimbus",
+    origin: "subclass",
+    originName: "Devotion",
+    limit: "Long Rest",
+    progression: {
+      "20": 1
+    }
+  },
+  {
+    name: "Living Legend",
+    origin: "subclass",
+    originName: "Glory",
+    limit: "Long Rest",
+    progression: {
+      "20": 1
+    }
+  },
+  {
+    name: "Avenging Angel",
+    origin: "subclass",
+    originName: "Vengeance",
+    limit: "Long Rest",
+    progression: {
+      "20": 1
+    }
+  },
+  {
+    name: "Mortal Bulwark",
+    origin: "subclass",
+    originName: "Watchers",
+    limit: "Long Rest",
+    progression: {
+      "20": 1
+    }
+  },
+  {
+    name: "Dread Lord",
+    origin: "subclass",
+    originName: "Oathbreaker",
+    limit: "Long Rest",
+    progression: {
+      "20": 1
+    }
+  },
+  // Ranger
+  {
+    name: "Dreadful Strikes",
+    originName: "Fey Wanderer",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Turn",
+    progression: {
+      "3": 1
+    },
+    diceProgression: {
+      "3": "d4"
+    },
+    formula: "'+{' || diceProgression || '} psychic damage'"
+  },
+  {
+    name: "Detect Portal",
+    originName: "Horizon Walker",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Rest",
+    progression: {
+      "3": 1
+    }
+  },
+  {
+    name: "Planar Warrior",
+    originName: "Horizon Walker",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Attack",
+    diceProgression: {
+      "3": "1d8",
+      "11": "2d8"
+    },
+    formula: "'+{' || diceProgression || '} force damage'"
+  },
+  {
+    name: "Ethereal Step",
+    originName: "Horizon Walker",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Rest",
+    progression: {
+      "7": 1
+    }
+  },
+  {
+    name: "Hunter's Sense",
+    originName: "Monster Slayer",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "3": {formula: "max(mod('wis'),1)"}
+    }
+  },
+  {
+    name: "Magic User's Nemesis",
+    originName: "Monster Slayer",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Rest",
+    progression: {
+      "11": 1
+    }
+  },
+  {
+    name: "Writhing Tide",
+    originName: "Swarmkeeper",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "7": {formula: "prof"}
+    }
+  },
+  {
+    name: "Swarming Dispersal",
+    originName: "Swarmkeeper",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "15": {formula: "prof"}
+    }
+  },
+  // Rogue
+  {
+    name: "Sneak Attack",
+    origin: "class",
+    originName: "Rogue",
+    limit: null,
+    diceProgression: {
+      "1": "1d6",
+      "3": "2d6",
+      "5": "3d6",
+      "7": "4d6",
+      "9": "5d6",
+      "11": "6d6",
+      "13": "7d6",
+      "15": "8d6",
+      "17": "9d6",
+      "19": "10d6",
+    }
+  },
+  {
+    name: "Stroke of Luck",
+    originName: "Rogue",
+    origin: "class",
+    parent: "Actions",
+    limit: "Rest",
+    progression: {
+      "20": 1
+    }
+  },
+  {
+    name: "Spell Thief",
+    originName: "Arcane Trickster",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "17": 1
+    }
+  },
+  {
+    name: "Unerring Eye",
+    originName: "Inquisitive",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "13": {formula: "max(mod('wis'),1)"}
+    }
+  },
+  {
+    name: "Wails from the Grave",
+    originName: "Phantom",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "3": {formula: "prof"}
+    }
+  },
+  {
+    name: "Ghost Walk",
+    originName: "Phantom",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "13": 1
+    }
+  },
+  {
+    name: "Psionic Die",
+    origin: "subclass",
+    originName: "Soulknife",
+    limit: "Long Rest",
+    progression: {
+      "3": {formula: "prof * 2"}
+    },
+    diceProgression: {
+      "3": "d6",
+      "5": "d8",
+      "11": "d10",
+      "17": "d12"
+    }
+  },
+  {
+    name: "Regain Psionic Die",
+    origin: "subclass",
+    originName: "Soulknife",
+    limit: "Rest",
+    progression: {
+      "3": 1
+    }
+  },
+  {
+    name: "Psychic Whispers",
+    origin: "subclass",
+    originName: "Soulknife",
+    limit: "Long Rest",
+    progression: {
+      "3": 1
+    }
+  },
+  {
+    name: "Psychic Veil",
+    origin: "subclass",
+    originName: "Soulknife",
+    limit: "Long Rest",
+    progression: {
+      "13": 1
+    }
+  },
+  {
+    name: "Rend Mind",
+    origin: "subclass",
+    originName: "Soulknife",
+    limit: "Long Rest",
+    progression: {
+      "17": 1
+    }
+  },
+  {
+    name: "Master Duelist",
+    origin: "subclass",
+    originName: "Swashbuckler",
+    limit: "Rest",
+    progression: {
+      "17": 1
+    }
+  },
+
   // Sorcerer
   {
     name: "Warping Implosion",
@@ -2333,6 +3426,45 @@ export const classProficienciesGained: any[] = [
           "martial"
         ],
         "count": 2
+      }
+    }]
+  },
+  {
+    originName: "Kensei",
+    origin: "subclass",
+    level: 6,
+    weapons: [{
+      "choose": {
+        "from": [
+          "martial"
+        ],
+        "count": 1
+      }
+    }]
+  },
+  {
+    originName: "Kensei",
+    origin: "subclass",
+    level: 11,
+    weapons: [{
+      "choose": {
+        "from": [
+          "martial"
+        ],
+        "count": 1
+      }
+    }]
+  },
+  {
+    originName: "Kensei",
+    origin: "subclass",
+    level: 17,
+    weapons: [{
+      "choose": {
+        "from": [
+          "martial"
+        ],
+        "count": 1
       }
     }]
   },
