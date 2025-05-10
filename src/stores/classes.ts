@@ -3476,6 +3476,14 @@ export const classProficienciesGained: any[] = [
     conditionImmune: ["disease"]
   },
   // Ranger
+  // {
+  //   originName: "Ranger",
+  //   origin: "class",
+  //   level: 1,
+  //   languages: [{
+  //     "any": 2
+  //   }]
+  // },
   {
     originName: "Ranger",
     origin: "class",

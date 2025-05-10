@@ -76,14 +76,15 @@ export const useTableplop = defineStore('tableplop', () => {
     return [sectionId, section2Id];
   }
 
-  const addCheckboxes = (parentId: number, name: string, text: string, max: number, local: boolean = true) => {
+  const addCheckboxes = (parentId: number, name: string, text: string, max: number, local: boolean = true, message: string|null = null) => {
     const id = addParent(`${name}`);
     addProperty({
       id: id,
       type: "checkboxes",
       name: text,
       parentId: parentId,
-      local: local
+      local: local,
+      message: message
     });
     addProperty({
       type: "number",
@@ -134,7 +135,7 @@ export interface Property {
   rank?: number
   parentId?: number
   name?: string
-  message?: string
+  message?: string|null
   formula?: string
   data?: Data
   icon?: string

@@ -396,7 +396,7 @@
           let ft = ch.selected == ch.total;
           if(!ft) alltrue = false;
           ss.push({
-            name: ch.name,
+            name: ch.name + ch.featureType,
             valid: ft
           });
         })
@@ -1625,7 +1625,7 @@
       });
     }
 
-    character.value.feats.filter((f:any) => f.level == level && f.name).forEach((f:any) => {
+    character.value.feats.filter((f:any) => f.level <= level && f.name).forEach((f:any) => {
       const feat = featsStore.findByName(f.name);
       if(feat) {
         if (feat.skillProficiencies) chooseAddSkill('feat', feat.skillProficiencies[0], f.name);
@@ -1733,15 +1733,16 @@
     if (progression) {
       const ch = chooses.value.features;
       progression.forEach((p: any) => {
-        let idx = ch.findIndex((c:any) => c.name == p.name);
+        let idx = ch.findIndex((c:any) => c.name == p.name && c.featureType == p.featureType);
         let selected = 0;
-        character.value.features.filter((f:any) => f.name == p.name /*&& f.level <= level*/).forEach((f:any) => {
+        character.value.features.filter((f:any) => f.name == p.name && f.featureType == p.featureType).forEach((f:any) => {
           selected += f.choices.length;
         });
         let choice = {
           origin: origin,
           originName: originName,
-          count: p.count
+          count: p.count,
+          featureType: p.featureType,
         };
         if(idx == -1) {
           ch.push({
@@ -2625,19 +2626,20 @@
     }
   }
 
-  const changeFeature = (e: any, feature: string) => {
+  const changeFeature = (e: any, feature: string, featureType: string) => {
     if (!e.target.value) return;
     const level = character.value.level;
     const option = e.target.value;
     const fts: any[] = character.value.features;
 
-    const choose = chooses.value.features.find((f:any) => f.name == feature);
+    const choose = chooses.value.features.find((f:any) => f.name == feature && f.featureType == featureType);
     choose.choices.every((choice:any) => {
-      const ft = fts.find((f:any) => f.name == feature && f.origin == choice.origin && f.originName == choice.originName /*&& f.level == level*/);
+      const ft = fts.find((f:any) => f.name == feature && f.origin == choice.origin && f.originName == choice.originName && f.featureType == choice.featureType);
       const nt = {
         name: feature,
         origin: choice.origin,
         originName: choice.originName,
+        featureType: choice.featureType,
         level: level
       }
 
@@ -2684,15 +2686,16 @@
   const isFeatureCheck = (feature: string, option: string) => {
     return character.value.features.find((ft:any) => ft.name == feature && ft.choices.includes(option))
   }
-  const isFeatureDisabled = (feature: string, option: string) => {
+  const isFeatureDisabled = (feature: string, option: string, featureType: string) => {
     // return false;
     const ftc = isFeatureCheck(feature, option);
+    if(ftc && ftc.featureType != featureType) return true;
     // const level = character.value.level;
     if(ftc) {
     //   if(ftc.level != level) return true;
       return false;
     }
-    const ch = chooses.value.features.find((ft:any) => ft.name == feature);
+    const ch = chooses.value.features.find((ft:any) => ft.name == feature && ft.featureType == featureType);
     if(ch.total == 1) return false;
     return ch.selected >= ch.total;
   }
@@ -2747,7 +2750,7 @@
     }
   });
   const resetSpells = (origin: string, originName: string|null = null) => {
-    character.value.spells = character.value.spells.filter((sk:any) => !(sk.origin == origin && sk.level == character.value.level && (originName == null || sk.originName == originName)));
+    character.value.spells = character.value.spells.filter((sk:any) => !(sk.origin == origin && sk.level <= character.value.level && (originName == null || sk.originName == originName)));
   }
   const changeSpell = (e: any, spellSlot: number, prepared:boolean = true, origin:string = "class", originName:string|null = null) => {
     if (!e.target.value) return;
@@ -3466,6 +3469,23 @@
         value: "In progress ...",
         parentId: clid
       })
+      classesStore.getOtherProgression(cl.name, cl.subclass, cl.level).forEach(pr => {
+        let text = `${pr.name}`
+        if(pr.diceProgression) {
+          text += ` {${pr.diceProgression}}`
+        }
+        if(pr.limit) {
+          text += ` / ${evalProgression(pr.limit)}`
+        }
+        let message = null;
+        if(pr.formula) {
+          message = `${pr.name}: ${evalFormula(pr.formula, {diceProgression: pr.diceProgression})}`;
+        }
+        else if(pr.diceProgression) {
+          message = `${pr.name}: {${pr.diceProgression}}`;
+        }
+        tableplop.addCheckboxes(clid, pr.name, text, pr.progression ? evalProgression(pr.progression) : 1, false, message);
+      });
     });
 
     const cfs = computedFeatures();
@@ -3756,7 +3776,7 @@
       <div class="btn-group btn-group-sm mb-1 d-flex align-items-center">
         <button class="btn btn-secondary" @click="logJson">logJson</button>
         <button class="btn btn-secondary" @click="json = steps">steps</button>
-        <button class="btn btn-secondary" @click="json = chooses">chooses</button>
+        <button class="btn btn-secondary" @click="json = chooses.features">chooses</button>
         <button class="btn btn-secondary" @click="() => handleTableplop(false)">handleTableplop</button>
 <!--        <button class="btn btn-secondary" @click="json = evalFormula(`2e`)">evalFormula</button>-->
         <button class="btn btn-secondary" @click="json = classProficienciesGained">classProficienciesGained</button>
@@ -4102,7 +4122,7 @@
             </template>
           </AccordionItem>
 
-          <AccordionItem v-for="ft in chooses.features" :name="ft.name" :steps="steps" :step="step" @click="changeStep" :manual-steps="character.manualSteps" @toggle-manual-step="toggleManualStep">
+          <AccordionItem v-for="ft in chooses.features" :name="ft.name + ft.featureType" :steps="steps" :step="step" @click="changeStep" :manual-steps="character.manualSteps" @toggle-manual-step="toggleManualStep">
             <template v-slot:header-label>{{ ft.name }}</template>
             <template v-slot:header-value>{{ ft.selected }}/{{ ft.total }}</template>
             <template v-slot:body>
@@ -4110,8 +4130,8 @@
               <div v-for="o in filterOptions(ft.name, ft.from)" class="form-check pb-1" :key="o.name">
                 <input class="form-check-input" :type="`${ft.total==1?'radio':'checkbox'}`" :value="o.name"
                        :checked="isFeatureCheck(ft.name, o.name)"
-                       :disabled="isFeatureDisabled(ft.name, o.name)"
-                       @click="changeFeature($event, ft.name)">
+                       :disabled="isFeatureDisabled(ft.name, o.name, ft.featureType)"
+                       @click="changeFeature($event, ft.name, ft.featureType)">
                 <label class="form-check-label">
                   {{ o.name }}
                   <template v-if="o.prerequisite && o.prerequisite.length > 0"> ({{o.prerequisite.join(' or ')}})</template>
@@ -4729,7 +4749,6 @@
                   <template v-if="pr.progression">{{ evalProgression(pr.progression) }}</template>
                   <template v-if="pr.diceProgression"> {<template v-if="true">{{pr.diceProgression}}</template>}</template>
                   <template v-if="pr.limit"> / {{ evalProgression(pr.limit) }}</template>
-<!--                  <i v-if="pr.formula" class="fa-solid fa-dice-d20 ps-2" @click="() => console.log(evalFormula(pr.formula, {diceProgression: pr.diceProgression}))" v-tooltip  data-bs-placement="right" />-->
                 </CharacterInfo>
 
               </ClassInfo>
