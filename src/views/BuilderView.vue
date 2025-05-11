@@ -1628,11 +1628,13 @@
     character.value.feats.filter((f:any) => f.level <= level && f.name).forEach((f:any) => {
       const feat = featsStore.findByName(f.name);
       if(feat) {
-        if (feat.skillProficiencies) chooseAddSkill('feat', feat.skillProficiencies[0], f.name);
-        if (feat.expertise) chooseAddExpertise('feat', feat.expertise[0], f.name);
-        if (feat.languageProficiencies) chooseAddLanguage('feat', feat.languageProficiencies, f.name);
-        if (feat.toolProficiencies) chooseAddTools('feat', feat.toolProficiencies[0], f.name);
-        if (feat.additionalSpells) chooseAddSpells('feat', f.name, feat.additionalSpells, f.option);
+        if(f.level == level) {
+          if (feat.skillProficiencies) chooseAddSkill('feat', feat.skillProficiencies[0], f.name);
+          if (feat.expertise) chooseAddExpertise('feat', feat.expertise[0], f.name);
+          if (feat.languageProficiencies) chooseAddLanguage('feat', feat.languageProficiencies, f.name);
+          if (feat.toolProficiencies) chooseAddTools('feat', feat.toolProficiencies[0], f.name);
+          if (feat.additionalSpells) chooseAddSpells('feat', f.name, feat.additionalSpells, f.option);
+        }
         if(feat.optionalfeatureProgression) {
           chooseFeatureProgression('feat', feat.name, feat.optionalfeatureProgression);
         }
@@ -3779,7 +3781,7 @@
         <button class="btn btn-secondary" @click="json = chooses.features">chooses</button>
         <button class="btn btn-secondary" @click="() => handleTableplop(false)">handleTableplop</button>
 <!--        <button class="btn btn-secondary" @click="json = evalFormula(`2e`)">evalFormula</button>-->
-        <button class="btn btn-secondary" @click="json = classProficienciesGained">classProficienciesGained</button>
+        <button class="btn btn-secondary" @click="json = classFeatures">classFeatures</button>
       </div>
     </template>
 
@@ -4064,6 +4066,7 @@
                 <p class="fw-bold m-0 d-flex align-items-center">
                   {{ cf.name }} <i v-if="cf.entries && cf.chooseSubclass" class="ms-1 fa-solid fa-circle-question" :title="S(cf.entries)" v-tooltip></i>
                   <input v-if="cf.chooseSubclass" type="text" class="form-control form-control-sm ms-3" style="flex: 1" :value="search[cf.name]" @input="changeSearch($event, cf.name)" />
+<!--                  <template v-if="cf.isClassFeatureVariant"> (variant/optional)</template>-->
                 </p>
                 <div class="form-check" v-if="!(cf.entries && cf.chooseSubclass)">
                   <p>{{ S(cf.entries) }}</p>
@@ -4078,6 +4081,7 @@
                   </div>
                 </template>
               </div>
+              <p v-if="classFeatures && classFeatures.find(cf => cf.isClassFeatureVariant)" class="text-warning text-center m-0 fst-italic">Optionals features are currently always actives, working on it</p>
             </template>
           </AccordionItem>
 

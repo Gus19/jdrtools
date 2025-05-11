@@ -323,7 +323,8 @@ export const useClassesStore = defineStore("ClassesStore", {
             originName: name,
             level: ft.level,
             entries: extractClassEntries(ft.name, ft),
-            chooseSubclass: ft.name == cl.subclassTitle && chooseSubclass
+            chooseSubclass: ft.name == cl.subclassTitle && chooseSubclass,
+            isClassFeatureVariant: ft.isClassFeatureVariant
           }
         })
       }
@@ -385,8 +386,16 @@ const extractClassEntries = (fn:string, det: any): any => {
         if(de.indexOf(". See {@book chapter") > 0) de = de.substring(0, de.indexOf(". See {@book chapter")+1);
         return de;
       }
-      else if((fn == "Spellcasting" || fn == "Pact Magic") && de.type == "entries" && de.name == "Spellcasting Ability") {
-        return de.entries[0];
+      else if((fn == "Spellcasting" || fn == "Pact Magic")) {
+        if(de.type == "entries" && de.name == "Spellcasting Ability")
+          return de.entries[0];
+        return null;
+      }
+      else if(de.type == "list") {
+        return `- ${de.items.join('\n- ')}`;
+      }
+      else if(de.type == "entries") {
+        return `${de.name}: ${de.entries.join(' ')}`;
       }
       return null;
     }).filter((de:any) => de !== null).join('\n');

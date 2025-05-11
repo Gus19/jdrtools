@@ -5,6 +5,12 @@ import Changelog from "@/components/Changelog.vue";
 <template>
   <h2>Changelog</h2>
   <Changelog>
+    <template v-slot:version>2.0.0</template>
+    <template v-slot:date>11/05/2025</template>
+    <li>Add character builder for the 2014 version</li>
+  </Changelog>
+
+  <Changelog>
     <template v-slot:version>1.0.7</template>
     <template v-slot:date>19/02/2025</template>
     <li>Error with the appearance on Tableplop</li>

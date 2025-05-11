@@ -19,7 +19,7 @@ const env = import.meta.env;
           </div>
           <div class="offcanvas-body">
             <ul class="navbar-nav flex-grow-1">
-              <li class="nav-item" v-if="dev">
+              <li class="nav-item">
                 <router-link to="/builder" class="nav-link" activeClass="active">
                   Character Builder
                 </router-link>

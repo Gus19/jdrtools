@@ -235,8 +235,7 @@ export const S = (e: any, d: boolean = true) => {
     t = e.slice();
     const a = /{@(?<script>.*?)}/;
     if (!a.test(t)) return t;
-    let n = 16;
-    for (; a.test(t) && (n--, !(n < 1));) {
+    while(a.test(t)) {
       const e = a.exec(t);
       if (!e || !e.groups) return t;
       const n = e[0], g = e.groups.script.split(" ");
