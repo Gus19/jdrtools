@@ -718,7 +718,8 @@
         cp: 0
       },
       manualSteps: [],
-      improvements: []
+      improvements: [],
+      excludeFeatures: []
     }
   }
 
@@ -1388,7 +1389,7 @@
       if(classProficienciesGained.value) {
         classProficienciesGained.value.forEach((cpg:any) => {
           addDefaultSkills(cpg.origin, cpg.skills, cpg.originName);
-          addDefaultExpertise(cpg.origin, cpg.expertises, cpg.originName);
+          addDefaultExpertise(cpg.origin, cpg.expertise, cpg.originName);
           addDefaultTools(cpg.origin, cpg.tools, cpg.originName);
           addDefaultLanguage(cpg.origin, cpg.languages, cpg.originName);
           addDefaultEquipmentProf('armor', cpg.origin, cpg.armors, cpg.originName);
@@ -2295,7 +2296,7 @@
     let cl = lastClass.value;
     return classesStore.getFeatures(cl.name, cl.subclass, cl.level);
   });
-  const classProficienciesGained = computed(() => lastClass.value && classesStore.getProficienciesGained(lastClass.value.name, lastClass.value.subclass, lastClass.value.level));
+  const classProficienciesGained = computed(() => lastClass.value && classesStore.getProficienciesGained(lastClass.value.name, lastClass.value.subclass, lastClass.value.level, character.value.excludeFeatures));
   const filterOptions = (name: string, from: any[]) => {
     if(!from) return [];
     const s = !search.value[name] ? "" : search.value[name].toLowerCase();
@@ -3471,7 +3472,7 @@
         value: "In progress ...",
         parentId: clid
       })
-      classesStore.getOtherProgression(cl.name, cl.subclass, cl.level).forEach(pr => {
+      classesStore.getOtherProgression(cl.name, cl.subclass, cl.level, character.value.excludeFeatures).forEach(pr => {
         let text = `${pr.name}`
         if(pr.diceProgression) {
           text += ` {${pr.diceProgression}}`
@@ -3727,7 +3728,7 @@
         parentId: parentId
       });
       for (let i = 1; i <= cl.level; i++) {
-        const features = classesStore.getFeatures(cl.name, cl.subclass, i);
+        const features = classesStore.getFeatures(cl.name, cl.subclass, i, character.value.excludeFeatures);
         let p: any = `<h3>Level ${i}</h3>`;
         features && features.forEach((cf:any) => {
           p += `<p><b>${cf.name}</b>: ${S(cf.entries)}</p>`
@@ -3760,6 +3761,16 @@
     if(pr.formula) return evalFormula(pr.formula);
     return pr;
   }
+
+  const excludeFeature = (name: string, replaceFeature: any = null) => {
+    character.value.excludeFeatures.push(name);
+    if(replaceFeature && "string" == typeof replaceFeature) includeFeature(replaceFeature)
+  }
+  const includeFeature = (name: string, replaceFeature: any = null) => {
+    character.value.excludeFeatures = character.value.excludeFeatures.filter((ef:string) => ef != name);
+    if(replaceFeature && "string" == typeof replaceFeature) excludeFeature(replaceFeature)
+  }
+
 </script>
 
 <template>
@@ -4062,11 +4073,22 @@
           <AccordionItem name="features" :steps="steps" :step="step" @click="changeStep" :manual-steps="character.manualSteps" @toggle-manual-step="toggleManualStep">
             <template v-slot:header-label>New class features</template>
             <template v-slot:body>
-              <div v-for="(cf,i) in classFeatures" :key="`${lastClass.name}-${cf.name}`" :class="`${i > 0 ? 'mt-2' : ''}`">
+              <div v-for="(cf,i) in classFeatures" :key="`${lastClass.name}-${cf.name}`" :class="[`${i > 0 ? 'mt-2' : ''}`, `${character.excludeFeatures.find((ef: string) => ef == cf.name) ? 'text-muted' : ''}`]">
                 <p class="fw-bold m-0 d-flex align-items-center">
                   {{ cf.name }} <i v-if="cf.entries && cf.chooseSubclass" class="ms-1 fa-solid fa-circle-question" :title="S(cf.entries)" v-tooltip></i>
                   <input v-if="cf.chooseSubclass" type="text" class="form-control form-control-sm ms-3" style="flex: 1" :value="search[cf.name]" @input="changeSearch($event, cf.name)" />
-<!--                  <template v-if="cf.isClassFeatureVariant"> (variant/optional)</template>-->
+                  <template v-if="cf.isClassFeatureVariant">
+                    <button v-if="character.excludeFeatures.find((ef: string) => ef == cf.name)" type="button" class="btn btn-sm btn-outline-warning ms-auto" @click="() => includeFeature(cf.name, cf.isClassFeatureVariant)" >
+                      <i class="fa-solid me-1" :class="'string' == typeof cf.isClassFeatureVariant ? 'fa-right-left' : 'fa-plus-circle'" />
+                      <template v-if="'string' == typeof cf.isClassFeatureVariant">Swap with {{cf.isClassFeatureVariant}}</template>
+                      <template v-else>Include Feature</template>
+                    </button>
+                    <button v-else type="button" class="btn btn-sm btn-outline-warning ms-auto" @click="() => excludeFeature(cf.name, cf.isClassFeatureVariant)" >
+                      <i class="fa-solid me-1" :class="'string' == typeof cf.isClassFeatureVariant ? 'fa-right-left' : 'fa-ban'" />
+                      <template v-if="'string' == typeof cf.isClassFeatureVariant">Swap with {{cf.isClassFeatureVariant}}</template>
+                      <template v-else>Exclude Feature</template>
+                    </button>
+                  </template>
                 </p>
                 <div class="form-check" v-if="!(cf.entries && cf.chooseSubclass)">
                   <p>{{ S(cf.entries) }}</p>
@@ -4081,7 +4103,6 @@
                   </div>
                 </template>
               </div>
-              <p v-if="classFeatures && classFeatures.find(cf => cf.isClassFeatureVariant)" class="text-warning text-center m-0 fst-italic">Optionals features are currently always actives, working on it</p>
             </template>
           </AccordionItem>
 
@@ -4707,9 +4728,9 @@
                   <template v-slot:label>Class features:</template>
                   <div class="d-flex flex-column flex-grow-1">
                     <template v-for="l in cl.level" :key="l">
-                      <div v-if="classesStore.getClassFeatures(cl.name, l).length > 0">
+                      <div v-if="classesStore.getClassFeatures(cl.name, l, character.excludeFeatures).length > 0">
                         <span class="badge text-bg-dark ps-0 pe-1">{{ l }}</span>
-                        <template v-for="(ftc,i) in classesStore.getClassFeatures(cl.name, l)" :key="ftc">
+                        <template v-for="(ftc,i) in classesStore.getClassFeatures(cl.name, l, character.excludeFeatures)" :key="ftc">
                           <template v-if="i>0">,&#160;</template>
                           <span :title="S(ftc.entries)" v-tooltip>{{ftc.name}}</span>
                         </template>
@@ -4722,9 +4743,9 @@
                   <template v-slot:label>Subclass features:</template>
                   <div class="d-flex flex-column flex-grow-1">
                     <template v-for="l in cl.level" :key="l">
-                      <div v-if="classesStore.getSubclassFeatures(cl.name, cl.subclass, l).length > 0">
+                      <div v-if="classesStore.getSubclassFeatures(cl.name, cl.subclass, l, character.excludeFeatures).length > 0">
                         <span class="badge text-bg-dark ps-0 pe-1">{{ l }}</span>
-                        <template v-for="(ftc,i) in classesStore.getSubclassFeatures(cl.name, cl.subclass, l)" :key="ftc">
+                        <template v-for="(ftc,i) in classesStore.getSubclassFeatures(cl.name, cl.subclass, l, character.excludeFeatures)" :key="ftc">
                           <template v-if="i>0">,&#160;</template>
                           <span :title="S(ftc.entries)" v-tooltip>{{ftc.name}}</span>
                         </template>
@@ -4748,7 +4769,7 @@
                   </template>
                 </CharacterInfo>
 
-                <CharacterInfo v-for="pr in classesStore.getOtherProgression(cl.name, cl.subclass, cl.level)" :key="pr">
+                <CharacterInfo v-for="pr in classesStore.getOtherProgression(cl.name, cl.subclass, cl.level, character.excludeFeatures)" :key="pr">
                   <template v-slot:label>{{ pr.name }}:</template>
                   <template v-if="pr.progression">{{ evalProgression(pr.progression) }}</template>
                   <template v-if="pr.diceProgression"> {<template v-if="true">{{pr.diceProgression}}</template>}</template>

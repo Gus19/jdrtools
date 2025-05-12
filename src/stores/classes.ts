@@ -73,6 +73,16 @@ export const useClassesStore = defineStore("ClassesStore", {
         this.classes = local1;
         this.subclasses = local2;
         this.classFeatures = local3;
+        this.classFeatures.forEach((s:any) => {
+          if(s.name == "Optional Rule: Firearm Proficiency") {
+            s.isClassFeatureVariant = true;
+          }
+          let or = optionalFeaturesReplace.find((or:any) => or.origin == 'class' && or.originName == s.className && or.features.includes(s.name));
+          if(or) {
+            s.isClassFeatureVariant = or.features.find((n:string) => n != s.name);
+          }
+        })
+
         this.subclassFeatures = local4;
         this.subclassFeatures.forEach(s => {
           if(["Giant Power", "Giant's Havoc"].includes(s.name)) {
@@ -85,6 +95,10 @@ export const useClassesStore = defineStore("ClassesStore", {
                 "Evasion", "Stand Against the Tide", "Uncanny Dodge" // Hunter lvl 15
               ].includes(s.name)) {
             s.header = null;
+          }
+          let or = optionalFeaturesReplace.find((or:any) => or.origin == 'subclass' && or.originName == s.subclassShortName && or.features.includes(s.name));
+          if(or) {
+            s.isClassFeatureVariant = or.features.find((n:string) => n != s.name);
           }
         })
 
@@ -142,15 +156,15 @@ export const useClassesStore = defineStore("ClassesStore", {
       }
     },
     getFeatures() {
-      return (name: string, subclass: string|null, level: number): any[]|null => {
+      return (name: string, subclass: string|null, level: number, excludeFeatures: string[] = []): any[]|null => {
         const cl = this.getClass(name);
         if(!cl) return null;
-        let f: any[] = this.getClassFeatures(name, level);
+        let f: any[] = this.getClassFeatures(name, level, excludeFeatures);
         if(subclass && level != this.getLevelSubclass(name)) {
-          f.push(...this.getSubclassFeatures(name, subclass, level));
+          f.push(...this.getSubclassFeatures(name, subclass, level, excludeFeatures));
         }
         return f
-          .sort((a, b) => a.level - b.level)
+          // .sort((a, b) => a.level - b.level)
         ;
       }
     },
@@ -311,11 +325,11 @@ export const useClassesStore = defineStore("ClassesStore", {
       }
     },
     getClassFeatures() {
-      return (name: string, level: number): any[] => {
+      return (name: string, level: number, excludeFeatures: string[] = []): any[] => {
         const cl = this.getClass(name);
         if(!cl) return [];
         let chooseSubclass = level == this.getLevelSubclass(name);
-        let fts = this.classFeatures.filter((d:any) => d.className == name && d.level == level);
+        let fts = this.classFeatures.filter((d:any) => d.className == name && d.level == level && !excludeFeatures.includes(d.name));
         return fts.map(ft => {
           return {
             name: ft.name,
@@ -324,16 +338,17 @@ export const useClassesStore = defineStore("ClassesStore", {
             level: ft.level,
             entries: extractClassEntries(ft.name, ft),
             chooseSubclass: ft.name == cl.subclassTitle && chooseSubclass,
-            isClassFeatureVariant: ft.isClassFeatureVariant
+            isClassFeatureVariant: ft.isClassFeatureVariant,
+            canReplaceFeature: false
           }
         })
       }
     },
     getSubclassFeatures() {
-      return (name: string, subclass: string, level: number): any[] => {
+      return (name: string, subclass: string, level: number, excludeFeatures: string[] = []): any[] => {
         const sc = this.findSubclass(name, subclass);
         if(!sc) return [];
-        let fts = this.subclassFeatures.filter((d:any) => name == name && d.subclassShortName == subclass && d.level == level && d.header);
+        let fts = this.subclassFeatures.filter((d:any) => name == name && d.subclassShortName == subclass && d.level == level && d.header && !excludeFeatures.includes(d.name));
         return fts.map(ft => {
           return {
             name: ft.name,
@@ -341,12 +356,13 @@ export const useClassesStore = defineStore("ClassesStore", {
             originName: subclass,
             level: ft.level,
             entries: ft.entries.filter((e: any) => "string" == typeof e && !e.startsWith("{@i")).join(' '),
+            isClassFeatureVariant: ft.isClassFeatureVariant
           }
         })
       }
     },
     getProficienciesGained() {
-      return (name: string, subclass: string|null, level: number): any[] => {
+      return (name: string, subclass: string|null, level: number, excludeFeatures: string[] = []): any[] => {
         return classProficienciesGained.filter(c =>
           (
             (c.level == level && !c.optionalfeatureProgression)
@@ -358,12 +374,21 @@ export const useClassesStore = defineStore("ClassesStore", {
             ||
             (c.originName == subclass && c.origin == 'subclass')
           )
+          && (
+            !c.feature
+            ||
+            !excludeFeatures.includes(c.feature)
+          )
         );
       }
     },
     getOtherProgression() {
-      return (name: string, subclass: string|null, level: number): any[] => {
-        const pr = classOtherProgression.filter(c => (c.originName == name && c.origin == 'class') || (c.originName == subclass && c.origin == 'subclass'));
+      return (name: string, subclass: string|null, level: number, excludeFeatures: string[] = []): any[] => {
+        const pr = classOtherProgression.filter(c =>
+          ((c.originName == name && c.origin == 'class') || (c.originName == subclass && c.origin == 'subclass'))
+          &&
+          !excludeFeatures.includes(c.name)
+        );
         return pr.map(c => {
           return {
             ...c,
@@ -951,7 +976,7 @@ const classOtherProgression: any[] = [
     parent: "Magical Tinkering",
     limit: "Use",
     progression: {
-      "1": {formula: "mod('int')"}
+      "1": {formula: "max(mod('int'),1)"}
     }
   },
   {
@@ -975,7 +1000,7 @@ const classOtherProgression: any[] = [
     parent: "Flash of Genius",
     limit: "Long Rest",
     progression: {
-      "7": {formula: "mod('int')"}
+      "7": {formula: "max(mod('int'),1)"}
     }
   },
   {
@@ -985,7 +1010,7 @@ const classOtherProgression: any[] = [
     parent: "Spell-Storin Item",
     limit: "Use",
     progression: {
-      "11": {formula: "mod('int') * 2"}
+      "11": {formula: "max(mod('int'),1) * 2"}
     }
   },
   {
@@ -1018,7 +1043,7 @@ const classOtherProgression: any[] = [
     parent: "Arcane Jolt",
     limit: "Long Rest",
     progression: {
-      "9": {formula: "mod('int')"}
+      "9": {formula: "max(mod('int'),1)"}
     }
   },
   {
@@ -1308,6 +1333,19 @@ const classOtherProgression: any[] = [
       "14": "2d8"
     },
     formula: "'+{' || diceProgression || '} necrotic damage'"
+  },{
+    name: "Blessed Strikes",
+    originName: "Death",
+    origin: "subclass",
+    parent: "Actions",
+    limit: "Turn",
+    progression: {
+      "8": 1
+    },
+    diceProgression: {
+      "8": "1d8"
+    },
+    formula: "'+{' || diceProgression || '} radiant damage'"
   },
   {
     name: "Blessing of the Forge",
@@ -2090,6 +2128,22 @@ const classOtherProgression: any[] = [
       "15": {formula: "prof"}
     }
   },
+  {
+    name: "Favored Foe",
+    originName: "Ranger",
+    origin: "class",
+    parent: "Actions",
+    limit: "Long Rest",
+    progression: {
+      "1": {formula: "prof"}
+    },
+    diceProgression: {
+      "1": "1d4",
+      "6": "1d6",
+      "14": "1d8"
+    }
+  },
+
   // Rogue
   {
     name: "Sneak Attack",
@@ -2931,6 +2985,7 @@ export const classProficienciesGained: any[] = [
   {
     originName: "Barbarian",
     origin: "class",
+    feature: "Primal Knowledge",
     level: 3,
     skills: [{
       "choose": {
@@ -2949,6 +3004,7 @@ export const classProficienciesGained: any[] = [
   {
     originName: "Barbarian",
     origin: "class",
+    feature: "Primal Knowledge",
     level: 10,
     skills: [{
       "choose": {
@@ -3311,7 +3367,7 @@ export const classProficienciesGained: any[] = [
         "count": 1
       }
     }],
-    expertises: [{
+    expertise: [{
       "persuasion": true
     }]
   },
@@ -3485,18 +3541,50 @@ export const classProficienciesGained: any[] = [
     conditionImmune: ["disease"]
   },
   // Ranger
-  // {
-  //   originName: "Ranger",
-  //   origin: "class",
-  //   level: 1,
-  //   languages: [{
-  //     "any": 2
-  //   }]
-  // },
+  {
+    originName: "Ranger",
+    origin: "class",
+    feature: "Deft Explorer",
+    level: 1,
+    languages: [{
+      "any": 2
+    }],
+    expertise: [{
+      anyProficientSkill: 1
+    }]
+  },
+  {
+    originName: "Ranger",
+    origin: "class",
+    feature: "Favored Enemy",
+    level: 1,
+    languages: [{
+      "any": 1
+    }]
+  },
+  {
+    originName: "Ranger",
+    origin: "class",
+    feature: "Favored Enemy",
+    level: 6,
+    languages: [{
+      "any": 1
+    }]
+  },
+  {
+    originName: "Ranger",
+    origin: "class",
+    feature: "Favored Enemy",
+    level: 14,
+    languages: [{
+      "any": 1
+    }]
+  },
   {
     originName: "Ranger",
     origin: "class",
     level: 3,
+    feature: "Primal Awareness",
     additionalSpells: [
       {
         name: "Primal Awareness",
@@ -3674,7 +3762,7 @@ export const classProficienciesGained: any[] = [
       "nature": true,
       "survival": true
     }],
-    expertises: [{
+    expertise: [{
       "nature": true,
       "survival": true
     }]
@@ -4280,4 +4368,122 @@ const complementsFeatures: OptionalFeature[] = [
       "When an attacker that you can see hits you with an attack, you can use your reaction to halve the attack's damage against you."
     ]
   },
+]
+
+const optionalFeaturesReplace: any[] = [
+  {
+    originName: "Death",
+    origin: "subclass",
+    features: ["Blessed Strikes", "Divine Strike"]
+  },
+  {
+    originName: "Knowledge",
+    origin: "subclass",
+    features: ["Blessed Strikes", "Potent Spellcasting"]
+  },
+  {
+    originName: "Life",
+    origin: "subclass",
+    features: ["Blessed Strikes", "Divine Strike"]
+  },
+  {
+    originName: "Light",
+    origin: "subclass",
+    features: ["Blessed Strikes", "Potent Spellcasting"]
+  },
+  {
+    originName: "Nature",
+    origin: "subclass",
+    features: ["Blessed Strikes", "Divine Strike"]
+  },
+  {
+    originName: "Tempest",
+    origin: "subclass",
+    features: ["Blessed Strikes", "Divine Strike"]
+  },
+  {
+    originName: "Trickery",
+    origin: "subclass",
+    features: ["Blessed Strikes", "Divine Strike"]
+  },
+  {
+    originName: "War",
+    origin: "subclass",
+    features: ["Blessed Strikes", "Divine Strike"]
+  },
+  {
+    originName: "Ambition (PSA)",
+    origin: "subclass",
+    features: ["Blessed Strikes", "Potent Spellcasting"]
+  },
+  {
+    originName: "Solidarity (PSA)",
+    origin: "subclass",
+    features: ["Blessed Strikes", "Potent Spellcasting"]
+  },
+  {
+    originName: "Strength (PSA)",
+    origin: "subclass",
+    features: ["Blessed Strikes", "Divine Strike"]
+  },
+  {
+    originName: "Zeal (PSA)",
+    origin: "subclass",
+    features: ["Blessed Strikes", "Divine Strike"]
+  },
+  {
+    originName: "Arcana",
+    origin: "subclass",
+    features: ["Blessed Strikes", "Potent Spellcasting"]
+  },
+  {
+    originName: "Order",
+    origin: "subclass",
+    features: ["Blessed Strikes", "Divine Strike"]
+  },
+  {
+    originName: "Peace",
+    origin: "subclass",
+    features: ["Blessed Strikes", "Potent Spellcasting"]
+  },
+  {
+    originName: "Twilight",
+    origin: "subclass",
+    features: ["Blessed Strikes", "Divine Strike"]
+  },
+  {
+    originName: "Forge",
+    origin: "subclass",
+    features: ["Blessed Strikes", "Divine Strike"]
+  },
+  {
+    originName: "Grave",
+    origin: "subclass",
+    features: ["Blessed Strikes", "Potent Spellcasting"]
+  },
+  {
+    originName: "Ranger",
+    origin: "class",
+    features: ["Natural Explorer", "Deft Explorer"]
+  },
+  {
+    originName: "Ranger",
+    origin: "class",
+    features: ["Favored Foe", "Favored Enemy"]
+  },
+  {
+    originName: "Ranger",
+    origin: "class",
+    features: ["Primal Awareness", "Primeval Awareness"]
+  },
+  {
+    originName: "Ranger",
+    origin: "class",
+    features: ["Nature's Veil", "Hide in Plain Sight"]
+  },
+  {
+    originName: "Beast Master",
+    origin: "subclass",
+    features: ["Primal Companion", "Ranger's Companion"]
+  }
 ]
