@@ -478,7 +478,7 @@
       if(i2) {
         let ch = chooses.value.cantrips;
         let sp = chooses.value.spells;
-        let pr = chooses.value.prepared;
+        let prepared = chooses.value.prepared;
         let as = chooses.value.additionalSpells;
 
         let j1 = true, j2 = true, j3 = true, j4 = true;
@@ -507,17 +507,21 @@
           });
         }
         if(sp && sp.known > 0) {
-          j2 = sp.known == sp.selected || (pr && pr.known > 0 && sp.selected >= sp.known);
+          j2 = sp.known == sp.selected || (sp.origin == "class" && sp.originName == "Wizard" && sp.selected >= sp.known);
           ss.push({
             name: 'spellsKnown',
             valid: j2
           });
         }
-        if(pr && pr.known > 0) {
-          j3 = pr.known == pr.selected;
-          ss.push({
-            name: 'spellsPrepared',
-            valid: j3
+        if(prepared) {
+          prepared.forEach((pr:any) => {
+            if(pr.known > 0) {
+              j3 = pr.known == pr.selected;
+              ss.push({
+                name: `spellsPrepared${pr.originName}`,
+                valid: j3
+              });
+            }
           });
         }
 
@@ -787,7 +791,7 @@
     expertises: [],
     cantrips: {},
     spells: {},
-    prepared: {},
+    prepared: [],
     startingEquipment: [],
     startingEquipmentManual: []
   }
@@ -1471,6 +1475,32 @@
     }
   }
 
+  const choosePreparedSpells = (lc: any, origin: string, originName: string, ch: any, max: number, known: number, fc: string) => {
+    if (lc.preparedSpells.count && lc.preparedSpells.count > 0) {
+      const selected = character.value.spells.filter((s: any) => s.origin == origin && s.originName == originName && s.spellslot > 0 && s.choose && s.prepared).length;
+      ch.prepared.push({
+        known: lc.preparedSpells.count,
+        selected: selected,
+        maxlevel: max,
+        onlyPrepared: false,
+        origin: 'class',
+        originName: lc.name,
+        from: {}
+      })
+      let idx = ch.prepared.length - 1;
+      if (known == -1) {
+        for (let l = 1; l <= max; l++) {
+          ch.prepared[idx].from[l] = spellsStore.spellsChoice(fc, l);
+        }
+      } else if (known > 0) {
+        ch.prepared[idx].onlyPrepared = true;
+        for (let l = 1; l <= max; l++) {
+          const spellsChooses = character.value.spells.filter((s: any) => s.origin == origin && s.originName == originName && s.spellslot == l && s.choose).map((s: any) => s.name);
+          ch.prepared[idx].from[l] = spellsStore.spellsChoiceFromList(spellsChooses);
+        }
+      }
+    }
+  }
   const calcAllChooses = () => {
     const ch = chooses.value;
     const level = character.value.level;
@@ -1479,7 +1509,7 @@
     ch.languages = [];
     ch.spells = {};
     ch.cantrips = {};
-    ch.prepared = {};
+    ch.prepared = [];
     ch.tools = [];
     ch.additionalSpells = [];
     ch.startingEquipment = [];
@@ -1666,7 +1696,7 @@
       let max = null;
       if(spellSlotsInfo.value) max = spellSlotsInfo.value.max;
       if(spellSlotsPactInfo.value) max = Math.max(max, spellSlotsPactInfo.value.max);
-      let fc = lastClass.value.name;
+      let fc = lc.name;
       let origin = "class";
       let originName = lc.name;
       if(['Fighter','Rogue'].includes(lastClass.value.name)) {
@@ -1701,30 +1731,12 @@
             ch.spells.from[l] = spellsStore.spellsChoice(fc, l);
           }
         }
-        if (lc.preparedSpells.count && lc.preparedSpells.count > 0) {
-          const selected = character.value.spells.filter((s: any) => s.origin == origin && s.originName == originName && s.spellslot > 0 && s.choose && s.prepared).length;
-          ch.prepared = {
-            known: lc.preparedSpells.count,
-            selected: selected,
-            maxlevel: max,
-            onlyPrepared: false,
-            origin: origin,
-            originName: originName,
-            from: {}
-          }
-          if (known == -1) {
-            for (let l = 1; l <= max; l++) {
-              ch.prepared.from[l] = spellsStore.spellsChoice(fc, l);
-            }
-          }
-          else if (known > 0) {
-            ch.prepared.onlyPrepared = true;
-            for (let l = 1; l <= max; l++) {
-              const spellsChooses = character.value.spells.filter((s: any) => s.origin == origin && s.originName == originName && s.spellslot == l && s.choose).map((s: any) => s.name);
-              ch.prepared.from[l] = spellsStore.spellsChoiceFromList(spellsChooses);
-            }
-          }
-        }
+
+        choosePreparedSpells(lc, origin, originName, ch, max, known, fc);
+        character.value.class.filter((c:any) => c.name != lc.name).forEach((lcc:any) => {
+          let kn2 = classesStore.spellsKnownProgression(lcc.name, lcc.subclass, lcc.level)
+          choosePreparedSpells(lcc, "class", lcc.name, ch, max, kn2, lcc.name);
+        });
       }
     }
   }
@@ -3789,7 +3801,7 @@
       <div class="btn-group btn-group-sm mb-1 d-flex align-items-center">
         <button class="btn btn-secondary" @click="logJson">logJson</button>
         <button class="btn btn-secondary" @click="json = steps">steps</button>
-        <button class="btn btn-secondary" @click="json = chooses.features">chooses</button>
+        <button class="btn btn-secondary" @click="json = chooses">chooses</button>
         <button class="btn btn-secondary" @click="() => handleTableplop(false)">handleTableplop</button>
 <!--        <button class="btn btn-secondary" @click="json = evalFormula(`2e`)">evalFormula</button>-->
         <button class="btn btn-secondary" @click="json = classFeatures">classFeatures</button>
@@ -4402,9 +4414,9 @@
             </template>
           </AccordionItem>
 
-          <AccordionItem name="spellsPrepared" :steps="steps" :step="step" @click="changeStep">
-            <template v-slot:header-label>Spells Prepared</template>
-            <template v-slot:header-value>{{chooses.prepared.selected}}/{{chooses.prepared.known}}</template>
+          <AccordionItem v-for="ch in chooses.prepared" :key="ch" :name="`spellsPrepared${ch.originName}`" :steps="steps" :step="step" @click="changeStep">
+            <template v-slot:header-label>Spells Prepared{{chooses.prepared.length > 1 || ch.originName != lastClass.name ? ` ${ch.originName}` : ''}}</template>
+            <template v-slot:header-value>{{ch.selected}}/{{ch.known}}</template>
             <template v-slot:body>
               <div class="m-0 d-flex align-items-center mb-2">
                 <input type="text" class="form-control form-control-sm" style="flex: 1" :value="search['prepared']" @input="changeSearch($event, 'prepared')" />
@@ -4420,13 +4432,13 @@
                   <i class="fa-regular" :class="showAllSpells ? 'fa-eye-slash' : 'fa-eye'" @click="showAllSpells = !showAllSpells" />
                 </div>
               </div>
-              <template v-for="l in chooses.prepared.maxlevel">
+              <template v-for="l in ch.maxlevel">
                 <p class="fst-italic m-0">Level {{ l }}</p>
-                <div v-for="spell in filterOptions('prepared', chooses.prepared.from[l])" class="form-check pb-1">
+                <div v-for="spell in filterOptions('prepared', ch.from[l])" class="form-check pb-1">
                   <input class="form-check-input" type="checkbox" :value="spell.name"
-                         @click="chooses.prepared.onlyPrepared ? changeSpellPrepared($event) : changeSpell($event, l, true, chooses.prepared.origin, chooses.prepared.originName)"
+                         @click="ch.onlyPrepared ? changeSpellPrepared($event) : changeSpell($event, l, true, ch.origin, ch.originName)"
                          :checked="isSpellPrepared(spell.name)"
-                         :disabled="isSpellDisabled(spell.name, chooses.prepared.origin, chooses.prepared.originName)"
+                         :disabled="isSpellDisabled(spell.name, ch.origin, ch.originName)"
                   />
                   <SpellInfo :spell="spell" :open="showAllSpells" />
                 </div>
