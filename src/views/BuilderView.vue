@@ -4414,7 +4414,7 @@
             </template>
           </AccordionItem>
 
-          <AccordionItem v-for="ch in chooses.prepared" :key="ch" :name="`spellsPrepared${ch.originName}`" :steps="steps" :step="step" @click="changeStep">
+          <AccordionItem v-for="ch in chooses.prepared" :key="ch.originName" :name="`spellsPrepared${ch.originName}`" :steps="steps" :step="step" @click="changeStep">
             <template v-slot:header-label>Spells Prepared{{chooses.prepared.length > 1 || ch.originName != lastClass.name ? ` ${ch.originName}` : ''}}</template>
             <template v-slot:header-value>{{ch.selected}}/{{ch.known}}</template>
             <template v-slot:body>
