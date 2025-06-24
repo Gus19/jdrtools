@@ -22,7 +22,9 @@ export const useItemsStore = defineStore("ItemsStore", {
 
         const response2 = await fetch(`${import.meta.env.VITE_BASEURL}/data/items.json`);
         const data2 = await response2.json();
-        this.itemBase.push(...data2.item);
+        this.itemBase.push(...data2.item.filter((f:any) =>
+          !["TDCSR"].includes(f.source)
+        ));
 
         this.itemBase.forEach((i:ItemBase) => {
           i.key = `${i.name.toLowerCase()}|${i.source.toLowerCase()}`;
@@ -37,6 +39,8 @@ export const useItemsStore = defineStore("ItemsStore", {
           (!i.wondrous)
           &&
           (!i.property?.includes("S"))
+          &&
+          !["TDCSR"].includes(i.source)
         );
       }
       catch (e) {

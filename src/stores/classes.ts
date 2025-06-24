@@ -3733,6 +3733,22 @@ export const classProficienciesGained: any[] = [
   },
   // Rogue
   {
+    originName: "Rogue",
+    origin: "class",
+    level: 1,
+    expertise: [{
+      anyProficientSkill: 2
+    }]
+  },
+  {
+    originName: "Rogue",
+    origin: "class",
+    level: 6,
+    expertise: [{
+      anyProficientSkill: 2
+    }]
+  },
+  {
     originName: "Assassin",
     origin: "subclass",
     level: 3,

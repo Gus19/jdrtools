@@ -13,7 +13,9 @@ export const useFeatsStore = defineStore("FeatsStore", {
       try {
         const response = await fetch(`${import.meta.env.VITE_BASEURL}/data/feats.json`);
         const data = await response.json();
-        this.feats = data.feat;
+        this.feats = data.feat.filter((f:any) =>
+          !["TDCSR"].includes(f.source)
+        );
       }
       catch (e) {
         console.error(e);
@@ -26,7 +28,7 @@ export const useFeatsStore = defineStore("FeatsStore", {
     getDefaults() {
       return (character: any): any[] => {
         const level = character.level ?? 1;
-        const raceName = character.race?.name.toLowerCase() ?? "";
+        let raceName = character.race?.name.toLowerCase() ?? "";
         const classNames = character.leveling;
         const bgName = character.background?.toLowerCase() ?? "";
 
@@ -39,7 +41,10 @@ export const useFeatsStore = defineStore("FeatsStore", {
               if(p.level && !isNaN(p.level) && level < p.level) v = false;
               if(p.level && isNaN(p.level) && p.level.class && classNames.includes(p.level.class.name)) v = false;
 
-              if(p.race && !p.race.map(r => r.name.toLowerCase()).includes(raceName)) v = false;
+              if(p.race) {
+                if(raceName.indexOf('dragonborn') == 0) raceName = "dragonborn";
+                if(!p.race.map(r => r.name.toLowerCase()).includes(raceName)) v = false;
+              }
               if((p.spellcasting || p.spellcasting2020 || p.spellcastingFeature || p.spellcastingPrepared) && character.spellcasting.length == 0) v = false;
               if(p.feat) {
                 const tests = p.feat.map(ft => ft.substring(0, ft.indexOf('|')).toLowerCase());
