@@ -3,15 +3,20 @@ import {defineStore} from 'pinia'
 export const useBackgroundsStore = defineStore("BackgroundsStore", {
   state: (): RootState => ({
     backgrounds: [],
-    error: false
+    error: false,
+    version: ''
   }),
   actions: {
-    async initBackgrounds() {
+    async initBackgrounds(version: string = '') {
+      if(version != this.version) {
+        this.version = version;
+        this.backgrounds = []
+      }
       if (this.backgrounds.length > 0) {
         return;
       }
       try {
-        const response = await fetch(`${import.meta.env.VITE_BASEURL}/data/backgrounds.json`);
+        const response = await fetch(`${import.meta.env.VITE_BASEURL}/data${this.version}/backgrounds.json`);
         const data = await response.json();
         this.backgrounds = data.background;
       }
@@ -23,10 +28,14 @@ export const useBackgroundsStore = defineStore("BackgroundsStore", {
   },
   getters: {
     isLoad: (state) => state.backgrounds.length > 0,
-    getDefaults: (state) => state.backgrounds.filter((b: any) =>
-      defaultBackgrounds.includes(b.name)
-      && (b.source != "XPHB")
-    )
+    getDefaults: (state) => state.backgrounds.filter((b: any) => {
+      if(state.version == '2024') {
+        return b.source == "XPHB"
+      }
+      else {
+        return defaultBackgrounds.includes(b.name) && b.source != "XPHB"
+      }
+    })
   }
 });
 
@@ -99,7 +108,8 @@ export const classBackground: any = {
 
 export type RootState = {
   backgrounds: Root;
-  error: boolean
+  error: boolean;
+  version: string;
 };
 
 export type Root = Root2[]
@@ -126,7 +136,8 @@ export interface Root2 {
   prerequisite?: Prerequisite[]
   skillToolLanguageProficiencies?: SkillToolLanguageProficiency[]
   otherSources?: OtherSource[]
-  weaponProficiencies?: WeaponProficiency[]
+  weaponProficiencies?: WeaponProficiency[],
+  ability?: any[]
 }
 
 export interface SkillProficiency {

@@ -6,27 +6,35 @@ export const useItemsStore = defineStore("ItemsStore", {
     itemBase: [],
     itemProperty: [],
     itemType: [],
-    error: false
+    error: false,
+    version: ''
   }),
   actions: {
-    async initItems() {
+    async initItems(version: string = '') {
+      if(version != this.version) {
+        this.version = version;
+        this.itemBase = []
+        this.itemProperty = []
+        this.itemType = []
+      }
       if (this.itemBase.length > 0) {
         return;
       }
       try {
-        const response = await fetch(`${import.meta.env.VITE_BASEURL}/data/items-base.json`);
+        const response = await fetch(`${import.meta.env.VITE_BASEURL}/data${this.version}/items-base.json`);
         const data = await response.json();
         this.itemBase = data.baseitem;
         this.itemProperty = data.itemProperty;
         this.itemType = data.itemType;
 
-        const response2 = await fetch(`${import.meta.env.VITE_BASEURL}/data/items.json`);
+        const response2 = await fetch(`${import.meta.env.VITE_BASEURL}/data${this.version}/items.json`);
         const data2 = await response2.json();
-        this.itemBase.push(...data2.item.filter((f:any) =>
-          !["TDCSR"].includes(f.source)
-        ));
+        this.itemBase.push(...data2.item);
 
         this.itemBase.forEach((i:ItemBase) => {
+          if(i.type) {
+            i.type = i.type.split('|')[0];
+          }
           i.key = `${i.name.toLowerCase()}|${i.source.toLowerCase()}`;
           if(i.type == "S") i.armor = true
           if(['T', 'AT', 'INS', 'GS'].includes(i.type)) i.tool = true;
@@ -34,13 +42,17 @@ export const useItemsStore = defineStore("ItemsStore", {
         });
 
         this.itemBase = this.itemBase.filter((i:ItemBase) =>
-          (i.armor || i.weapon || i.tool || ["A","AF|DMG","EXP|DMG","FD","G","P","RD|DMG","RG|DMG","SCF","WD|DMG"].includes(i.type))
+          (i.armor || i.weapon || i.tool || ["A","AF","EXP","FD","G","P","RD","RG","SCF","WD"].includes(i.type))
           &&
           (!i.wondrous)
           &&
           (!i.property?.includes("S"))
           &&
-          !["TDCSR"].includes(i.source)
+          (
+            !["TDCSR"].includes(i.source)
+            ||
+            (this.version == "2024" && i.source == "XPHB")
+          )
         );
       }
       catch (e) {
@@ -376,7 +388,8 @@ export type RootState = {
   itemBase: ItemBase[]
   itemProperty: ItemProperty[]
   itemType: ItemType[],
-  error: boolean
+  error: boolean,
+  version: string
 }
 
 export interface ItemBase {

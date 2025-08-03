@@ -256,7 +256,7 @@ export const S = (e: any, d: boolean = true) => {
           t = t.replace(n, `{1d20 + ${i}}`);
           break;
         case"condition":
-          t = t.replace(n, i);
+          t = t.replace(n, i.split('|')[0]);
           break;
         case"dc":
           t = t.replace(n, `DC ${i}`);
@@ -269,7 +269,7 @@ export const S = (e: any, d: boolean = true) => {
           t = t.replace(n, "{summoner-spell-attack}");
           break;
         case"spell":
-          t = t.replace(n, e[1].split(" ").slice(1).join(" "));
+          t = t.replace(n, e[1].split(" ").slice(1).join(" ").split('|')[0]);
           break;
         case "book":
         case "item":

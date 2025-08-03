@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import {computed, ref, watch} from "vue";
+  import {computed, onMounted, ref, watch} from "vue";
   import Money from "@/components/Money.vue";
   import {findEquipmentType, useItemsStore} from "@/stores/items";
   import {cfl, damageByKey, S} from "@/utils/refs";
@@ -9,6 +9,11 @@
     tooltip: {type: Boolean, default: true},
     profs: {type: Object, required: false}
   });
+
+  /*onMounted(() => {
+    debugger;
+    console.log(props);
+  })*/
 
   const info = ref<HTMLInputElement | null>(null);
   watch(info, (nv) => {
@@ -70,7 +75,8 @@
       key = props.item;
     }
 
-    return itemsStore.findByKey(key);
+    let f = itemsStore.findByKey(key);
+    return f;
   })
 
   const titleTxt = computed(() => {
@@ -113,6 +119,7 @@
   const value = computed(() => {
     if(typeof props.item == "object") {
       if(props.item.containsValue) return props.item.containsValue;
+      if(props.item.value) return props.item.value;
     }
     return;
   })
@@ -147,12 +154,12 @@
 <template>
   <template v-if="tooltip && title">
     <span :title="title" v-tooltip data-bs-placement="right" :key="title">
-      {{ qty }}{{ name }}<Money v-if="value" :value="value" spaces />
+      {{ qty }}{{ name }}<Money v-if="value" :value="value" :spaces="!!(qty || name)" />
     </span>
   </template>
   <template v-else>
     <span>
-      {{ qty }}{{ name }}<Money v-if="value" :value="value" spaces />
+      {{ qty }}{{ name }}<Money v-if="value" :value="value" :spaces="!!(qty || name)" />
     </span>
   </template>
 

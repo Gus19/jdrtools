@@ -25,6 +25,11 @@ const env = import.meta.env;
                 </router-link>
               </li>
               <li class="nav-item">
+                <router-link to="/builder-2024" class="nav-link" activeClass="active">
+                  Character Builder 2024
+                </router-link>
+              </li>
+              <li class="nav-item">
                 <router-link to="/changelog" class="nav-link" activeClass="active">
                   Changelog
                 </router-link>

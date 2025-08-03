@@ -3,19 +3,34 @@ import {defineStore} from 'pinia'
 export const useFeatsStore = defineStore("FeatsStore", {
   state: (): RootState => ({
     feats: [],
-    error: false
+    transformFeatures: [],
+    error: false,
+    version: ''
   }),
   actions: {
-    async initFeats() {
+    async initFeats(version: string = '') {
+      if(version != this.version) {
+        this.version = version;
+        this.feats = []
+        this.transformFeatures = []
+      }
       if (this.feats.length > 0) {
         return;
       }
       try {
-        const response = await fetch(`${import.meta.env.VITE_BASEURL}/data/feats.json`);
+        const response = await fetch(`${import.meta.env.VITE_BASEURL}/data${this.version}/feats.json`);
         const data = await response.json();
-        this.feats = data.feat.filter((f:any) =>
-          !["TDCSR"].includes(f.source)
-        );
+        this.feats = data.feat.filter((f:any) => {
+          if(this.version == "2024") {
+            return f.source == "XPHB" && !["FS","FS:R","FS:P","EB"].includes(f.category)
+          }
+          else {
+            return !["TDCSR"].includes(f.source)
+          }
+        });
+        if(this.version == "2024") {
+          this.transformFeatures = data.feat.filter((f:any) => f.source == "XPHB" && ["FS","FS:R","FS:P","EB"].includes(f.category));
+        }
       }
       catch (e) {
         console.error(e);
@@ -90,7 +105,10 @@ export const useFeatsStore = defineStore("FeatsStore", {
       return (o: any): Feat[] => {
         let names: string[] = [];
         o.forEach((f:any) => {
-          Object.keys(f).forEach(k => names.push(k.split('|')[0].toLowerCase()));
+          Object.keys(f).forEach(k => {
+            let n = k.split('|')[0].toLowerCase();
+            names.push(n.split(';')[0]);
+          });
         })
         return this.feats.filter(f => names.includes(f.name.toLowerCase()));
       }
@@ -100,7 +118,9 @@ export const useFeatsStore = defineStore("FeatsStore", {
 
 export type RootState = {
   feats: Feat[];
-  error: boolean
+  transformFeatures: Feat[];
+  error: boolean,
+  version: string
 };
 
 export interface Feat {
@@ -126,6 +146,7 @@ export interface Feat {
   expertise?: Expertise[]
   skillToolLanguageProficiencies?: SkillToolLanguageProficiency[]
   additionalSources?: AdditionalSource[]
+  category?: string
 }
 
 export interface Prerequisite {

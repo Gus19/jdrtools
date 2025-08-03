@@ -53,23 +53,44 @@
   import FeatList from "@/components/FeatList.vue";
   import Condition from "@/components/Condition.vue";
   import {Parser} from "expr-eval";
+
+  const props = defineProps({
+    version: {type: String, required: true, default: ''},
+  });
+
   const spellsStore = useSpellsStore();
   const racesStore = useRacesStore();
   const bgStore = useBackgroundsStore();
   const classesStore = useClassesStore();
   const featsStore = useFeatsStore();
   const itemsStore = useItemsStore();
-  const storagekey: string = 'character-builder-2014';
+  const storagekey = () => `character-builder-${props.version||'2014'}`;
   const dev: boolean = import.meta.env.DEV;
 
-  onMounted(async () => {
-    await spellsStore.initSpells();
+  const initStoreAndCharacter = async () => {
+    refresh.value = true;
+    await spellsStore.initSpells(props.version);
     await spellsStore.initSources();
-    await racesStore.initStore();
-    await bgStore.initBackgrounds();
-    await classesStore.initClasses();
-    await featsStore.initFeats();
-    await itemsStore.initItems();
+    await racesStore.initStore(props.version);
+    await bgStore.initBackgrounds(props.version);
+    await classesStore.initClasses(props.version);
+    await featsStore.initFeats(props.version);
+    await itemsStore.initItems(props.version);
+
+    if(props.version == "2024") {
+      featsStore.transformFeatures.forEach((tf:any) => {
+        let featureType: string[] = [];
+        featureType.push(tf.category);
+        if(tf.category == 'FS') {
+          featureType.push('FS:P');
+          featureType.push('FS:R');
+        }
+        classesStore.optionalFeatures.push({
+          ...tf,
+          featureType: featureType
+        });
+      });
+    }
 
     character.value = {
       ...defaultCharacter(),
@@ -78,7 +99,11 @@
     chooses.value = {
       ...defaultChoose
     };
-  });
+    refresh.value = false;
+  }
+
+  onMounted(initStoreAndCharacter);
+  watch(() => props.version, initStoreAndCharacter)
 
   const search = ref<any>({});
   const changeSearch = (e: any, name: string) => {
@@ -156,12 +181,6 @@
       addEquipment(it, 1, others);
     }
     else if(it.item) {
-      if(it.containsValue) {
-        let money = calculMoney(it.containsValue);
-        character.value.money.gp += money.gp;
-        character.value.money.sp += money.sp;
-        character.value.money.cp += money.cp;
-      }
       addEquipment(it.item, it.quantity || 1, others);
     }
     else {
@@ -171,6 +190,12 @@
       else if(it.special) {
         others.push(cfl(it.special));
       }
+    }
+    if(it.containsValue || it.value) {
+      let money = calculMoney(it.containsValue || it.value);
+      character.value.money.gp += money.gp;
+      character.value.money.sp += money.sp;
+      character.value.money.cp += money.cp;
     }
   }
   const addEquipment = (key: string, quantity: number, others: any[], custom: boolean = false) => {
@@ -728,8 +753,8 @@
   }
 
   const character = ref<any>(null);
-
-  const allLoad = computed(() => spellsStore.isLoad && racesStore.isLoad && bgStore.isLoad && featsStore.isLoad && itemsStore.isLoad && classesStore.isLoad && character.value !== null && versions.value !== null);
+  const refresh = ref<boolean>(false);
+  const allLoad = computed(() => spellsStore.isLoad && racesStore.isLoad && bgStore.isLoad && featsStore.isLoad && itemsStore.isLoad && classesStore.isLoad && character.value !== null && versions.value !== null && !refresh.value);
   watch(allLoad, (newValue) => {
     if(newValue) {
       calcDatasRace(false);
@@ -805,14 +830,14 @@
     if(dev) {
       console.log('watch character');
     }
-    localStorage.setItem(storagekey, JSON.stringify(character.value));
+    localStorage.setItem(storagekey(), JSON.stringify(character.value));
     calcAllChooses();
     calculStep();
     logJson();
   };
 
   const getStorage = () => {
-    return JSON.parse(localStorage.getItem(storagekey)||'{}');
+    return JSON.parse(localStorage.getItem(storagekey())||'{}');
   };
 
   watch(character, saveStorage,{deep: true});
@@ -843,7 +868,11 @@
   };
   const versions = computed(() => racesStore.getRaceByName(character.value.race.name));
   const subraces = computed(() => racesStore.getSubraceByName(character.value.race.name, character.value.race.source));
-  const isLineage = computed(() => versions.value !== null && character.value.race.source && versions.value.find(v => v.source === character.value.race.source)?.lineage);
+  const isLineage = computed(() =>
+    (versions.value !== null && character.value.race.source && versions.value.find(v => v.source === character.value.race.source)?.lineage)
+    ||
+    (bg.value != null && bg.value.ability != undefined)
+  );
   const computedRace = computed(() => {
     if(!versions.value) return;
     const v:any = versions.value.find(v => v.source === character.value.race.source);
@@ -1252,7 +1281,7 @@
     cl.subclass = null;
     cl.dice = c.hd.faces;
     cl.casterProgression = c.casterProgression || null;
-    cl.preparedSpells = {has: c.preparedSpells != undefined};
+    cl.preparedSpells = {has: c.preparedSpells != undefined || c.preparedSpellsProgression != undefined};
     cl.spellcastingAbility = c.spellcastingAbility || null;
   }
 
@@ -1343,8 +1372,13 @@
         l += clvl;
       }
       if(c.preparedSpells && c.preparedSpells.has) {
-        c.preparedSpells.count = clvl + mod(c.spellcastingAbility);
-        if(c.preparedSpells.count <= 0) c.preparedSpells.count = 1;
+        if(props.version == "2024") {
+          c.preparedSpells.count = classesStore.preparedSpellsProgression(c.name, c.subclass, c.level);
+        }
+        else {
+          c.preparedSpells.count = clvl + mod(c.spellcastingAbility);
+          if (c.preparedSpells.count <= 0) c.preparedSpells.count = 1;
+        }
       }
     });
     character.value.spellcasterlevel = l;
@@ -1448,6 +1482,14 @@
       const msv = character.value.manualSteps.find((ms:any) => ms.step == 'startingEquipment');
       if(msv) {
         msv.valid = false;
+      }
+      if(props.version == "2024" && bg.value.ability) {
+        character.value.abilities.str.bonus = 0;
+        character.value.abilities.dex.bonus = 0;
+        character.value.abilities.con.bonus = 0;
+        character.value.abilities.int.bonus = 0;
+        character.value.abilities.wis.bonus = 0;
+        character.value.abilities.cha.bonus = 0;
       }
     }
   }
@@ -2187,7 +2229,9 @@
   const bgFeatures = computed(() => {
     if(!bg.value) return null;
     if(!bg.value.entries) return null;
-    return bg.value.entries.filter((be:any) => be.type == "entries" && be.data && be.data.isFeature);
+    let fil = bg.value.entries.filter((be:any) => be.type == "entries" && be.data && be.data.isFeature);
+    if(fil.length == 0) return null;
+    return fil;
   });
   const bgStep = computed(() => ['background'].includes(step.value));
 
@@ -2250,6 +2294,12 @@
     for (const i in Abilities) {
       const a = Abilities[i].key;
       t += character.value.abilities[a].bonus;
+    }
+
+    if(props.version == "2024" && bg.value && bg.value.ability) {
+      if(!bg.value.ability[0].choose.weighted.from.includes(key)) {
+        return true;
+      }
     }
 
     if(bonus === 2) {
@@ -4454,7 +4504,7 @@
                   <label class="fw-bold">{{ startingEquipment.originName }}</label>
                 </p>
 
-                <div v-if="startingEquipment.origin == 'class'" class="btn-group btn-group-sm w-100 pb-1">
+                <div v-if="startingEquipment.origin == 'class' && version.length == 0" class="btn-group btn-group-sm w-100 pb-1">
                   <input type="radio" class="btn-check" id="startingEquipment-default" value="default" @change="changeStartingEquipment" :checked="character.startingEquipment.option == 'default'">
                   <label class="btn" :class="character.startingEquipment.option == 'default' ? 'btn-primary' : 'btn-outline-secondary'" for="startingEquipment-default">Default</label>
 
@@ -4797,7 +4847,11 @@
             <p class="fw-bold border-bottom text-center mb-2 mt-1 fs-1-1">
               {{ character.background }}
             </p>
-            <template v-if="character.level == 1">
+            <template v-if="character.level == 1 || version == '2024'">
+              <CharacterInfo v-if="bg.ability">
+                <template v-slot:label>Ability Scores:</template>
+                {{ bg.ability[0].choose.weighted.from.join(', ') }}
+              </CharacterInfo>
               <CharacterInfo v-if="bg.skillProficiencies">
                 <template v-slot:label>Skill Proficiencies:</template>
                 <template v-if="computedSkillsBG">{{ computedSkillsBG }}</template>
@@ -4811,7 +4865,7 @@
               <CharacterInfo v-if="bg.toolProficiencies">
                 <template v-slot:label>Tool Proficiencies:</template>
                 <template v-if="computedToolsBG">{{computedToolsBG}}</template>
-                <template v-else>{{ DS(bg.entries && bg.entries[0].items.find((ei:any) => ei.name == "Tool Proficiencies:"), false) }}</template>
+                <template v-else>{{ DS(bg.entries && bg.entries[0].items.find((ei:any) => ei.name == "Tool Proficiencies:" || ei.name == "Tool Proficiency:"), false) }}</template>
               </CharacterInfo>
             </template>
 

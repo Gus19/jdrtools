@@ -17,7 +17,14 @@ const router = createRouter({
     {
       path: '/builder',
       name: 'builder',
-      component: BuilderView
+      component: BuilderView,
+      props: { version: '' }
+    },
+    {
+      path: '/builder-2024',
+      name: 'builder-2024',
+      component: BuilderView,
+      props: { version: '2024' }
     },
     {
       path: '/changelog',

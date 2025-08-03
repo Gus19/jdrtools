@@ -1,25 +1,12 @@
 import {defineStore} from 'pinia'
 import {messageSpell, S} from "@/utils/refs";
 
-const urlSpells = [
-  "/data/spells/spells-aag.json",
-  "/data/spells/spells-ai.json",
-  "/data/spells/spells-bmt.json",
-  "/data/spells/spells-ftd.json",
-  "/data/spells/spells-ggr.json",
-  "/data/spells/spells-idrotf.json",
-  "/data/spells/spells-phb.json",
-  "/data/spells/spells-sato.json",
-  "/data/spells/spells-scc.json",
-  "/data/spells/spells-tce.json",
-  "/data/spells/spells-xge.json"
-]
-
 export const useSpellsStore = defineStore("SpellsStore", {
   state: (): RootState => ({
     sources: [],
     spells: [],
-    error: false
+    error: false,
+    version: ''
   }),
 
   actions: {
@@ -45,22 +32,43 @@ export const useSpellsStore = defineStore("SpellsStore", {
       );
       this.sources = test;
     },
-    async initSpells() {
+    async initSpells(version: string = '') {
+      if(version != this.version) {
+        this.version = version;
+        this.sources = []
+        this.spells = []
+      }
       if(this.spells.length > 0) {
         return;
       }
       const localSpells = [];
       try {
+        const urlSpells = [
+          `/data${this.version}/spells/spells-aag.json`,
+          `/data${this.version}/spells/spells-ai.json`,
+          `/data${this.version}/spells/spells-bmt.json`,
+          `/data${this.version}/spells/spells-ftd.json`,
+          `/data${this.version}/spells/spells-ggr.json`,
+          `/data${this.version}/spells/spells-idrotf.json`,
+          `/data${this.version}/spells/spells-phb.json`,
+          `/data${this.version}/spells/spells-sato.json`,
+          `/data${this.version}/spells/spells-scc.json`,
+          `/data${this.version}/spells/spells-tce.json`,
+          `/data${this.version}/spells/spells-xge.json`,
+          `/data${this.version}/spells/spells-xphb.json`,
+        ]
         for (const u of urlSpells) {
           const response = await fetch(`${import.meta.env.VITE_BASEURL}${u}`);
-          const data = await response.json();
-          if (data.spell) {
-            localSpells.push(...data.spell.map((s:any) => {
-              return {
-                ...s,
-                info: S(messageSpell(s, false))
-              }
-            }));
+          if(response.ok && response.headers.get('content-type') == "application/json" ) {
+            const data = await response.json();
+            if (data.spell) {
+              localSpells.push(...data.spell.map((s: any) => {
+                return {
+                  ...s,
+                  info: S(messageSpell(s, false))
+                }
+              }));
+            }
           }
         }
         this.spells = localSpells;
@@ -204,7 +212,8 @@ export interface AdditionalSource {
 export type RootState = {
   sources: SpellClasses[];
   spells: SpellInfo[];
-  error: boolean
+  error: boolean,
+  version: string
 };
 
 export interface SpellClasses {

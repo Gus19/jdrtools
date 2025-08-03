@@ -5,16 +5,22 @@ export const useRacesStore = defineStore("RacesStore", {
   state: (): RootState => ({
     racessource: null,
     builder: [],
-    error: false
+    error: false,
+    version: ''
   }),
 
   actions: {
-    async initStore() {
+    async initStore(version: string = '') {
+      if(version != this.version) {
+        this.version = version;
+        this.racessource = null
+        this.builder = []
+      }
       if (this.racessource != null) {
         return;
       }
       try {
-        const response = await fetch(`${import.meta.env.VITE_BASEURL}/data/races.json`);
+        const response = await fetch(`${import.meta.env.VITE_BASEURL}/data${this.version}/races.json`);
         const data = await response.json();
         this.initsource(data);
       }
@@ -27,16 +33,24 @@ export const useRacesStore = defineStore("RacesStore", {
       }
     },
     initsource(data: Root) {
-      let npctag = "NPC Race"
-      this.racessource = {
-        race: data.race.filter(s => !((s.traitTags||[]).includes(npctag))),
-        subrace: data.subrace.filter(s => !((s.traitTags||[]).includes(npctag)) && s.name !== "Eladrin")
+      if(this.version == '2024') {
+        this.racessource = {
+          race: data.race.filter(s => s.source == "XPHB"),
+          subrace: data.subrace.filter(s => s.source == "XPHB")
+        }
+      }
+      else {
+        let npctag = "NPC Race"
+        this.racessource = {
+          race: data.race.filter(s => !((s.traitTags || []).includes(npctag))),
+          subrace: data.subrace.filter(s => !((s.traitTags || []).includes(npctag)) && s.name !== "Eladrin")
+        }
       }
     },
     initBuilder() {
-      Object.keys(organisation).forEach((k: string) => {
+      Object.keys(organisation[this.version]).forEach((k: string) => {
         let races: RaceBuilder[] = [];
-        organisation[k].forEach((n: string) => {
+        organisation[this.version][k].forEach((n: string) => {
           const rf =  this.getRaceByName(n)||[];
           const srf = [];
           rf.forEach(r => {
@@ -65,7 +79,7 @@ export const useRacesStore = defineStore("RacesStore", {
       return (n: string|null) => state.racessource ? state.racessource.race.filter(r =>
         r.name == n
         && !('_copy' in r)
-        && r.source != "XPHB"
+        // && r.source != "XPHB"
         && `${r.name}|${r.source}` != `Hobgoblin|VGM`
       ).sort((a:any,b:any) => a.name > b.name ? 1 : 0) : null
     },
@@ -79,87 +93,104 @@ export const useRacesStore = defineStore("RacesStore", {
 });
 
 const organisation: any = {
-  "Common": [
-    "Dwarf",
-    "Elf",
-    "Gnome",
-    "Half-Elf",
-    "Half-Orc",
-    "Halfling",
-    "Human",
-    "Tiefling",
-    "Dragonborn",
-    "Dragonborn (Chromatic)","Dragonborn (Gem)","Dragonborn (Metallic)",
-  ],
-  "Exotic": [
-    "Aarakocra",
-    "Aasimar",
-    "Changeling",
-    "Deep Gnome",
-    "Duergar",
-    "Eladrin",
-    "Fairy",
-    "Firbolg",
-    "Genasi",
-    "Githyanki",
-    "Githzerai",
-    "Goliath",
-    "Harengon",
-    "Kenku",
-    "Locathah",
-    "Owlin",
-    "Satyr",
-    "Sea Elf",
-    "Shadar-Kai",
-    "Tabaxi",
-    "Tortle",
-    "Triton",
-    "Verdan"
-  ],
-  "Monstrous": [
-    "Bugbear",
-    "Centaur",
-    "Goblin",
-    "Grung",
-    "Hobgoblin",
-    "Kobold",
-    "Lizardfolk",
-    "Minotaur",
-    "Orc",
-    "Shifter",
-    "Yuan-Ti"
-  ],
-  "Specific": [
-    "Aetherborn",
-    "Astral Elf",
-    "Autognome",
-    "Aven",
-    "Giff",
-    "Hadozee",
-    "Hexblood",
-    "Kalashtar",
-    "Kender",
-    "Khenra",
-    "Kor",
-    "Loxodon",
-    "Merfolk",
-    "Naga",
-    "Plasmoid",
-    "Reborn",
-    "Simic Hybrid",
-    "Siren",
-    "Thri-kreen",
-    "Vampire",
-    "Vedalken",
-    "Warforged",
-    // "Custom Lineage"
-  ]
+  '': {
+    "Common": [
+      "Dwarf",
+      "Elf",
+      "Gnome",
+      "Half-Elf",
+      "Half-Orc",
+      "Halfling",
+      "Human",
+      "Tiefling",
+      "Dragonborn",
+      "Dragonborn (Chromatic)", "Dragonborn (Gem)", "Dragonborn (Metallic)",
+    ],
+    "Exotic": [
+      "Aarakocra",
+      "Aasimar",
+      "Changeling",
+      "Deep Gnome",
+      "Duergar",
+      "Eladrin",
+      "Fairy",
+      "Firbolg",
+      "Genasi",
+      "Githyanki",
+      "Githzerai",
+      "Goliath",
+      "Harengon",
+      "Kenku",
+      "Locathah",
+      "Owlin",
+      "Satyr",
+      "Sea Elf",
+      "Shadar-Kai",
+      "Tabaxi",
+      "Tortle",
+      "Triton",
+      "Verdan"
+    ],
+    "Monstrous": [
+      "Bugbear",
+      "Centaur",
+      "Goblin",
+      "Grung",
+      "Hobgoblin",
+      "Kobold",
+      "Lizardfolk",
+      "Minotaur",
+      "Orc",
+      "Shifter",
+      "Yuan-Ti"
+    ],
+    "Specific": [
+      "Aetherborn",
+      "Astral Elf",
+      "Autognome",
+      "Aven",
+      "Giff",
+      "Hadozee",
+      "Hexblood",
+      "Kalashtar",
+      "Kender",
+      "Khenra",
+      "Kor",
+      "Loxodon",
+      "Merfolk",
+      "Naga",
+      "Plasmoid",
+      "Reborn",
+      "Simic Hybrid",
+      "Siren",
+      "Thri-kreen",
+      "Vampire",
+      "Vedalken",
+      "Warforged",
+      // "Custom Lineage"
+    ]
+  },
+  '2024': {
+    "Common": [
+      "Aasimar",
+      "Dragonborn",
+      "Dwarf",
+      "Elf",
+      "Gnome",
+      "Goliath",
+      "Halfling",
+      "Human",
+      "Orc",
+      "Tiefling"
+    ]
+  }
 }
 
 export type RootState = {
   racessource: Root | null,
   builder: Builder[],
-  error: boolean
+  error: boolean,
+  version: string,
 };
 
 export interface Builder {

@@ -24,10 +24,19 @@ export const useClassesStore = defineStore("ClassesStore", {
     classFeatures: [],
     subclassFeatures: [],
     optionalFeatures: [],
-    error: false
+    error: false,
+    version: ''
   }),
   actions: {
-    async initClasses() {
+    async initClasses(version: string = '') {
+      if(version != this.version) {
+        this.version = version;
+        this.classes = []
+        this.subclasses = []
+        this.classFeatures = []
+        this.subclassFeatures = []
+        this.optionalFeatures = []
+      }
       if(this.classes.length > 0) {
         return;
       }
@@ -37,7 +46,7 @@ export const useClassesStore = defineStore("ClassesStore", {
       const local4 = [];
       try {
         for (const u of urls) {
-          const response = await fetch(`${import.meta.env.VITE_BASEURL}/data/class/${u}`);
+          const response = await fetch(`${import.meta.env.VITE_BASEURL}/data${this.version}/class/${u}`);
           const data = await response.json();
           if (data.class) {
             local1.push(...data.class);
@@ -57,6 +66,7 @@ export const useClassesStore = defineStore("ClassesStore", {
               s.name != "Knowledge Domain (PSA)"
             ));
           }
+
           if (data.classFeature) {
             local3.push(...data.classFeature);
           }
@@ -70,20 +80,54 @@ export const useClassesStore = defineStore("ClassesStore", {
             local4.push(...data.subclassFeature);
           }
         }
-        this.classes = local1;
-        this.subclasses = local2;
-        this.classFeatures = local3;
+
+        if(this.version == "2024") {
+          // replace featProgression to optionalfeatureProgression
+          [local1, local2].forEach((local:any) => {
+            local.forEach((l:any) => {
+              if(l.featProgression) {
+                if(!l.optionalfeatureProgression) l.optionalfeatureProgression = []
+                l.optionalfeatureProgression.push(...l.featProgression.map((s:any) => {
+                  return {
+                    name: s.name,
+                    progression: s.progression,
+                    featureType: s.category
+                  }
+                }));
+              }
+            })
+          })
+        }
+
+        this.classes = local1.filter((s:any) => {
+          if(this.version == "2024") return s.source == "XPHB"
+          else return s.source != "XPHB"
+        });
+        this.subclasses = local2.filter((s:any) => {
+          if(this.version == "2024") return s.source == "XPHB"
+          else return s.source != "XPHB"
+        });
+        this.classFeatures = local3.filter((s:any) => {
+          if(this.version == "2024") return s.source == "XPHB"
+          else return s.source != "XPHB"
+        });
+
         this.classFeatures.forEach((s:any) => {
           if(s.name == "Optional Rule: Firearm Proficiency") {
             s.isClassFeatureVariant = true;
           }
-          let or = optionalFeaturesReplace.find((or:any) => or.origin == 'class' && or.originName == s.className && or.features.includes(s.name));
-          if(or) {
-            s.isClassFeatureVariant = or.features.find((n:string) => n != s.name);
+          if(this.version == "") {
+            let or = optionalFeaturesReplace.find((or: any) => or.origin == 'class' && or.originName == s.className && or.features.includes(s.name));
+            if (or) {
+              s.isClassFeatureVariant = or.features.find((n: string) => n != s.name);
+            }
           }
         })
 
-        this.subclassFeatures = local4;
+        this.subclassFeatures = local4.filter((s:any) => {
+          if(this.version == "2024") return s.source == "XPHB"
+          else return s.source != "XPHB"
+        });
         this.subclassFeatures.forEach(s => {
           if(["Giant Power", "Giant's Havoc"].includes(s.name)) {
             s.header = 1;
@@ -96,17 +140,24 @@ export const useClassesStore = defineStore("ClassesStore", {
               ].includes(s.name)) {
             s.header = null;
           }
-          let or = optionalFeaturesReplace.find((or:any) => or.origin == 'subclass' && or.originName == s.subclassShortName && or.features.includes(s.name));
-          if(or) {
-            s.isClassFeatureVariant = or.features.find((n:string) => n != s.name);
+          if(this.version == "") {
+            let or = optionalFeaturesReplace.find((or: any) => or.origin == 'subclass' && or.originName == s.subclassShortName && or.features.includes(s.name));
+            if (or) {
+              s.isClassFeatureVariant = or.features.find((n: string) => n != s.name);
+            }
           }
         })
 
-        const response = await fetch(`${import.meta.env.VITE_BASEURL}/data/optionalfeatures.json`);
+        const response = await fetch(`${import.meta.env.VITE_BASEURL}/data${this.version}/optionalfeatures.json`);
         const data = await response.json();
         if (data.optionalfeature) {
-          this.optionalFeatures = data.optionalfeature;
-          this.optionalFeatures.push(...complementsFeatures);
+          this.optionalFeatures = data.optionalfeature.filter((s:any) => {
+            if(this.version == "2024") return s.source == "XPHB"
+            else return s.source != "XPHB"
+          });
+          if(this.version == "") {
+            this.optionalFeatures.push(...complementsFeatures);
+          }
         }
       }
       catch (e) {
@@ -117,9 +168,10 @@ export const useClassesStore = defineStore("ClassesStore", {
   },
   getters: {
     isLoad: (state) => state.classes.length > 0,
-    getDefaults: (state) => state.classes.filter((b: any) =>
-      b.source != "XPHB"
-    ),
+    getDefaults: (state) => state.classes.filter((b: any) => {
+      if(state.version == "2024") return b.source == "XPHB"
+      else return b.source != "XPHB"
+    }),
     getRequirements: (state) => {
       return (name: string): any => {
         let cl = state.classes.find((c:Class) => c.name === name);
@@ -141,9 +193,25 @@ export const useClassesStore = defineStore("ClassesStore", {
     getClass() {
       return (name: string): Class|null => {
         if(!name) return null;
-        let cl = this.classes.find((c:Class) => c.name === name);
+        let cl = this.classes.find((c:Class) => c.name === name && (
+          (this.version == "2024" && c.source == "XPHB")
+          ||
+          (this.version != "2024" && c.source != "XPHB")
+        ));
         if(!cl) return null;
         return cl;
+      }
+    },
+    getSubclass() {
+      return (name: string, subclass: string|null): Subclass|null => {
+        if(!name || !subclass) return null;
+        const sub = this.subclasses.find(s => s.shortName == subclass && s.className == name && (
+          (this.version == "2024" && s.source == "XPHB")
+          ||
+          (this.version != "2024" && s.source != "XPHB")
+        ));
+        if(!sub) return null;
+        return sub;
       }
     },
     getLevelSubclass() {
@@ -233,6 +301,9 @@ export const useClassesStore = defineStore("ClassesStore", {
               valid = true
               prerequisite.push(p.spell.join(', '));
             }
+            if(p.feature || p.otherSummary) {
+              valid = true
+            }
           }
           else valid = true;
           if(valid) {
@@ -248,8 +319,8 @@ export const useClassesStore = defineStore("ClassesStore", {
     },
     cantripProgression() {
       return (name: string, subclass: string|null, level: number): number => {
-        const classProgression = this.classes.find(c => c.name == name);
-        const subclassProgression = this.subclasses.find(s => s.shortName == subclass && s.className == name);
+        const classProgression = this.getClass(name);
+        const subclassProgression = this.getSubclass(name, subclass);
         if(classProgression || subclassProgression) {
           const valClass = classProgression && classProgression.cantripProgression !== undefined ? classProgression.cantripProgression[level - 1] : 0;
           const valSub = subclassProgression && subclassProgression.cantripProgression !== undefined ? subclassProgression.cantripProgression[level - 1] : 0;
@@ -258,17 +329,33 @@ export const useClassesStore = defineStore("ClassesStore", {
         return 0;
       }
     },
+    preparedSpellsProgression() {
+      return (name: string, subclass: string|null, level: number): number => {
+        let val = 0
+
+        const classProgression = this.getClass(name);
+        const subclassProgression = this.getSubclass(name, subclass);
+
+        if(classProgression || subclassProgression) {
+          const valClass = classProgression && classProgression.preparedSpellsProgression !== undefined ? classProgression.preparedSpellsProgression[level - 1] : 0;
+          const valSub = subclassProgression && subclassProgression.preparedSpellsProgression !== undefined ? subclassProgression.preparedSpellsProgression[level - 1] : 0;
+          val = Math.max(valClass, valSub);
+        }
+
+        return val;
+      }
+    },
     spellsKnownProgression() {
       return (name: string, subclass: string|null, level: number): number => {
         let val = 0
-        const classProgression = this.classes.find(c => c.name == name);
-        const subclassProgression = this.subclasses.find(s => s.shortName == subclass && s.className == name);
+        const classProgression = this.getClass(name);
+        const subclassProgression = this.getSubclass(name, subclass);
         if(classProgression || subclassProgression) {
           const valClass = classProgression && classProgression.spellsKnownProgression !== undefined ? classProgression.spellsKnownProgression[level - 1] : 0;
           const valSub = subclassProgression && subclassProgression.spellsKnownProgression !== undefined ? subclassProgression.spellsKnownProgression[level - 1] : 0;
           val = Math.max(valClass, valSub);
         }
-        if(classProgression && classProgression.preparedSpells && val == 0) {
+        if(classProgression && (classProgression.preparedSpells || classProgression.preparedSpellsProgression) && val == 0) {
           if(!classProgression.spellsKnownProgressionFixed) val = -1
           else {
             classProgression.spellsKnownProgressionFixed.forEach((f:number, l:number) => {
@@ -280,8 +367,8 @@ export const useClassesStore = defineStore("ClassesStore", {
       }
     },
     findSubclass() {
-      return (name: string, subclass: string): Subclass|undefined => {
-        return this.subclasses.find(c => c.className == name && c.shortName == subclass);
+      return (name: string, subclass: string): Subclass|null => {
+        return this.getSubclass(name, subclass);
       }
     },
     getProgression() {
@@ -329,7 +416,12 @@ export const useClassesStore = defineStore("ClassesStore", {
         const cl = this.getClass(name);
         if(!cl) return [];
         let chooseSubclass = level == this.getLevelSubclass(name);
-        let fts = this.classFeatures.filter((d:any) => d.className == name && d.level == level && !excludeFeatures.includes(d.name));
+        let fts = this.classFeatures.filter((d:any) =>
+          d.className == name &&
+          d.level == level &&
+          !excludeFeatures.includes(d.name)
+          && (this.version == '' || (this.version == '2024' && d.source == "XPHB"))
+        );
         return fts.map(ft => {
           return {
             name: ft.name,
@@ -363,6 +455,8 @@ export const useClassesStore = defineStore("ClassesStore", {
     },
     getProficienciesGained() {
       return (name: string, subclass: string|null, level: number, excludeFeatures: string[] = []): any[] => {
+        if(this.version == "2024") return []
+
         return classProficienciesGained.filter(c =>
           (
             (c.level == level && !c.optionalfeatureProgression)
@@ -384,6 +478,8 @@ export const useClassesStore = defineStore("ClassesStore", {
     },
     getOtherProgression() {
       return (name: string, subclass: string|null, level: number, excludeFeatures: string[] = []): any[] => {
+        if(this.version == "2024") return []
+
         const pr = classOtherProgression.filter(c =>
           ((c.originName == name && c.origin == 'class') || (c.originName == subclass && c.origin == 'subclass'))
           &&
@@ -448,7 +544,8 @@ export interface RootState {
   classFeatures: ClassFeature[]
   subclassFeatures: SubclassFeature[]
   optionalFeatures: OptionalFeature[],
-  error: boolean
+  error: boolean,
+  version: string
 }
 
 export interface Class {
@@ -462,8 +559,10 @@ export interface Class {
   casterProgression?: string
   preparedSpells?: string
   preparedSpellsChange?: string
+  preparedSpellsProgression?: number[]
   cantripProgression?: number[]
   optionalfeatureProgression?: OptionalfeatureProgression[]
+  featProgression?: any[]
   startingProficiencies: StartingProficiencies
   startingEquipment: StartingEquipment
   multiclassing: Multiclassing
@@ -646,11 +745,13 @@ export interface Subclass {
   srd?: boolean
   spellcastingAbility?: string
   optionalfeatureProgression?: OptionalfeatureProgression2[]
+  featProgression?: any[]
   basicRules?: boolean
   isReprinted?: boolean
   casterProgression?: string
   cantripProgression?: number[]
   spellsKnownProgression?: number[]
+  preparedSpellsProgression?: number[]
   subclassTableGroups?: SubclassTableGroup[]
 }
 
