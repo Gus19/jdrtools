@@ -5,6 +5,12 @@ import Changelog from "@/components/Changelog.vue";
 <template>
   <h2>Changelog</h2>
   <Changelog>
+    <template v-slot:version>3.0.0</template>
+    <template v-slot:date>03/08/2025</template>
+    <li>Add character builder for the 2024 version</li>
+  </Changelog>
+
+  <Changelog>
     <template v-slot:version>2.0.0</template>
     <template v-slot:date>11/05/2025</template>
     <li>Add character builder for the 2014 version</li>
