@@ -903,7 +903,7 @@
 <template>
   <div class="row">
     <div class="col-6 d-flex justify-content-between align-items-center">
-      <label class="fw-bold">Source</label>
+      <label class="fw-bold">Source before 2024</label>
       <button class="btn btn-sm mw btn-secondary" :disabled="!jsonsource" @click="handleFormat">
         <i class="fa-solid fa-align-left" />
         Format

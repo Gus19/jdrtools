@@ -4103,7 +4103,7 @@
                       {{ fn(character.abilities[a.key].bonus) }}
                     </template>
                   </span>
-                  <div v-if="isLineage" class="btn-group">
+                  <div v-if="isLineage && (version != '2024' || (version == '2024' && bg && bg.ability && bg.ability[0].choose.weighted.from.includes(a.key)))" class="btn-group">
                     <button class="btn" @click="setBonusLineage(a.key, 2)" :disabled="disabledBonusLineage(a.key, 2)" :class="character.abilities[a.key].bonus === 2 ? 'btn-primary' : 'btn-outline-secondary'">+2</button>
                     <button class="btn" @click="setBonusLineage(a.key, 1)" :disabled="disabledBonusLineage(a.key, 1)" :class="character.abilities[a.key].bonus === 1 ? 'btn-primary' : 'btn-outline-secondary'">+1</button>
                   </div>
