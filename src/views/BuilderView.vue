@@ -1370,6 +1370,7 @@
             break;
         }
         l += clvl;
+        c.spellcasterlevel = clvl;
       }
       if(c.preparedSpells && c.preparedSpells.has) {
         if(props.version == "2024") {
@@ -1736,8 +1737,14 @@
       const known = classesStore.spellsKnownProgression(lc.name, lc.subclass, lc.level);
 
       let max = null;
-      if(spellSlotsInfo.value) max = spellSlotsInfo.value.max;
-      if(spellSlotsPactInfo.value) max = Math.max(max, spellSlotsPactInfo.value.max);
+      if(lc.casterProgression == "pact") {
+        max = spellSlotsPact(lc.level).max;
+      }
+      else if(lc.casterProgression) {
+        max = spellSlots(lc.spellcasterlevel).max;
+      }
+      /*if(spellSlotsInfo.value) max = spellSlotsInfo.value.max;
+      if(spellSlotsPactInfo.value) max = Math.max(max, spellSlotsPactInfo.value.max);*/
       let fc = lc.name;
       let origin = "class";
       let originName = lc.name;
@@ -1776,8 +1783,15 @@
 
         choosePreparedSpells(lc, origin, originName, ch, max, known, fc);
         character.value.class.filter((c:any) => c.name != lc.name).forEach((lcc:any) => {
+          let max2 = null;
+          if(lcc.casterProgression == "pact") {
+            max2 = spellSlotsPact(lcc.level).max;
+          }
+          else if(lcc.casterProgression) {
+            max2 = spellSlots(lcc.spellcasterlevel).max;
+          }
           let kn2 = classesStore.spellsKnownProgression(lcc.name, lcc.subclass, lcc.level)
-          choosePreparedSpells(lcc, "class", lcc.name, ch, max, kn2, lcc.name);
+          choosePreparedSpells(lcc, "class", lcc.name, ch, max2, kn2, lcc.name);
         });
       }
     }
