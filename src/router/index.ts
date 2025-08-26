@@ -1,8 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '@/views/HomeView.vue'
+import MonsterView from '@/views/MonsterView.vue'
 import ChangelogView from '@/views/ChangelogView.vue'
 import NotFound from '@/views/NotFound.vue'
 import BuilderView from "@/views/BuilderView.vue";
+import HomeView from "@/views/HomeView.vue";
+import PrivacyView from "@/views/PrivacyView.vue";
 
 const dev: boolean = import.meta.env.DEV;
 
@@ -13,6 +15,11 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView
+    },
+    {
+      path: '/monster',
+      name: 'monster',
+      component: MonsterView
     },
     {
       path: '/builder',
@@ -30,6 +37,11 @@ const router = createRouter({
       path: '/changelog',
       name: 'changelog',
       component: ChangelogView
+    },
+    {
+      path: '/privacy',
+      name: 'privacy',
+      component: PrivacyView
     },
     {
       path: '/:pathMatch(.*)*',

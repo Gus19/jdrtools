@@ -4224,7 +4224,11 @@
           </AccordionItem>
 
           <AccordionItem v-for="ft in chooses.features" :name="ft.name + ft.featureType" :steps="steps" :step="step" @click="changeStep" :manual-steps="character.manualSteps" @toggle-manual-step="toggleManualStep">
-            <template v-slot:header-label>{{ ft.name }}</template>
+            <template v-slot:header-label>
+              {{ ft.name }}
+              <template v-if="ft.featureType == 'FS:P'">Paladin</template>
+              <template v-if="ft.featureType == 'FS:R'">Ranger</template>
+            </template>
             <template v-slot:header-value>{{ ft.selected }}/{{ ft.total }}</template>
             <template v-slot:body>
               <input type="text" class="form-control form-control-sm mb-2" :value="search[ft.name]" @input="changeSearch($event, ft.name)" />

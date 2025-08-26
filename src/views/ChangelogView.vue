@@ -5,6 +5,13 @@ import Changelog from "@/components/Changelog.vue";
 <template>
   <h2>Changelog</h2>
   <Changelog>
+    <template v-slot:version>3.1.0</template>
+    <template v-slot:date>26/08/2025</template>
+    <li>Error on spell list whith multiclass</li>
+    <li>Change menu, add FAQ and Privacy</li>
+  </Changelog>
+
+  <Changelog>
     <template v-slot:version>3.0.0</template>
     <template v-slot:date>03/08/2025</template>
     <li>Add character builder for the 2024 version</li>
