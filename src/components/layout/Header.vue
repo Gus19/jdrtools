@@ -34,11 +34,6 @@ const env = import.meta.env;
                   Character Builder 2024
                 </router-link>
               </li>
-              <li class="nav-item">
-                <router-link to="/changelog" class="nav-link" activeClass="active">
-                  Changelog
-                </router-link>
-              </li>
               <li class="nav-item flex-grow-1">
               </li>
               <li class="nav-item" v-if="env.VITE_KOFI">
