@@ -43,8 +43,9 @@ export const useRacesStore = defineStore("RacesStore", {
         let npctag = "NPC Race"
         this.racessource = {
           race: data.race.filter(s => !((s.traitTags || []).includes(npctag))),
-          subrace: data.subrace.filter(s => !((s.traitTags || []).includes(npctag)) && s.name !== "Eladrin")
+          subrace: data.subrace.filter(s => !((s.traitTags || []).includes(npctag)) && s.name !== "Eladrin" && s.name != "Variant; Moon Elf or Sun Elf Descent")
         }
+        this.racessource.subrace.push(...highElfDescent);
       }
     },
     initBuilder() {
@@ -739,3 +740,391 @@ export interface SoundClip2 {
 export interface Feat2 {
   any: number
 }
+
+// replace Variant; Moon Elf or Sun Elf Descent
+const highElfDescent: any[] = [
+  {
+    "name": "Variant; Moon Elf Descent",
+    "source": "SCAG",
+    "raceName": "Half-Elf",
+    "raceSource": "PHB",
+    "page": 116,
+    "skillProficiencies": [
+      {
+        "any": 2
+      }
+    ],
+    "weaponProficiencies": [
+      {
+        "longsword|phb": true,
+        "shortsword|phb": true,
+        "shortbow|phb": true,
+        "longbow|phb": true
+      }
+    ],
+    "additionalSpells": [
+      {
+        "ability": "int",
+        "known": {
+          "1": {
+            "_": [
+              {
+                "choose": "level=0|class=Wizard"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "entries": [
+      {
+        "type": "inset",
+        "name": "Variant Feature (Choose 1)",
+        "entries": [
+          {
+            "name": "Skill Versatility",
+            "entries": [
+              "You gain proficiency in two skills of your choice."
+            ],
+            "type": "entries"
+          },
+          {
+            "name": "Elf Weapon Training",
+            "entries": [
+              "You have proficiency with the {@item longsword|phb}, {@item shortsword|phb}, {@item shortbow|phb}, and {@item longbow|phb}."
+            ],
+            "type": "entries"
+          },
+          {
+            "name": "Cantrip",
+            "entries": [
+              "You know one cantrip of your choice from the {@filter wizard spell list|spells|class=wizard|level=0}. Intelligence is your spellcasting ability for it."
+            ],
+            "type": "entries"
+          }
+        ],
+        "data": {
+          "overwrite": "Skill Versatility"
+        }
+      }
+    ],
+    "overwrite": {
+      "skillProficiencies": true
+    },
+    "_versions": [
+      {
+        "name": "Variant; Moon Elf Descent; Cantrip",
+        "source": "SCAG",
+        "_mod": {
+          "entries": {
+            "mode": "replaceArr",
+            "replace": "Variant Feature (Choose 1)",
+            "items": {
+              "name": "Variant Feature; Cantrip",
+              "type": "entries",
+              "entries": [
+                "You know one cantrip of your choice from the {@filter wizard spell list|spells|class=wizard|level=0}. Intelligence is your spellcasting ability for it."
+              ]
+            }
+          }
+        },
+        "skillProficiencies": null,
+        "weaponProficiencies": null
+      },
+      {
+        "name": "Variant; Moon Elf Descent; Elf Weapon Training",
+        "source": "SCAG",
+        "_mod": {
+          "entries": {
+            "mode": "replaceArr",
+            "replace": "Variant Feature (Choose 1)",
+            "items": {
+              "name": "Variant Feature; Elf Weapon Training",
+              "type": "entries",
+              "entries": [
+                "You have proficiency with the {@item longsword|phb}, {@item shortsword|phb}, {@item shortbow|phb}, and {@item longbow|phb}."
+              ]
+            }
+          }
+        },
+        "skillProficiencies": null,
+        "additionalSpells": null
+      },
+      {
+        "name": "Variant; Moon Elf Descent; Skill Versatility",
+        "source": "SCAG",
+        "_mod": {
+          "entries": {
+            "mode": "replaceArr",
+            "replace": "Variant Feature (Choose 1)",
+            "items": {
+              "name": "Variant Feature; Skill Versatility",
+              "type": "entries",
+              "entries": [
+                "You gain proficiency in two skills of your choice."
+              ]
+            }
+          }
+        },
+        "weaponProficiencies": null,
+        "additionalSpells": null
+      }
+    ]
+  },
+  {
+    "name": "Variant; Sun Elf Descent",
+    "source": "SCAG",
+    "raceName": "Half-Elf",
+    "raceSource": "PHB",
+    "page": 116,
+    "skillProficiencies": [
+      {
+        "any": 2
+      }
+    ],
+    "weaponProficiencies": [
+      {
+        "longsword|phb": true,
+        "shortsword|phb": true,
+        "shortbow|phb": true,
+        "longbow|phb": true
+      }
+    ],
+    "additionalSpells": [
+      {
+        "ability": "int",
+        "known": {
+          "1": {
+            "_": [
+              {
+                "choose": "level=0|class=Wizard"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "entries": [
+      {
+        "type": "inset",
+        "name": "Variant Feature (Choose 1)",
+        "entries": [
+          {
+            "name": "Skill Versatility",
+            "entries": [
+              "You gain proficiency in two skills of your choice."
+            ],
+            "type": "entries"
+          },
+          {
+            "name": "Elf Weapon Training",
+            "entries": [
+              "You have proficiency with the {@item longsword|phb}, {@item shortsword|phb}, {@item shortbow|phb}, and {@item longbow|phb}."
+            ],
+            "type": "entries"
+          },
+          {
+            "name": "Cantrip",
+            "entries": [
+              "You know one cantrip of your choice from the {@filter wizard spell list|spells|class=wizard|level=0}. Intelligence is your spellcasting ability for it."
+            ],
+            "type": "entries"
+          }
+        ],
+        "data": {
+          "overwrite": "Skill Versatility"
+        }
+      }
+    ],
+    "overwrite": {
+      "skillProficiencies": true
+    },
+    "_versions": [
+      {
+        "name": "Variant; Sun Elf Descent; Cantrip",
+        "source": "SCAG",
+        "_mod": {
+          "entries": {
+            "mode": "replaceArr",
+            "replace": "Variant Feature (Choose 1)",
+            "items": {
+              "name": "Variant Feature; Cantrip",
+              "type": "entries",
+              "entries": [
+                "You know one cantrip of your choice from the {@filter wizard spell list|spells|class=wizard|level=0}. Intelligence is your spellcasting ability for it."
+              ]
+            }
+          }
+        },
+        "skillProficiencies": null,
+        "weaponProficiencies": null
+      },
+      {
+        "name": "Variant; Sun Elf Descent; Elf Weapon Training",
+        "source": "SCAG",
+        "_mod": {
+          "entries": {
+            "mode": "replaceArr",
+            "replace": "Variant Feature (Choose 1)",
+            "items": {
+              "name": "Variant Feature; Elf Weapon Training",
+              "type": "entries",
+              "entries": [
+                "You have proficiency with the {@item longsword|phb}, {@item shortsword|phb}, {@item shortbow|phb}, and {@item longbow|phb}."
+              ]
+            }
+          }
+        },
+        "skillProficiencies": null,
+        "additionalSpells": null
+      },
+      {
+        "name": "Variant; Sun Elf Descent; Skill Versatility",
+        "source": "SCAG",
+        "_mod": {
+          "entries": {
+            "mode": "replaceArr",
+            "replace": "Variant Feature (Choose 1)",
+            "items": {
+              "name": "Variant Feature; Skill Versatility",
+              "type": "entries",
+              "entries": [
+                "You gain proficiency in two skills of your choice."
+              ]
+            }
+          }
+        },
+        "weaponProficiencies": null,
+        "additionalSpells": null
+      }
+    ]
+  },
+  {
+    "name": "Variant; High Elf Descent",
+    "source": "SCAG",
+    "raceName": "Half-Elf",
+    "raceSource": "PHB",
+    "page": 116,
+    "skillProficiencies": [
+      {
+        "any": 2
+      }
+    ],
+    "weaponProficiencies": [
+      {
+        "longsword|phb": true,
+        "shortsword|phb": true,
+        "shortbow|phb": true,
+        "longbow|phb": true
+      }
+    ],
+    "additionalSpells": [
+      {
+        "ability": "int",
+        "known": {
+          "1": {
+            "_": [
+              {
+                "choose": "level=0|class=Wizard"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "entries": [
+      {
+        "type": "inset",
+        "name": "Variant Feature (Choose 1)",
+        "entries": [
+          {
+            "name": "Skill Versatility",
+            "entries": [
+              "You gain proficiency in two skills of your choice."
+            ],
+            "type": "entries"
+          },
+          {
+            "name": "Elf Weapon Training",
+            "entries": [
+              "You have proficiency with the {@item longsword|phb}, {@item shortsword|phb}, {@item shortbow|phb}, and {@item longbow|phb}."
+            ],
+            "type": "entries"
+          },
+          {
+            "name": "Cantrip",
+            "entries": [
+              "You know one cantrip of your choice from the {@filter wizard spell list|spells|class=wizard|level=0}. Intelligence is your spellcasting ability for it."
+            ],
+            "type": "entries"
+          }
+        ],
+        "data": {
+          "overwrite": "Skill Versatility"
+        }
+      }
+    ],
+    "overwrite": {
+      "skillProficiencies": true
+    },
+    "_versions": [
+      {
+        "name": "Variant; High Elf Descent; Cantrip",
+        "source": "SCAG",
+        "_mod": {
+          "entries": {
+            "mode": "replaceArr",
+            "replace": "Variant Feature (Choose 1)",
+            "items": {
+              "name": "Variant Feature; Cantrip",
+              "type": "entries",
+              "entries": [
+                "You know one cantrip of your choice from the {@filter wizard spell list|spells|class=wizard|level=0}. Intelligence is your spellcasting ability for it."
+              ]
+            }
+          }
+        },
+        "skillProficiencies": null,
+        "weaponProficiencies": null
+      },
+      {
+        "name": "Variant; High Elf Descent; Elf Weapon Training",
+        "source": "SCAG",
+        "_mod": {
+          "entries": {
+            "mode": "replaceArr",
+            "replace": "Variant Feature (Choose 1)",
+            "items": {
+              "name": "Variant Feature; Elf Weapon Training",
+              "type": "entries",
+              "entries": [
+                "You have proficiency with the {@item longsword|phb}, {@item shortsword|phb}, {@item shortbow|phb}, and {@item longbow|phb}."
+              ]
+            }
+          }
+        },
+        "skillProficiencies": null,
+        "additionalSpells": null
+      },
+      {
+        "name": "Variant; High Elf Descent; Skill Versatility",
+        "source": "SCAG",
+        "_mod": {
+          "entries": {
+            "mode": "replaceArr",
+            "replace": "Variant Feature (Choose 1)",
+            "items": {
+              "name": "Variant Feature; Skill Versatility",
+              "type": "entries",
+              "entries": [
+                "You gain proficiency in two skills of your choice."
+              ]
+            }
+          }
+        },
+        "weaponProficiencies": null,
+        "additionalSpells": null
+      }
+    ]
+  }
+]
