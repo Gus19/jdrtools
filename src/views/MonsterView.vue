@@ -1,11 +1,10 @@
 <script setup lang="ts">
   import {computed, onMounted, ref} from 'vue'
-  import download from 'downloadjs'
   import JsonEditor from 'vue3-ts-jsoneditor';
 
   import {useTableplop} from "@/stores/tableplop";
   import {useSpellsStore} from "@/stores/spells";
-  import {Alignments, messageSpell, S, Sizes, type Skill, Skills} from "@/utils/refs";
+  import {Alignments, messageSpell, S, Sizes, type Skill, Skills, download} from "@/utils/refs";
 
   const tableplop = useTableplop();
 
@@ -896,7 +895,7 @@
   }
 
   const downloadJson = () => {
-    download(jsonTableplop.value, tableplop.character.name + ".json", "application/json");
+    download(jsonTableplop.value, tableplop.character.name + ".json");
   }
 </script>
 

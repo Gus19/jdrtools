@@ -892,3 +892,14 @@ export const calculMoney = (value: number) => {
   }
 
 }
+
+export const download = (json: string, filename: string) => {
+  const
+    I = document.createElement('a'),
+    le = new Blob([json], {
+      type: 'application/json; charset=utf-8'
+    });
+  I.href = URL.createObjectURL(le);
+  I.download = filename;
+  I.click();
+}

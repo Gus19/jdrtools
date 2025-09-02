@@ -5,6 +5,13 @@ import Changelog from "@/components/Changelog.vue";
 <template>
   <h2>Changelog</h2>
   <Changelog>
+    <template v-slot:version>3.2.0</template>
+    <template v-slot:date>02/09/2025</template>
+    <li>Add High Half Eld</li>
+    <li>Change download files for encoding</li>
+  </Changelog>
+
+  <Changelog>
     <template v-slot:version>3.1.0</template>
     <template v-slot:date>26/08/2025</template>
     <li>Error on spell list whith multiclass</li>

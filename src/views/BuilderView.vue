@@ -37,12 +37,11 @@
     inlineTool,
     spellSlotsPact,
     rollFormula,
-    inlineEntries, Damages, cfl, CHOOSE, calculMoney, type Ability, messageSpell
+    inlineEntries, Damages, cfl, CHOOSE, calculMoney, type Ability, messageSpell, download
   } from "@/utils/refs";
   import AccordionItem from "@/components/AccordionItem.vue";
   import CharacterInfo from "@/components/CharacterInfo.vue";
   import {type Class, useClassesStore} from "@/stores/classes";
-  import download from "downloadjs";
   import DamageType from "@/components/DamageType.vue";
   import ClassInfo from "@/components/ClassInfo.vue";
   import FeatInfo from "@/components/FeatInfo.vue";
@@ -785,7 +784,7 @@
   });
 
   const save = () => {
-    download(JSON.stringify(character.value, null, 2), `${character.value.name || 'NoName'}_jdrtools.json`, "application/json");
+    download(JSON.stringify(character.value, null, 2), `${character.value.name || 'NoName'}_jdrtools.json`);
   }
   const openUpload = () => {
     upload.value = {
@@ -3167,7 +3166,7 @@
     addFeatures();
 
     jsonTableplop.value = JSON.stringify(tableplop.character, null, 2);
-    if(withdownload) download(jsonTableplop.value, tableplop.character.name + "_tableplop_import.json", "application/json");
+    if(withdownload) download(jsonTableplop.value, tableplop.character.name + "_tableplop_import.json");
     if(dev) json.value = tableplop.character;
   }
   const makeScore = (a:Ability, parentId:number) => {
