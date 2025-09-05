@@ -2457,7 +2457,7 @@
     return from;
   }
   const jackofAllTrades = computed(() => character.value && character.value.class.find((cl:any) => cl.name == 'Bard' && cl.level >= 2) != null);
-  const unarmoredDefense = computed(() => character.value && character.value.class.find((cl:any) => (cl.name == 'Monk' || cl.name == 'Barbarian') && cl.level >= 1) != null)
+  const unarmoredDefense = computed(() => character.value && character.value.class.filter((cl:any) => (cl.name == 'Monk' || cl.name == 'Barbarian') && cl.level >= 1).map((cl:any) => cl.name))
   const draconicResilience = computed(() => character.value && character.value.class.find((cl:any) => cl.name == 'Sorcerer' && cl.subclass == 'Draconic' && cl.level >= 1) != null)
   const calculSkills = computed(() => Skills.map(s => {
     const level = character.value.level;
@@ -3041,8 +3041,13 @@
       else {
         ac = 10 + modDex.value;
       }
-      if(unarmoredDefense.value) {
-        ac += modCon.value;
+      if(unarmoredDefense.value.length  > 0) {
+        if(unarmoredDefense.value.includes("Monk") && unarmoredDefense.value.includes("Barbarian"))
+          ac += Math.max(modCon.value, modWis.value);
+        else if(unarmoredDefense.value.includes("Barbarian"))
+          ac += modCon.value;
+        else
+          ac += modWis.value;
       }
     }
     if(shield != null) {
@@ -3050,7 +3055,7 @@
     }
     character.value.ac = ac;
   }
-  watch(() => character.value && [character.value.equipment.armor, character.value.equipment.shield, modDex.value, modCon.value], (nv) => {
+  watch(() => character.value && [character.value.equipment.armor, character.value.equipment.shield, modDex.value, modCon.value, modWis.value], (nv) => {
     if(nv) {
       calcAC()
     }
@@ -3252,8 +3257,13 @@
         else f = `${armor.ac}`;
       }
     }
-    else if(unarmoredDefense.value) {
-      f += " + con";
+    else if(unarmoredDefense.value.length > 0) {
+      if(unarmoredDefense.value.includes("Monk") && unarmoredDefense.value.includes("Barbarian"))
+        f += " + max(con,wis)";
+      else if(unarmoredDefense.value.includes("Barbarian"))
+        f += " + con";
+      else
+        f += " + wis";
     }
     tableplop.addProperty({
       parentId: id,
@@ -3868,6 +3878,7 @@
         <button class="btn btn-secondary" @click="() => handleTableplop(false)">handleTableplop</button>
 <!--        <button class="btn btn-secondary" @click="json = evalFormula(`2e`)">evalFormula</button>-->
         <button class="btn btn-secondary" @click="json = classFeatures">classFeatures</button>
+        <button class="btn btn-secondary" @click="json = unarmoredDefense">unarmoredDefense</button>
       </div>
     </template>
 
