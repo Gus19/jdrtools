@@ -4,10 +4,18 @@ import Changelog from "@/components/Changelog.vue";
 
 <template>
   <h2>Changelog</h2>
+
+  <Changelog>
+    <template v-slot:version>3.3.0</template>
+    <template v-slot:date>17/11/2025</template>
+    <li>Monster conversion 2024</li>
+    <li>Copy spell message with click</li>
+  </Changelog>
+
   <Changelog>
     <template v-slot:version>3.2.0</template>
     <template v-slot:date>02/09/2025</template>
-    <li>Add High Half Eld</li>
+    <li>Add High Half Elf</li>
     <li>Change download files for encoding</li>
   </Changelog>
 

@@ -861,14 +861,14 @@ import {computed, onMounted, ref, watch} from 'vue'
     }
     tableplop.character.name = data.value.name;
     if(data.value.token) {
-      tableplop.character.appearances.push(`${import.meta.env.VITE_TOKENURL}/bestiary/tokens/${data.value.token.source}/${data.value.token.name}.webp`.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
+      tableplop.character.appearances.push(`${props.version == "2024" ? import.meta.env.VITE_TOKENURL2024 : import.meta.env.VITE_TOKENURL}/bestiary/tokens/${data.value.token.source}/${data.value.token.name}.webp`.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
     }
     else if(data.value.hasToken) {
       let name = data.value.name;
       if("summonedBySpell" in data.value) {
         name = name.split(' (')[0];
       }
-      tableplop.character.appearances.push(`${import.meta.env.VITE_TOKENURL}/bestiary/tokens/${data.value.source}/${name}.webp`.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
+      tableplop.character.appearances.push(`${props.version == "2024" ? import.meta.env.VITE_TOKENURL2024 : import.meta.env.VITE_TOKENURL}/bestiary/tokens/${data.value.source}/${name}.webp`.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
     }
     addSections();
     // Character
