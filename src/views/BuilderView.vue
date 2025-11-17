@@ -3665,6 +3665,13 @@
       })
     })
   }
+
+  const copyMessageSpell = (name:string) => {
+    const spell = spellsStore.findByName(name);
+    if(!spell) return;
+    navigator.clipboard.writeText(messageSpell(spell));
+  }
+
   const addMoney = (parentId: number) => {
     const money = character.value.money;
     const name = "Money";
@@ -4970,7 +4977,9 @@
                     <span class="badge text-bg-dark ps-0 pe-1">{{ o.name }}</span>
                     <template v-for="(s,i) in o.spells" :key="s">
                       <template v-if="i>0">,&#160;</template>
-                      <span :title="s.info" v-tooltip :class="!s.prepared && 'text-muted'">{{ s.name }}</span>
+                      <span :title="s.info" v-tooltip :class="[!s.prepared && 'text-muted', 'cursor-copy']" @click="() => copyMessageSpell(s.name)">
+                        {{ s.name }}
+                      </span>
                     </template>
                   </div>
                 </template>

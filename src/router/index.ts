@@ -22,6 +22,12 @@ const router = createRouter({
       component: MonsterView
     },
     {
+      path: '/monster-2024',
+      name: 'monster-2024',
+      component: MonsterView,
+      props: { version: '2024' }
+    },
+    {
       path: '/builder',
       name: 'builder',
       component: BuilderView,

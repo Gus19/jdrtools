@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import {computed, onMounted, ref} from 'vue'
+import {computed, onMounted, ref, watch} from 'vue'
   import JsonEditor from 'vue3-ts-jsoneditor';
 
   import {useTableplop} from "@/stores/tableplop";
@@ -8,12 +8,25 @@
 
   const tableplop = useTableplop();
 
-  onMounted(() => {
-    spellsStore.initSpells();
+  const props = defineProps({
+    version: {type: String, required: true, default: ''},
   });
+
+  /*onMounted(() => {
+    spellsStore.initSpells(props.version);
+  });*/
+  const refresh = ref<boolean>(false);
+  const initStore = async () => {
+    refresh.value = true;
+    await spellsStore.initSpells(props.version);
+    refresh.value = false;
+  }
+  onMounted(initStore);
+  watch(() => props.version, initStore);
+
   const spellsStore = useSpellsStore();
   const spells = computed(() => spellsStore.spells);
-  const isInit = computed(() => spells.value.length != 0);
+  const isInit = computed(() => spellsStore.isLoad && !refresh.value);
 
   const Test = ``
   const jsonsource = ref(import.meta.env.DEV ? Test : '');
@@ -902,7 +915,10 @@
 <template>
   <div class="row">
     <div class="col-6 d-flex justify-content-between align-items-center">
-      <label class="fw-bold">Source before 2024</label>
+      <label class="fw-bold">
+        <template v-if="version == '2024'">Source 2024</template>
+        <template v-else>Source before 2024</template>
+      </label>
       <button class="btn btn-sm mw btn-secondary" :disabled="!jsonsource" @click="handleFormat">
         <i class="fa-solid fa-align-left" />
         Format

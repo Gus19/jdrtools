@@ -299,6 +299,11 @@ export const S = (e: any, d: boolean = true) => {
           let archetype = i.split('|');
           t = t.replace(n, archetype[2]);
           break;
+        case "atkr":
+        //case "atk":
+          let atk = e[1].split(" ").slice(1).join(" ").split('|')[0];
+          t = t.replace(n, attackTagToFull(atk, s === "atkr"));
+          break
         default:
           t = t.replace("@", "");
       }
@@ -309,6 +314,27 @@ export const S = (e: any, d: boolean = true) => {
     console.error(e, d, ex);
   }
   return t;
+}
+
+export const attackTagToFull = (tagStr: string, isRoll: boolean) => {
+  function renderTag (tags:string):string {
+    const ptType = tags.includes("m") ? "Melee " : tags.includes("r") ? "Ranged " : tags.includes("g") ? "Magical " : tags.includes("a") ? "Area " : "";
+    const ptMethod = tags.includes("w") ? "Weapon " : tags.includes("s") ? "Spell " : tags.includes("p") ? "Power " : "";
+    return `${ptType}${ptMethod}`;
+  }
+
+  const tagGroups = tagStr.toLowerCase().split(",").map(it => it.trim()).filter(it => it).map(it => it.split(""));
+  if (tagGroups.length > 1) {
+    const seen = new Set(tagGroups.pop());
+    for (let i = tagGroups.length - 2; i >= 0; --i) {
+      tagGroups[i] = tagGroups[i].filter(it => {
+        const out = !seen.has(it);
+        seen.add(it);
+        return out;
+      });
+    }
+  }
+  return `${tagGroups.map((it:any) => renderTag(it)).join(" or ")}Attack${isRoll ? " Roll" : ""}:`;
 }
 
 export const displaySubrace = (s: any) => {
