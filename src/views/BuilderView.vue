@@ -3020,9 +3020,10 @@
 
   const itemsAc = computed(() => {
     const armors = character.value.equipment.items.filter((ce:any) => ce.type == 'armor' && ce.key).map((ce:any) => itemsStore.findByKey(ce.key));
+    console.log(armors);
     return {
-      armors: armors.filter((a:ItemBase) => a.armor && a.type != 'S'),
-      shields: armors.filter((a:ItemBase) => a.armor && a.type == 'S')
+      armors: armors.filter((a:ItemBase) => a && a.armor && a.type != 'S'),
+      shields: armors.filter((a:ItemBase) => a && a.armor && a.type == 'S')
     };
   });
   const calcAC = () => {
@@ -3882,6 +3883,7 @@
         <button class="btn btn-secondary" @click="logJson">logJson</button>
         <button class="btn btn-secondary" @click="json = steps">steps</button>
         <button class="btn btn-secondary" @click="json = chooses">chooses</button>
+        <button class="btn btn-secondary" @click="json = classes">classes</button>
         <button class="btn btn-secondary" @click="() => handleTableplop(false)">handleTableplop</button>
 <!--        <button class="btn btn-secondary" @click="json = evalFormula(`2e`)">evalFormula</button>-->
         <button class="btn btn-secondary" @click="json = classFeatures">classFeatures</button>

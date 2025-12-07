@@ -4,6 +4,11 @@ import {Parser} from "expr-eval";
 
 export const CHOOSE = "Choose";
 
+export const SRC_2024 = ["XPHB", "EFA"]
+export const isSrc2024 = (src: string): boolean => {
+  return SRC_2024.includes(src)
+};
+
 export interface Skill {
   name: string,
   attribute: string,
@@ -286,7 +291,14 @@ export const S = (e: any, d: boolean = true) => {
         case "table":
         case "deity":
         case "variantrule":
+        case "subclass":
+        case "i":
+        case "subclassFeature":
+        case "object":
           t = t.replace(n, e.groups.script.split(" ").slice(1).join(" ").split('|')[0]);
+          break;
+        case "itemProperty":
+          t = t.replace(n, e.groups.script.split(" ").slice(1).join(" ").split('|')[2]);
           break;
         case "chance":
           t = t.replace(n, i.split('|')[0] + ' percent');

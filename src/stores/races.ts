@@ -1,5 +1,5 @@
 import {defineStore} from 'pinia'
-import {displaySubrace} from "@/utils/refs";
+import {displaySubrace, isSrc2024} from "@/utils/refs";
 
 export const useRacesStore = defineStore("RacesStore", {
   state: (): RootState => ({
@@ -35,8 +35,8 @@ export const useRacesStore = defineStore("RacesStore", {
     initsource(data: Root) {
       if(this.version == '2024') {
         this.racessource = {
-          race: data.race.filter(s => s.source == "XPHB"),
-          subrace: data.subrace.filter(s => s.source == "XPHB")
+          race: data.race.filter(s => isSrc2024(s.source)),
+          subrace: data.subrace.filter(s => isSrc2024(s.source))
         }
       }
       else {
@@ -80,7 +80,6 @@ export const useRacesStore = defineStore("RacesStore", {
       return (n: string|null) => state.racessource ? state.racessource.race.filter(r =>
         r.name == n
         && !('_copy' in r)
-        // && r.source != "XPHB"
         && `${r.name}|${r.source}` != `Hobgoblin|VGM`
       ).sort((a:any,b:any) => a.name > b.name ? 1 : 0) : null
     },

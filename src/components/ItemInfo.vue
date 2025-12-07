@@ -107,6 +107,9 @@
     if(it.property) {
       d.push(itemsStore.findItemProperties(it));
     }
+    if(it.mastery) {
+      d.push(itemsStore.findItemMastery(it));
+    }
 
     if(it.packContents) {
       let list = it.entries?.find(e => e.type == 'list');
@@ -164,7 +167,8 @@
   </template>
 
   <i class="fa-solid fa-triangle-exclamation text-warning ps-2" v-if="!hasProf" title="Without proficiency" v-tooltip data-bs-placement="right" />
-<!--  <i v-if="itemBase && itemBase.weapon" class="fa-solid fa-dice-d20 ps-2" :title="itemsStore.getFormulaWeapon(itemBase)" v-tooltip  data-bs-placement="right" />-->
+  <i v-if="itemBase && itemBase.weapon" class="fa-solid fa-dice-d20 ps-2" :title="itemsStore.getFormulaWeapon(itemBase)" v-tooltip v-tooltip:copy data-bs-placement="right" />
+  <i v-if="itemBase && itemBase.mastery" class="fa-solid fa-burst ps-2" :title="itemsStore.detailsMastery(itemBase)" v-tooltip v-tooltip:copy data-bs-placement="right" />
 
   <p ref="info" v-if="itemBase" :key="itemBase.key" :class="tooltip ? 'd-none' : ''">
     {{ titleTxt }}

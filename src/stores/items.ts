@@ -1,11 +1,12 @@
 import {defineStore} from 'pinia'
-import {cfl, damageByKey} from "@/utils/refs";
+import {cfl, damageByKey, isSrc2024, S} from "@/utils/refs";
 
 export const useItemsStore = defineStore("ItemsStore", {
   state: (): RootState => ({
     itemBase: [],
     itemProperty: [],
     itemType: [],
+    itemMastery: [],
     error: false,
     version: ''
   }),
@@ -16,6 +17,7 @@ export const useItemsStore = defineStore("ItemsStore", {
         this.itemBase = []
         this.itemProperty = []
         this.itemType = []
+          this.itemMastery = [];
       }
       if (this.itemBase.length > 0) {
         return;
@@ -26,6 +28,18 @@ export const useItemsStore = defineStore("ItemsStore", {
         this.itemBase = data.baseitem;
         this.itemProperty = data.itemProperty;
         this.itemType = data.itemType;
+        if(data.itemMastery) {
+          this.itemMastery = data.itemMastery;
+        }
+
+        this.itemProperty.forEach(ip => {
+          if(ip.source == "PHB") ip.key = ip.abbreviation
+          else ip.key = `${ip.abbreviation}|${ip.source}`;
+        });
+        this.itemMastery.forEach(ip => {
+          if(ip.source == "PHB") ip.key = ip.name
+          else ip.key = `${ip.name}|${ip.source}`;
+        });
 
         const response2 = await fetch(`${import.meta.env.VITE_BASEURL}/data${this.version}/items.json`);
         const data2 = await response2.json();
@@ -49,9 +63,9 @@ export const useItemsStore = defineStore("ItemsStore", {
           (!i.property?.includes("S"))
           &&
           (
-            !["TDCSR"].includes(i.source)
+            (!["TDCSR"].includes(i.source) && !isSrc2024(i.source) && this.version != "2024")
             ||
-            (this.version == "2024" && i.source == "XPHB")
+            (this.version == "2024" && isSrc2024(i.source))
           )
         );
       }
@@ -97,13 +111,13 @@ export const useItemsStore = defineStore("ItemsStore", {
         }
         if(p) {
           ret.push(
-            ...this.itemProperty.filter(ip => p.includes(ip.abbreviation.split('|')[0])).map(ip => {
+            ...this.itemProperty.filter(ip => p.includes(ip.key)).map(ip => {
               try {
                 const a = /{{(.*?)}}/g;
                 let g;
                 let t = ip.template
                 while (g = a.exec(ip.template)) {
-                  if (g[1] == 'prop_name_lower') {
+                  if (g[1] == 'prop_name_lower' || g[1] == 'prop_name') {
                     let name  = "";
                     if(ip.entries) name = ip.entries[0].name;
                     else if(ip.name) name = cfl(ip.name);
@@ -126,6 +140,20 @@ export const useItemsStore = defineStore("ItemsStore", {
         }
         if(ret.length == 0) return undefined;
         return ret.join(', ');
+      }
+    },
+    findItemMastery() {
+      return (item: ItemBase): string|undefined => {
+        let ret = [];
+        if(item.mastery) {
+          ret.push(
+            ...this.itemMastery.filter(im => item.mastery?.includes(im.key)).map(im => {
+              return im.name;
+            })
+          );
+        }
+        if(ret.length == 0) return undefined;
+        return 'Mastery: ' + ret.join(', ');
       }
     },
     search() {
@@ -181,17 +209,38 @@ export const useItemsStore = defineStore("ItemsStore", {
       return (item: ItemBase): string => {
         if(!item.weapon) return '';
         let hit = item.type == 'M' ? "str" : 'dex';
-        if(item.property?.includes("F")) hit = "@:max(str,dex):"
+        if(item.property?.includes("F") || item.property?.includes("F|XPHB")) {
+          hit = "@:max(str,dex):"
+        }
 
         let versatile = ''
-        if(item.property?.includes("V")) versatile = ` (Versatile: {${item.dmg2} + ${hit}})`;
+        if(item.property?.includes("V") || item.property?.includes("V|XPHB")) {
+          versatile = ` (Versatile: {${item.dmg2} + ${hit}})`;
+        }
 
         let thrown = ''
-        if(item.property?.includes("T")) thrown = ` (Thrown ${item.range} ft.)`;
+        if(item.property?.includes("T") || item.property?.includes("T|XPHB")) {
+          thrown = ` (Thrown ${item.range} ft.)`;
+        }
 
         return `${item.name}${thrown}: {1d20 + prof + ${hit}} to hit, {${item.dmg1} + ${hit}}${versatile} ${damageByKey(item.dmgType || '')?.name}`;
       }
+    },
+    detailsMastery() {
+      return (item: ItemBase): string|undefined => {
+        let ret = [];
+        if(item.mastery) {
+          ret.push(
+            ...this.itemMastery.filter(im => item.mastery?.includes(im.key)).map(im => {
+              return im.name + ': ' + S(im.entries[0]);
+            })
+          );
+        }
+        if(ret.length == 0) return undefined;
+        return 'Mastery: ' + ret.join(', ');
+      }
     }
+
   }
 });
 
@@ -388,6 +437,7 @@ export type RootState = {
   itemBase: ItemBase[]
   itemProperty: ItemProperty[]
   itemType: ItemType[],
+  itemMastery : ItemMastery[],
   error: boolean,
   version: string
 }
@@ -404,6 +454,7 @@ export interface ItemBase {
   weaponCategory?: string
   age?: string
   property?: string[]
+  mastery?: string[]
   range?: string
   reload?: number
   dmg1?: string
@@ -454,6 +505,7 @@ export interface PackContent {
 }
 
 export interface ItemProperty {
+  key: string
   abbreviation: string
   source: string
   page: number
@@ -490,4 +542,11 @@ export interface ItemType {
 export interface Copy {
   abbreviation: string
   source: string
+}
+
+export interface ItemMastery {
+  key: string,
+  name: string,
+  source: string,
+  entries: string[]
 }

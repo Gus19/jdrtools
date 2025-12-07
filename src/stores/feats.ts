@@ -1,4 +1,5 @@
 import {defineStore} from 'pinia'
+import {isSrc2024} from "@/utils/refs";
 
 export const useFeatsStore = defineStore("FeatsStore", {
   state: (): RootState => ({
@@ -22,14 +23,14 @@ export const useFeatsStore = defineStore("FeatsStore", {
         const data = await response.json();
         this.feats = data.feat.filter((f:any) => {
           if(this.version == "2024") {
-            return f.source == "XPHB" && !["FS","FS:R","FS:P","EB"].includes(f.category)
+            return isSrc2024(f.source) && !["FS","FS:R","FS:P","EB"].includes(f.category) && f.name != "Ability Score Improvement"
           }
           else {
             return !["TDCSR"].includes(f.source)
           }
         });
         if(this.version == "2024") {
-          this.transformFeatures = data.feat.filter((f:any) => f.source == "XPHB" && ["FS","FS:R","FS:P","EB"].includes(f.category));
+          this.transformFeatures = data.feat.filter((f:any) => isSrc2024(f.source) && ["FS","FS:R","FS:P","EB"].includes(f.category));
         }
       }
       catch (e) {

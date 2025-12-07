@@ -1,5 +1,5 @@
 import {defineStore} from 'pinia'
-import {formatOptionalEntries} from "@/utils/refs";
+import {formatOptionalEntries, inlineEntries, isSrc2024} from "@/utils/refs";
 
 const urls = [
   "class-artificer.json",
@@ -100,16 +100,16 @@ export const useClassesStore = defineStore("ClassesStore", {
         }
 
         this.classes = local1.filter((s:any) => {
-          if(this.version == "2024") return s.source == "XPHB"
-          else return s.source != "XPHB"
+          if(this.version == "2024") return isSrc2024(s.source)
+          else return !isSrc2024(s.source)
         });
         this.subclasses = local2.filter((s:any) => {
-          if(this.version == "2024") return s.source == "XPHB"
-          else return s.source != "XPHB"
+          if(this.version == "2024") return isSrc2024(s.source)
+          else return !isSrc2024(s.source)
         });
         this.classFeatures = local3.filter((s:any) => {
-          if(this.version == "2024") return s.source == "XPHB"
-          else return s.source != "XPHB"
+          if(this.version == "2024") return isSrc2024(s.source)
+          else return !isSrc2024(s.source)
         });
 
         this.classFeatures.forEach((s:any) => {
@@ -125,8 +125,8 @@ export const useClassesStore = defineStore("ClassesStore", {
         })
 
         this.subclassFeatures = local4.filter((s:any) => {
-          if(this.version == "2024") return s.source == "XPHB"
-          else return s.source != "XPHB"
+          if(this.version == "2024") return isSrc2024(s.source)
+          else return !isSrc2024(s.source)
         });
         this.subclassFeatures.forEach(s => {
           if(["Giant Power", "Giant's Havoc"].includes(s.name)) {
@@ -146,14 +146,22 @@ export const useClassesStore = defineStore("ClassesStore", {
               s.isClassFeatureVariant = or.features.find((n: string) => n != s.name);
             }
           }
+          else if(this.version == "2024" && isSrc2024(s.source)) {
+            let refFeatures = s.entries.filter((en:any) => en.type == "refSubclassFeature").map((en:any) => en.subclassFeature);
+            refFeatures.forEach((ft:string) => {
+              const split = ft.split('|');
+              let head = this.subclassFeatures.find((sf:any) => sf.name == split[0] && sf.subclassShortName == split[3] && sf.subclassSource == split[4]);
+              if(head) head.header = 1;
+            });
+          }
         })
 
         const response = await fetch(`${import.meta.env.VITE_BASEURL}/data${this.version}/optionalfeatures.json`);
         const data = await response.json();
         if (data.optionalfeature) {
           this.optionalFeatures = data.optionalfeature.filter((s:any) => {
-            if(this.version == "2024") return s.source == "XPHB"
-            else return s.source != "XPHB"
+            if(this.version == "2024") return isSrc2024(s.source)
+            else return !isSrc2024(s.source)
           });
           if(this.version == "") {
             this.optionalFeatures.push(...complementsFeatures);
@@ -169,8 +177,8 @@ export const useClassesStore = defineStore("ClassesStore", {
   getters: {
     isLoad: (state) => state.classes.length > 0,
     getDefaults: (state) => state.classes.filter((b: any) => {
-      if(state.version == "2024") return b.source == "XPHB"
-      else return b.source != "XPHB"
+      if(state.version == "2024") return isSrc2024(b.source)
+      else return !isSrc2024(b.source)
     }),
     getRequirements: (state) => {
       return (name: string): any => {
@@ -194,9 +202,9 @@ export const useClassesStore = defineStore("ClassesStore", {
       return (name: string): Class|null => {
         if(!name) return null;
         let cl = this.classes.find((c:Class) => c.name === name && (
-          (this.version == "2024" && c.source == "XPHB")
+          (this.version == "2024" && isSrc2024(c.source))
           ||
-          (this.version != "2024" && c.source != "XPHB")
+          (this.version != "2024" && !isSrc2024(c.source))
         ));
         if(!cl) return null;
         return cl;
@@ -206,9 +214,9 @@ export const useClassesStore = defineStore("ClassesStore", {
       return (name: string, subclass: string|null): Subclass|null => {
         if(!name || !subclass) return null;
         const sub = this.subclasses.find(s => s.shortName == subclass && s.className == name && (
-          (this.version == "2024" && s.source == "XPHB")
+          (this.version == "2024" && isSrc2024(s.source))
           ||
-          (this.version != "2024" && s.source != "XPHB")
+          (this.version != "2024" && !isSrc2024(s.source))
         ));
         if(!sub) return null;
         return sub;
@@ -256,7 +264,7 @@ export const useClassesStore = defineStore("ClassesStore", {
             fts.forEach((ft:any) => {
               infos.push({
                 name: ft.name,
-                info: ft.entries.filter((e:any) => "string" == typeof e && !e.startsWith("{@i")).join(' ')
+                info: inlineEntries(ft.entries) // ft.entries.filter((e:any) => "string" == typeof e && !e.startsWith("{@i")).join(' ')
               });
             })
 
@@ -420,7 +428,7 @@ export const useClassesStore = defineStore("ClassesStore", {
           d.className == name &&
           d.level == level &&
           !excludeFeatures.includes(d.name)
-          && (this.version == '' || (this.version == '2024' && d.source == "XPHB"))
+          && (this.version == '' || (this.version == '2024' && isSrc2024(d.source)))
         );
         return fts.map(ft => {
           return {

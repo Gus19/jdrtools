@@ -38,10 +38,10 @@ footer {
 }
 
 .cursor-pointer {
-  cursor: pointer;
+  cursor: pointer !important;
 }
 .cursor-copy {
-  cursor: copy;
+  cursor: copy !important;
 }
 
 .btn.mw, .btn-group.mw .btn, .btn-group-sm.mw .btn {
@@ -89,6 +89,7 @@ h2 {
 span[data-bs-original-title], label[data-bs-original-title] {
   text-decoration: underline !important;
   text-decoration-style: dotted !important;
+  cursor: help;
 }
 .tooltip {
   white-space: pre-line;

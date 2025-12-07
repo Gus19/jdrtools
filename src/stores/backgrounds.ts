@@ -1,4 +1,5 @@
 import {defineStore} from 'pinia'
+import {isSrc2024} from "@/utils/refs";
 
 export const useBackgroundsStore = defineStore("BackgroundsStore", {
   state: (): RootState => ({
@@ -30,10 +31,10 @@ export const useBackgroundsStore = defineStore("BackgroundsStore", {
     isLoad: (state) => state.backgrounds.length > 0,
     getDefaults: (state) => state.backgrounds.filter((b: any) => {
       if(state.version == '2024') {
-        return b.source == "XPHB"
+        return isSrc2024(b.source)
       }
       else {
-        return defaultBackgrounds.includes(b.name) && b.source != "XPHB"
+        return defaultBackgrounds.includes(b.name) && !isSrc2024(b.source)
       }
     })
   }

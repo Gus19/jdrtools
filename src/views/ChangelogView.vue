@@ -4,6 +4,12 @@ import Changelog from "@/components/Changelog.vue";
 
 <template>
   <h2>Changelog</h2>
+  <Changelog>
+    <template v-slot:version>3.4.0</template>
+    <template v-slot:date>07/12/2025</template>
+    <li>Add Artificer</li>
+    <li>Improve Builder 2024</li>
+  </Changelog>
 
   <Changelog>
     <template v-slot:version>3.3.0</template>
