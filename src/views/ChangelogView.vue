@@ -4,10 +4,17 @@ import Changelog from "@/components/Changelog.vue";
 
 <template>
   <h2>Changelog</h2>
+
+  <Changelog>
+    <template v-slot:version>3.5.0</template>
+    <template v-slot:date>27/02/2026</template>
+    <li>Character builder: Add import file, correction same feature during multiclassing</li>
+  </Changelog>
+
   <Changelog>
     <template v-slot:version>3.4.0</template>
     <template v-slot:date>07/12/2025</template>
-    <li>Add Artificer</li>
+    <li>Character builder 2024: Add Artificer</li>
     <li>Improve Builder 2024</li>
   </Changelog>
 

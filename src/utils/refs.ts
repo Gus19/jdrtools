@@ -304,6 +304,7 @@ export const S = (e: any, d: boolean = true) => {
           t = t.replace(n, i.split('|')[0] + ' percent');
           break;
         case "scaledamage":
+        case "scaledice":
           let sp = i.split('|');
           t = t.replace(n, `{${sp[sp.length - 1]}}`);
           break;
@@ -674,7 +675,7 @@ export const spellDetails = (s: SpellInfo): string => {
   if(s.entriesHigherLevel) {
     s.entriesHigherLevel.forEach((h: EntriesHigherLevel) => {
       if (h.type === 'entries') {
-        lines.push(`${h.name}. ${h.entries.join('\n')}`);
+        lines.push(`${h.name}. ${S(h.entries.join('\n'))}`);
       }
     });
   }

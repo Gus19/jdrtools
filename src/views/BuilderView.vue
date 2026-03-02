@@ -775,6 +775,7 @@
   const upload = ref<any>({
     show: false,
     character: null,
+    file: null,
     error: null
   });
   const token = ref<any>({
@@ -802,6 +803,20 @@
     upload.value.show = false;
     calculStep();
     lastStep();
+  }
+  const onFileChange = (e: any) => {
+    var files = e.target.files || e.dataTransfer.files;
+    if (!files.length) return;
+    var file = files[0];
+    if(file.type != "application/json") {
+      upload.value.error = "Please select a json file"
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = (e) => {
+      upload.value.character = e.target?.result;
+    };
+    reader.readAsText(file);
   }
 
   const defaultChoose = {
@@ -1806,7 +1821,8 @@
         let idx = ch.findIndex((c:any) => c.name == p.name && c.featureType == p.featureType);
         let selected = 0;
         character.value.features.filter((f:any) => f.name == p.name && f.featureType == p.featureType).forEach((f:any) => {
-          selected += f.choices.length;
+          if(!(f.origin == "class" && f.originName != lastClass.value.name))
+            selected += f.choices.length;
         });
         let choice = {
           origin: origin,
@@ -2767,7 +2783,7 @@
   const isFeatureDisabled = (feature: string, option: string, featureType: string) => {
     // return false;
     const ftc = isFeatureCheck(feature, option);
-    if(ftc && ftc.featureType != featureType) return true;
+    if(ftc && (ftc.featureType != featureType || (ftc.origin == "class" && ftc.originName != lastClass.value.name))) return true;
     // const level = character.value.level;
     if(ftc) {
     //   if(ftc.level != level) return true;
@@ -3020,7 +3036,6 @@
 
   const itemsAc = computed(() => {
     const armors = character.value.equipment.items.filter((ce:any) => ce.type == 'armor' && ce.key).map((ce:any) => itemsStore.findByKey(ce.key));
-    console.log(armors);
     return {
       armors: armors.filter((a:ItemBase) => a && a.armor && a.type != 'S'),
       shields: armors.filter((a:ItemBase) => a && a.armor && a.type == 'S')
@@ -3895,8 +3910,11 @@
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-body text-center">
-            <p class="m-0 pb-1">Paste the JSON of your character</p>
             <p v-if="upload.error" class="text-danger m-0">{{ upload.error }}</p>
+
+            <p class="m-0 pb-1">JSON file: <input type="file" @change="onFileChange" accept=".json" /></p>
+
+            <p class="m-0 pb-1">Or paste the JSON of your character: </p>
             <json-editor
                 mode="text"
                 v-model:text="upload.character"
