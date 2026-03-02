@@ -8,7 +8,7 @@ import Changelog from "@/components/Changelog.vue";
   <Changelog>
     <template v-slot:version>3.5.0</template>
     <template v-slot:date>27/02/2026</template>
-    <li>Character builder: Add import file, correction same feature during multiclassing</li>
+    <li>Character builder: Add import file, correction choice feature during multiclassing</li>
   </Changelog>
 
   <Changelog>
